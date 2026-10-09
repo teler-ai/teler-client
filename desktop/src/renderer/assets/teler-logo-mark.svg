@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="teler-gold" x1="40" y1="40" x2="470" y2="470" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#c49a4c"/>
+      <stop offset="0.55" stop-color="#d6a94f"/>
+      <stop offset="1" stop-color="#b6a468"/>
+    </linearGradient>
+  </defs>
+  <g stroke="url(#teler-gold)" stroke-width="36" stroke-linejoin="miter" stroke-linecap="butt">
+    <path d="M232 110C214 78 190 62 158 62H56V148H150C172 148 186 160 194 186"/>
+    <path d="M197 302C197 168 252 62 340 62H472V148H424C380 148 352 180 324 232C290 304 244 378 180 412C142 431 100 432 56 432V476"/>
+    <path d="M50 372L128 296L204 368"/>
+    <path d="M284 140L312 198"/>
+    <path d="M346 266C352 306 348 356 330 392C308 434 258 442 228 418"/>
+  </g>
+</svg>

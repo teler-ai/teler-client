@@ -1,0 +1,19 @@
+/* The app top bar: a 40px local page above the remote Teler page. It shares
+   the Synced folders page's styles (bundled fonts and theme tokens only). */
+@import '../styles.css';
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* The bar moves the window; its controls opt back out so they stay clickable. */
+.app-region-drag {
+  -webkit-app-region: drag;
+}
+
+.app-region-no-drag {
+  -webkit-app-region: no-drag;
+}

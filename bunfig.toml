@@ -1,0 +1,3 @@
+[install]
+# Each workspace sees only the packages it declares.
+linker = "isolated"

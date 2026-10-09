@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": [
+    "src/main/**/*.ts",
+    "src/preload/**/*.ts",
+    "src/shared/**/*.ts",
+    "test/main/**/*.ts",
+    "test/setup.ts",
+    "test/*.test.ts",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ]
+}

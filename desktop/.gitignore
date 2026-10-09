@@ -1,0 +1,6 @@
+# Compiled `teler` sidecars and packaged installers
+.sidecar/
+release/
+.packaging/
+# Teler-named Electron for macOS development runs (scripts/dev-mac-app.ts)
+.dev-app/

@@ -1,0 +1,7 @@
+node_modules/
+dist/
+cli/release/
+desktop/release/
+desktop/.sidecar/
+desktop/.packaging/
+desktop/.dev-app/

@@ -1,0 +1,190 @@
+/* Design tokens of the local pages: one set of components, five themes that
+   change only these values. `applyPreferences` puts `theme-<variant>` (none
+   for the default theme) and `dark` on <html>. Background and foreground
+   match `THEME_SURFACES` in src/main/branding.ts, which the native window uses.
+   Every pair used for text meets WCAG AA (4.5:1); control boundaries such as
+   `--input` reach 3:1 against the page and card surfaces. */
+
+:root {
+  --font-ui: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-ui);
+  --font-code: 'JetBrains Mono Variable', ui-monospace, monospace;
+  --radius: 0.625rem;
+
+  /* Default: a calm neutral palette with a warm gold accent. */
+  --background: #faf8f5;
+  --foreground: #222222;
+  --card: #fdfcfb;
+  --popover: #fefdfd;
+  --primary: #835f12;
+  --primary-foreground: #ffffff;
+  --secondary: #ebe9e6;
+  --muted: #efedea;
+  --muted-foreground: #636261;
+  --accent: #eee9de;
+  --border: #dedcda;
+  --input: #8e8d8c;
+
+  /* Status colours are shared by every theme within a colour mode. */
+  --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+  --success: #1c7139;
+  --success-foreground: #ffffff;
+  --warning: #965207;
+  --warning-foreground: #ffffff;
+  --info: #1f5ea8;
+  --info-foreground: #ffffff;
+}
+
+:root.dark {
+  --background: #0b0401;
+  --foreground: #f4eee4;
+  --card: #150f0b;
+  --popover: #1b1411;
+  --primary: #e2b55a;
+  --primary-foreground: #1c1405;
+  --secondary: #27201c;
+  --muted: #201915;
+  --muted-foreground: #a9a39b;
+  --accent: #2d200f;
+  --border: #302925;
+  --input: #767069;
+
+  --destructive: #f47f73;
+  --destructive-foreground: #1d0503;
+  --success: #5ccb83;
+  --success-foreground: #03160a;
+  --warning: #f2b84b;
+  --warning-foreground: #1d1102;
+  --info: #7fb2ee;
+  --info-foreground: #04101f;
+}
+
+/* Editorial: ink on paper, serif headings, tight corners. */
+:root.theme-editorial {
+  --font-heading: 'Fraunces Variable', ui-serif, Georgia, serif;
+  --radius: 0.25rem;
+  --background: #f8f8f8;
+  --foreground: #0b0b0b;
+  --card: #fcfcfc;
+  --popover: #fdfdfd;
+  --primary: #161616;
+  --primary-foreground: #fafafa;
+  --secondary: #e7e7e7;
+  --muted: #ececec;
+  --muted-foreground: #525252;
+  --accent: #e1e1e1;
+  --border: #d9d9d9;
+  --input: #828282;
+}
+
+:root.theme-editorial.dark {
+  --background: #030303;
+  --foreground: #f5f5f5;
+  --card: #0e0e0e;
+  --popover: #141414;
+  --primary: #ededed;
+  --primary-foreground: #0b0b0b;
+  --secondary: #202020;
+  --muted: #191919;
+  --muted-foreground: #a8a8a8;
+  --accent: #282828;
+  --border: #2a2a2a;
+  --input: #727272;
+}
+
+/* Modernisme: tile turquoise, soft rounded corners. */
+:root.theme-modernisme {
+  --radius: 0.875rem;
+  --background: #eaf8f9;
+  --foreground: #0b1c2c;
+  --card: #f6fcfc;
+  --popover: #fafdfe;
+  --primary: #0b6670;
+  --primary-foreground: #ffffff;
+  --secondary: #dae9eb;
+  --muted: #dfedef;
+  --muted-foreground: #4e5e6a;
+  --accent: #d4e9eb;
+  --border: #cddbde;
+  --input: #7b8a93;
+}
+
+:root.theme-modernisme.dark {
+  --background: #000612;
+  --foreground: #e4f2f2;
+  --card: #0a111c;
+  --popover: #101722;
+  --primary: #5cc6cc;
+  --primary-foreground: #02171a;
+  --secondary: #1b222d;
+  --muted: #151b26;
+  --muted-foreground: #9ba6aa;
+  --accent: #0f2530;
+  --border: #242c36;
+  --input: #697379;
+}
+
+/* Dalí: Mediterranean blue on sand; yolk gold at night. */
+:root.theme-dali {
+  --radius: 0.75rem;
+  --background: #fbf1dc;
+  --foreground: #050c13;
+  --card: #fdf9ef;
+  --popover: #fefcf6;
+  --primary: #1d4f9c;
+  --primary-foreground: #ffffff;
+  --secondary: #eae1ce;
+  --muted: #efe6d2;
+  --muted-foreground: #4f514f;
+  --accent: #e5e1d6;
+  --border: #dbd3c2;
+  --input: #807f78;
+}
+
+:root.theme-dali.dark {
+  --background: #01030b;
+  --foreground: #f6eedc;
+  --card: #0c0e14;
+  --popover: #12131a;
+  --primary: #f0b93c;
+  --primary-foreground: #171003;
+  --secondary: #1e1f24;
+  --muted: #17181e;
+  --muted-foreground: #a8a399;
+  --accent: #272013;
+  --border: #28292c;
+  --input: #726f6b;
+}
+
+/* Llobregat: river clay and brick, squarer industrial corners. */
+:root.theme-llobregat {
+  --radius: 0.375rem;
+  --background: #f0eae1;
+  --foreground: #15110c;
+  --card: #f8f6f2;
+  --popover: #fbfaf8;
+  --primary: #9b4325;
+  --primary-foreground: #ffffff;
+  --secondary: #e1dbd2;
+  --muted: #e5dfd6;
+  --muted-foreground: #57524c;
+  --accent: #e8d9ce;
+  --border: #d4cec5;
+  --input: #837e77;
+}
+
+:root.theme-llobregat.dark {
+  --background: #0a0704;
+  --foreground: #d8d4cc;
+  --card: #13100d;
+  --popover: #181512;
+  --primary: #e0835f;
+  --primary-foreground: #1a0a04;
+  --secondary: #23201c;
+  --muted: #1d1916;
+  --muted-foreground: #96928c;
+  --accent: #2c1b13;
+  --border: #2b2824;
+  --input: #696560;
+}
