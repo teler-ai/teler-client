@@ -98,7 +98,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     strategy:
-      fail-fast: true
+      # Every platform finishes, so one run shows every problem; publishing still needs all.
+      fail-fast: false
       matrix:
         include:
           - platform: mac
@@ -164,6 +165,11 @@ jobs:
           APPLE_TEAM_ID: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_TEAM_ID || '' }}
         run: |
           set -euo pipefail
+          # An empty CSC_LINK would be read as a certificate path: drop unset secrets.
+          for name in CSC_LINK CSC_KEY_PASSWORD WIN_CSC_LINK WIN_CSC_KEY_PASSWORD \
+            APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [[ -z "${!name:-}" ]]; then unset "$name"; fi
+          done
           read -r -a target_args <<< "$TARGETS"
           args=("${target_args[@]}" --publish never "-c.extraMetadata.version=${VERSION}")
           if [[ "$PLATFORM" == mac ]]; then
