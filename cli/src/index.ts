@@ -254,7 +254,7 @@ export async function main(argv: readonly string[], deps: MainDeps = {}): Promis
       const newChat = takeFlag(args, '--new')
       const organizationId = takeOption(args, '--org')
       const title = takeOption(args, '--title')
-      const modelSetRaw = takeOption(args, '--model-set') ?? 'lite'
+      const modelSetRaw = takeOption(args, '--model-set')
       const deepAnalysis = takeFlag(args, '--deep')
       const wait = takeFlag(args, '--wait')
       const timeout = takeOption(args, '--timeout')
@@ -264,7 +264,7 @@ export async function main(argv: readonly string[], deps: MainDeps = {}): Promis
       }
       if (title && !newChat) throw new UsageError('--title is only valid with --new')
       if (args.length !== 1 || !args[0]) throw new UsageError('teler send requires one message')
-      if (modelSetRaw !== 'lite' && modelSetRaw !== 'pro') {
+      if (modelSetRaw !== undefined && modelSetRaw !== 'lite' && modelSetRaw !== 'pro') {
         throw new UsageError('--model-set must be lite or pro')
       }
       await withTimeout(timeout, async (signal) =>

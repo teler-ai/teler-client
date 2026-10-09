@@ -221,7 +221,7 @@ export async function sendMessage(
     organizationId?: string
     title?: string
     message: string
-    modelSet: 'lite' | 'pro'
+    modelSet?: 'lite' | 'pro'
     deepAnalysis: boolean
     wait: boolean
     signal?: AbortSignal
@@ -240,6 +240,8 @@ export async function sendMessage(
         organizationId,
         mindsetName: 'default',
         ...(options.title ? { title: options.title } : {}),
+        // Omission preserves the Profile default; an explicit selection freezes the new chat.
+        ...(options.modelSet ? { modelSetOverride: options.modelSet } : {}),
       }),
       signal: options.signal,
     })
@@ -253,7 +255,7 @@ export async function sendMessage(
     signal: options.signal,
     body: JSON.stringify({
       messages: [{ id: `cli_${randomUUID()}`, role: 'user', content: options.message }],
-      modelSet: options.modelSet,
+      modelSet: options.modelSet ?? 'lite',
       deepAnalysis: options.deepAnalysis,
     }),
   })
