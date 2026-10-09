@@ -173,12 +173,12 @@ jobs:
           read -r -a target_args <<< "$TARGETS"
           args=("${target_args[@]}" --publish never "-c.extraMetadata.version=${VERSION}")
           if [[ "$PLATFORM" == mac ]]; then
-            if [[ -z "$CSC_LINK" ]]; then
+            if [[ -z "${CSC_LINK:-}" ]]; then
               # Ad-hoc signing: hardened runtime is only for notarized builds,
               # and with an ad-hoc identity it blocks Electron's frameworks.
               export CSC_IDENTITY_AUTO_DISCOVERY=false
               args+=("-c.mac.identity=-" "-c.mac.hardenedRuntime=false")
-            elif [[ -n "$APPLE_ID" && -n "$APPLE_TEAM_ID" ]]; then
+            elif [[ -n "${APPLE_ID:-}" && -n "${APPLE_TEAM_ID:-}" ]]; then
               args+=("-c.mac.notarize=true")
             fi
           fi
