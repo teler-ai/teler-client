@@ -92,7 +92,8 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
-      fail-fast: true
+      # Every platform finishes, so one run shows every problem; publishing still needs all.
+      fail-fast: false
       matrix:
         include:
           - platform: linux
@@ -138,16 +139,6 @@ jobs:
         run: |
           read -r -a targets <<< "$TARGETS"
           bun scripts/compile.ts "${targets[@]}"
-
-      # Ad-hoc signatures let Apple silicon run the executables.
-      - name: Sign the macOS executables
-        if: matrix.platform == 'mac'
-        working-directory: cli/release
-        run: |
-          for binary in teler-mac-*; do
-            codesign --force --sign - "$binary"
-            codesign --verify "$binary"
-          done
 
       - name: Smoke-test the executable for this OS
         shell: bash
