@@ -1,0 +1,63 @@
+import SwiftUI
+import TelerFeatures
+import TelerKit
+
+struct ConversationView: View {
+    @State private var model: ConversationModel
+    private let webURL: URL?
+
+    init(chat: ChatID, client: TelerAPIClient, webURL: URL?) {
+        _model = State(initialValue: ConversationModel(chat: chat, client: client))
+        self.webURL = webURL
+    }
+
+    var body: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 24) {
+                ForEach(model.items) { item in
+                    MessageView(item: item, webURL: webURL)
+                }
+                if let problem = model.streamProblem {
+                    Label(problem.message, systemImage: "exclamationmark.triangle")
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                }
+            }
+            .padding()
+        }
+        .defaultScrollAnchor(.bottom)
+        .scrollDismissesKeyboard(.interactively)
+        .refreshable { await model.load() }
+        .overlay { placeholder }
+        .safeAreaInset(edge: .bottom) {
+            ComposerView(text: $model.draft, canSend: model.canSend) {
+                Task { await model.send() }
+            }
+        }
+        .navigationTitle(model.title ?? String(localized: "New chat"))
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await model.load() }
+        .onDisappear { model.stop() }
+    }
+
+    @ViewBuilder private var placeholder: some View {
+        switch model.phase {
+        case .loading where model.items.isEmpty:
+            ProgressView()
+        case .failed(let problem):
+            ContentUnavailableView {
+                Label("This chat didn't load", systemImage: "exclamationmark.bubble")
+            } description: {
+                Text(problem.message)
+            } actions: {
+                Button("Try again") { Task { await model.load() } }
+            }
+        case .ready where model.items.isEmpty:
+            ContentUnavailableView(
+                "Ask anything about your data", systemImage: "sparkle.magnifyingglass",
+                description: Text("Teler finds the right tables, runs the analysis and explains the result."))
+        default:
+            EmptyView()
+        }
+    }
+}

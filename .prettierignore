@@ -5,3 +5,5 @@ desktop/release/
 desktop/.sidecar/
 desktop/.packaging/
 desktop/.dev-app/
+.build/
+ios/Teler.xcodeproj/

@@ -1,8 +1,8 @@
 # AGENTS.md
 
 Guidance for anyone, human or agent, changing this repository. Also read the
-`AGENTS.md` of each package you touch: [`cli/`](cli/AGENTS.md) and
-[`desktop/`](desktop/AGENTS.md).
+`AGENTS.md` of each package you touch: [`cli/`](cli/AGENTS.md),
+[`desktop/`](desktop/AGENTS.md) and [`ios/`](ios/AGENTS.md).
 
 ## Boundaries
 
@@ -11,7 +11,7 @@ Guidance for anyone, human or agent, changing this repository. Also read the
 - Each package builds on its own. Dependencies come from the npm registry; the
   only workspace dependency is Desktop's `@teler-ai/cli`, which it compiles into
   its sync sidecar. `test/package-boundary.test.ts` in each package enforces
-  this.
+  this. The iOS app is Swift and has no third-party dependencies.
 - Never log or print access tokens, cookies, device codes or other credentials,
   and keep them out of errors and test snapshots.
 - Keep secrets, private hostnames and personal data out of code, tests, docs and

@@ -8,6 +8,7 @@ public HTTP API; neither contains any of Teler's server code.
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | [`cli/`](cli/)         | `@teler-ai/cli`: chats, dashboards, schedules, data analysis, files and one-way folder sync from a terminal or an agent.        |
 | [`desktop/`](desktop/) | Teler Desktop: the Teler web app in a native window, with background folder sync and notifications. Its sync engine is the CLI. |
+| [`ios/`](ios/)         | Teler for iOS: a native SwiftUI app, in development. See its [README](ios/README.md).                                           |
 
 ## Install
 

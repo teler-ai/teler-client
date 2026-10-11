@@ -1,0 +1,6 @@
+.build/
+.swiftpm/
+Teler.xcodeproj/
+DerivedData/
+xcuserdata/
+*.xcuserstate

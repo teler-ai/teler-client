@@ -1,0 +1,43 @@
+# XcodeGen spec. Teler.xcodeproj is generated from this file on a Mac
+# (scripts/generate.sh) and is not committed, so the project stays reviewable
+# text that can be edited anywhere.
+name: Teler
+options:
+  bundleIdPrefix: ai.teler
+  deploymentTarget:
+    iOS: '26.0'
+  developmentLanguage: en
+settings:
+  base:
+    SWIFT_VERSION: '6.0'
+    MARKETING_VERSION: '0.1.0'
+    CURRENT_PROJECT_VERSION: '1'
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+packages:
+  TelerKit:
+    path: Packages/TelerKit
+targets:
+  Teler:
+    type: application
+    platform: iOS
+    sources:
+      - path: Teler
+    dependencies:
+      - package: TelerKit
+        product: TelerKit
+      - package: TelerKit
+        product: TelerFeatures
+      - package: TelerKit
+        product: TelerDemo
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.teler.app
+        TARGETED_DEVICE_FAMILY: '1'
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Teler
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
+        SWIFT_EMIT_LOC_STRINGS: YES
+    scheme: {}
