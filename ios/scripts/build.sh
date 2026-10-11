@@ -16,6 +16,10 @@ xcodebuild -project Teler.xcodeproj -scheme Teler -configuration Debug \
   -destination 'generic/platform=iOS Simulator' -derivedDataPath "$derived" \
   CODE_SIGNING_ALLOWED=NO -quiet build
 
+app="$derived/Build/Products/Debug-iphonesimulator/Teler.app"
+[[ -x "$app/Teler" ]] || { echo "The build produced no Teler.app" >&2; exit 1; }
+echo "Built $app with $(xcodebuild -version | head -n 1)" >&2
+
 $run || exit 0
 
 # Reuse a booted simulator, or boot the newest iPhone available.
@@ -35,7 +39,6 @@ print(iphones[-1]["udid"] if iphones else "")')
   xcrun simctl bootstatus "$device" -b >/dev/null
 fi
 
-app="$derived/Build/Products/Debug-iphonesimulator/Teler.app"
 xcrun simctl install "$device" "$app"
 xcrun simctl launch --terminate-running-process "$device" ai.teler.app >/dev/null
 sleep 3
