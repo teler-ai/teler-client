@@ -7,3 +7,5 @@ desktop/.packaging/
 desktop/.dev-app/
 .build/
 ios/Teler.xcodeproj/
+# Xcode writes asset catalogs in its own style.
+ios/**/*.xcassets/

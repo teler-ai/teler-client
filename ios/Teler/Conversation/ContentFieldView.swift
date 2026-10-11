@@ -18,7 +18,8 @@ struct ContentFieldView: View {
             }
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.fill.quaternary, in: .rect(cornerRadius: 16))
+            .background(Palette.card, in: .rect(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Palette.border))
         case .reasoning(let text):
             DisclosureGroup("How Teler approached this") {
                 Text(text)
@@ -30,7 +31,7 @@ struct ContentFieldView: View {
         case .error:
             Label("This step didn't finish.", systemImage: "exclamationmark.triangle")
                 .font(.subheadline)
-                .foregroundStyle(.orange)
+                .foregroundStyle(Palette.warningInk)
         case .investigationPlan(let plan):
             PlanView(plan: plan)
         case .unknown:
@@ -78,7 +79,7 @@ struct PlanView: View {
         }
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.fill.quaternary, in: .rect(cornerRadius: 16))
+        .background(Palette.fill, in: .rect(cornerRadius: 16))
         .accessibilityElement(children: .combine)
     }
 }
@@ -89,11 +90,11 @@ private struct StepIcon: View {
     var body: some View {
         switch status {
         case .completed:
-            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(Palette.success)
         case .inProgress:
             ProgressView().controlSize(.mini)
         case .failed, .blocked:
-            Image(systemName: "exclamationmark.circle").foregroundStyle(.orange)
+            Image(systemName: "exclamationmark.circle").foregroundStyle(Palette.warningInk)
         case .skipped, .superseded:
             Image(systemName: "minus.circle").foregroundStyle(.secondary)
         case .pending, .unknown:

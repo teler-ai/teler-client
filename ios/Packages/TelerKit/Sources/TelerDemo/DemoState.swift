@@ -35,8 +35,13 @@ struct DemoState: Sendable {
     private var chats: [Chat] = DemoData.chats()
     private var turns: [String: Turn] = [:]
 
-    func chatPage() -> JSONValue {
-        let summaries = chats.sorted { $0.updatedAt > $1.updatedAt }.map { chat in
+    /// All chats, or with `matching` only those whose title contains it, like the server's search.
+    func chatPage(matching text: String? = nil) -> JSONValue {
+        let found = chats.filter { chat in
+            guard let text else { return true }
+            return chat.title?.range(of: text, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+        }
+        let summaries = found.sorted { $0.updatedAt > $1.updatedAt }.map { chat in
             JSONValue.object([
                 "id": .string(chat.id), "title": chat.title.map(JSONValue.string) ?? .null,
                 "updatedAt": .string(DemoData.timestamp(chat.updatedAt)),

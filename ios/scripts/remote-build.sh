@@ -23,8 +23,11 @@ remote_env="PATH=/opt/homebrew/bin:\$PATH"
 [[ -n "${TELER_SIMULATOR:-}" ]] && remote_env+=" TELER_SIMULATOR=$(printf %q "$TELER_SIMULATOR")"
 [[ -n "${TELER_ROUTE:-}" ]] && remote_env+=" TELER_ROUTE=$(printf %q "$TELER_ROUTE")"
 [[ -n "${TELER_DEMO:-}" ]] && remote_env+=" TELER_DEMO=1"
-output=$(ssh "${ssh_args[@]}" "$host" "cd teler-ios && $remote_env scripts/build.sh ${1:-}")
+# Print the build's output even when it fails, so compiler errors show.
+status=0
+output=$(ssh "${ssh_args[@]}" "$host" "cd teler-ios && $remote_env scripts/build.sh ${1:-}") || status=$?
 echo "$output"
+[[ $status -eq 0 ]] || exit "$status"
 
 if [[ "${1:-}" == "--run" ]]; then
   shot=$(echo "$output" | tail -n 1)

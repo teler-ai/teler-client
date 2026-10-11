@@ -1,3 +1,4 @@
+import Foundation
 import Observation
 import TelerKit
 
@@ -9,19 +10,25 @@ public final class ChatListModel {
         case failed(Problem)
     }
 
-    private let client: TelerAPIClient
+    private let workspace: Workspace
+    private let limit: Int
     public private(set) var chats: [ChatSummary] = []
     public private(set) var phase = Phase.loading
-    public private(set) var isCreating = false
-    public var creationProblem: Problem?
 
-    public init(client: TelerAPIClient) {
-        self.client = client
+    /// `limit` is how many of the newest chats to show.
+    public init(workspace: Workspace, limit: Int = 50) {
+        self.workspace = workspace
+        self.limit = limit
     }
 
+    /// The active organization's chats, newest first.
     public func load() async {
         do {
-            chats = try await client.chats().chats
+            guard let organization = try await workspace.activeOrganization() else {
+                phase = .failed(.noOrganization)
+                return
+            }
+            chats = try await workspace.client.chats(limit: limit, organization: organization).chats
             phase = .loaded
         } catch is CancellationError {
             return
@@ -29,20 +36,49 @@ public final class ChatListModel {
             if chats.isEmpty { phase = .failed(Problem(error)) }
         }
     }
+}
 
-    /// Creates a chat in the member's active organization.
-    public func createChat() async -> ChatID? {
-        isCreating = true
-        defer { isCreating = false }
-        do {
-            guard let organization = try await client.activeOrganization() else {
-                creationProblem = .noOrganization
-                return nil
-            }
-            return try await client.createChat(in: organization)
-        } catch {
-            creationProblem = Problem(error)
-            return nil
+/// Chats grouped by when they last changed, newest first.
+public struct ChatSection: Identifiable, Hashable, Sendable {
+    public enum Period: Hashable, Sendable {
+        case today
+        case yesterday
+        case previousSevenDays
+        case previousThirtyDays
+        case month(year: Int, month: Int)
+        case undated
+    }
+
+    public let period: Period
+    public let chats: [ChatSummary]
+    public var id: Period { period }
+
+    /// Keeps the chats' order; a period appears once, where its first chat is.
+    public static func group(
+        _ chats: [ChatSummary], now: Date = Date(), calendar: Calendar = .current
+    ) -> [ChatSection] {
+        let today = calendar.startOfDay(for: now)
+        var order: [Period] = []
+        var grouped: [Period: [ChatSummary]] = [:]
+        for chat in chats {
+            let period = period(of: chat.updatedAt, today: today, calendar: calendar)
+            if grouped[period] == nil { order.append(period) }
+            grouped[period, default: []].append(chat)
+        }
+        return order.map { ChatSection(period: $0, chats: grouped[$0] ?? []) }
+    }
+
+    private static func period(of date: Date?, today: Date, calendar: Calendar) -> Period {
+        guard let date else { return .undated }
+        let days = calendar.dateComponents([.day], from: calendar.startOfDay(for: date), to: today).day ?? 0
+        switch days {
+        case ..<1: return .today
+        case 1: return .yesterday
+        case 2...7: return .previousSevenDays
+        case 8...30: return .previousThirtyDays
+        default:
+            let parts = calendar.dateComponents([.year, .month], from: date)
+            return .month(year: parts.year ?? 0, month: parts.month ?? 0)
         }
     }
 }

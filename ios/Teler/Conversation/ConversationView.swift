@@ -24,11 +24,12 @@ struct ConversationView: View {
                 if let problem = model.streamProblem {
                     Label(problem.message, systemImage: "exclamationmark.triangle")
                         .font(.footnote)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Palette.warningInk)
                 }
             }
             .padding()
         }
+        .background(Palette.background)
         .defaultScrollAnchor(.bottom)
         .scrollDismissesKeyboard(.interactively)
         .refreshable { await model.load() }
@@ -40,6 +41,7 @@ struct ConversationView: View {
         }
         .navigationTitle(model.title ?? String(localized: "New chat"))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.hidden, for: .tabBar)
         .task {
             await model.load()
             if let firstQuestion, !askedFirstQuestion, model.items.isEmpty {

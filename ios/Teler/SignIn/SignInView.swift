@@ -39,7 +39,7 @@ struct SignInView: View {
                 if let problem = model.problem {
                     Section {
                         Label(problem.message, systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(Palette.warningInk)
                     }
                 }
                 Section {

@@ -6,10 +6,16 @@ import TelerKit
 ///
 ///     xcrun simctl launch <device> ai.teler.app -TelerDemo YES -TelerRoute chat:<chat id>
 ///     xcrun simctl launch <device> ai.teler.app -TelerDemo YES -TelerRoute "ask:<question>"
+///     xcrun simctl launch <device> ai.teler.app -TelerDemo YES -TelerRoute tab:chats
+///     xcrun simctl launch <device> ai.teler.app -TelerDemo YES -TelerRoute new
+///     xcrun simctl launch <device> ai.teler.app -TelerDemo YES -TelerRoute "search:<text>"
 ///     xcrun simctl launch <device> ai.teler.app -TelerOrigin https://<teler origin>
 enum DebugRoute: Equatable {
     case chat(ChatID)
     case ask(String)
+    case tab(AppTab)
+    case newChat
+    case search(String)
 
     static var atLaunch: DebugRoute? {
         #if DEBUG
@@ -18,6 +24,14 @@ enum DebugRoute: Equatable {
                 return .chat(chat)
             }
             if value.hasPrefix("ask:"), value.count > 4 { return .ask(String(value.dropFirst(4))) }
+            if value.hasPrefix("search:"), value.count > 7 { return .search(String(value.dropFirst(7))) }
+            switch value {
+            case "tab:home": return .tab(.home)
+            case "tab:chats": return .tab(.chats)
+            case "tab:search": return .tab(.search)
+            case "new": return .newChat
+            default: break
+            }
         #endif
         return nil
     }

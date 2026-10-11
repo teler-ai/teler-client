@@ -100,6 +100,13 @@ public enum DemoData {
         ]
     }
 
+    /// The questions a new chat offers, as the server writes them for an organization's tables.
+    static let starterPrompts = [
+        "Which region grew fastest last quarter?",
+        "How has churn changed over the last 6 months?",
+        "What are this week's top products by revenue?",
+    ]
+
     /// The streamed answer to any new question in demo mode.
     static func liveAnswer(to question: String) -> ScriptBuilder {
         let steps = ["Check the available data", "Explore the data", "Prepare the answer"]

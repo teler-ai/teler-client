@@ -28,7 +28,7 @@ struct CaptchaSheet: View {
                 if failed {
                     Label("The check didn't load. Close this and try again.", systemImage: "exclamationmark.triangle")
                         .font(.footnote)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Palette.warningInk)
                 }
                 Spacer()
             }

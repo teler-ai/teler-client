@@ -21,6 +21,9 @@ final class AppModel {
     var client: TelerAPIClient { session.activeClient }
     var isDemo: Bool { session.state == .demo }
 
+    /// The language the app shows, for text Teler writes, such as starter questions.
+    let language = Bundle.main.preferredLocalizations.first ?? "en"
+
     /// The same page in the web app.
     func webURL(path: String) -> URL? {
         try? session.client.origin.url(path: path)

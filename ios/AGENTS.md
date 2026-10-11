@@ -11,6 +11,10 @@ Scope: `ios/`. Also follow the repository root `AGENTS.md`.
   - It has no UI framework or third-party dependency, so it builds and tests on
     Linux as well as on a Mac.
 - `Teler/`: the SwiftUI app, iOS 26 and later.
+  - `Design/`: the colors (`Palette`, named like the web app's design tokens),
+    Fraunces for large titles (`Typeface`), Teler's mark and shared components.
+    Use these rather than system or literal colors.
+  - `App/`: the session, the tabs (Today, Chats, search) and their routes.
 - `project.yml`: the XcodeGen spec. `Teler.xcodeproj` is generated and not
   committed.
 
@@ -40,5 +44,6 @@ Scope: `ios/`. Also follow the repository root `AGENTS.md`.
 - Live transport tests: start `python3 -I ios/scripts/smoke-server.py 48731`, then
   run `TELERKIT_SMOKE_ORIGIN=http://127.0.0.1:48731 swift test --package-path ios/Packages/TelerKit`.
 - Debug launch arguments for screenshots: `TELER_DEMO=1` opens the demo and
-  `TELER_ROUTE="chat:<id>"` or `TELER_ROUTE="ask:<question>"` opens a screen,
-  with `scripts/build.sh --run` or `scripts/remote-build.sh --run`.
+  `TELER_ROUTE` opens a screen: `tab:home`, `tab:chats`, `tab:search`, `new`,
+  `chat:<id>`, `ask:<question>` or `search:<text>`. Use them with
+  `scripts/build.sh --run` or `scripts/remote-build.sh --run`.

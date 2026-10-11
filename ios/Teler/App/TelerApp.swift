@@ -5,9 +5,14 @@ import TelerFeatures
 struct TelerApp: App {
     @State private var app = AppModel()
 
+    init() {
+        Typeface.setUp()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView(app: app)
+                .tint(Palette.primaryInk)
         }
     }
 }
@@ -24,7 +29,8 @@ struct RootView: View {
             case .signedOut:
                 SignInView(app: app)
             case .signedIn, .demo:
-                ChatListView(app: app)
+                MainView(app: app)
+                    .id(app.isDemo)
             }
         }
         .task {

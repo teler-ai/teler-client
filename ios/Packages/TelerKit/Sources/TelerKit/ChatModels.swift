@@ -103,3 +103,14 @@ public enum ModelSet: String, Sendable, Encodable {
     case lite
     case pro
 }
+
+/// A question written for the organization's own tables, offered to start a chat.
+public struct StarterPrompt: Sendable, Hashable, Identifiable, Decodable {
+    public let id: String
+    public let label: String
+
+    public init(id: String, label: String) {
+        self.id = id
+        self.label = label
+    }
+}

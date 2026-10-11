@@ -11,14 +11,11 @@ import Testing
         identity: ClientIdentity(name: "teler-ios", version: "0.1.0")!,
         transport: DemoTransport(chunkDelay: .zero))
 
-    @Test func listsChatsAndStartsANewOne() async throws {
-        let list = ChatListModel(client: client)
+    @Test func listsTheOrganizationsChats() async throws {
+        let list = ChatListModel(workspace: Workspace(client: client))
         await list.load()
         #expect(list.phase == .loaded)
         #expect(list.chats.count == 3)
-        let chat = try #require(await list.createChat())
-        await list.load()
-        #expect(list.chats.contains { $0.id == chat })
     }
 
     @Test func showsAStoredChatWithOnePlanPerPlanID() async throws {
@@ -32,8 +29,8 @@ import Testing
     }
 
     @Test func sendsAQuestionAndShowsTheStreamedAnswer() async throws {
-        let list = ChatListModel(client: client)
-        let chat = try #require(await list.createChat())
+        let organization = try #require(try await client.activeOrganization())
+        let chat = try await client.createChat(in: organization)
         let model = ConversationModel(chat: chat, client: client)
         await model.load()
         #expect(!model.canSend)

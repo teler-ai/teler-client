@@ -28,6 +28,14 @@ public final class DemoTransport: HTTPTransport, Sendable {
         case (.post, 2):
             let title = Self.body(request)?["title"]?.stringValue
             return Self.json(200, .object(["id": .string(state.withLock { $0.createChat(title: title) })]))
+        case (.get, 3) where path[2] == "search":
+            let text = Self.query(request, "q") ?? ""
+            return Self.json(200, state.withLock { $0.chatPage(matching: text) })
+        case (.get, 3) where path[2] == "starter-prompts":
+            let prompts = DemoData.starterPrompts.enumerated().map { index, label in
+                JSONValue.object(["id": .string("starter-\(index)"), "label": .string(label)])
+            }
+            return Self.json(200, .object(["prompts": .array(prompts)]))
         case (.get, 3):
             guard let detail = state.withLock({ $0.chatDetail(path[2]) }) else { return Self.notFound() }
             return Self.json(200, detail)
@@ -65,6 +73,11 @@ public final class DemoTransport: HTTPTransport, Sendable {
         return HTTPStreamingResponse(
             head: HTTPResponseHead(statusCode: 200, headers: ["Content-Type": "text/event-stream"]),
             body: body)
+    }
+
+    private static func query(_ request: HTTPRequest, _ name: String) -> String? {
+        URLComponents(url: request.url, resolvingAgainstBaseURL: false)?
+            .queryItems?.first { $0.name == name }?.value
     }
 
     private static func body(_ request: HTTPRequest) -> JSONValue? {

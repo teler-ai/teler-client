@@ -15,6 +15,34 @@ extension TelerAPIClient {
         return try await json(ChatPage.self, .get, "/api/chat", query: query)
     }
 
+    /// The organization's chats whose title contains `text`, newest first.
+    public func searchChats(_ text: String, in organization: OrganizationID, limit: Int = 20)
+        async throws -> ChatPage
+    {
+        try await json(
+            ChatPage.self, .get, "/api/chat/search",
+            query: [
+                URLQueryItem(name: "q", value: String(text.prefix(200))),
+                URLQueryItem(name: "organizationId", value: organization.rawValue),
+                URLQueryItem(name: "limit", value: String(limit)),
+            ])
+    }
+
+    /// Questions written for the organization's own tables. Teler may write
+    /// them with a model on the organization's credits, so ask once and keep them.
+    public func starterPrompts(in organization: OrganizationID, language: String) async throws
+        -> [StarterPrompt]
+    {
+        struct Response: Decodable { let prompts: [StarterPrompt] }
+        let response = try await json(
+            Response.self, .get, "/api/chat/starter-prompts",
+            query: [
+                URLQueryItem(name: "organizationId", value: organization.rawValue),
+                URLQueryItem(name: "language", value: String(language.prefix(35))),
+            ])
+        return response.prompts.filter { !$0.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    }
+
     public func chat(_ id: ChatID, messageLimit: Int = 200) async throws -> ChatDetail {
         try await json(
             ChatDetail.self, .get, "/api/chat/\(id.rawValue)",

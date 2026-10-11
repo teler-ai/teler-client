@@ -13,7 +13,9 @@ struct MessageView: View {
                 Text(userText)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(.tint.opacity(0.15), in: .rect(cornerRadius: 20))
+                    .foregroundStyle(Palette.foreground)
+                    .background(Palette.bubble, in: .rect(cornerRadius: 20))
+                    .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Palette.bubbleEdge))
                     .textSelection(.enabled)
             }
         } else {
@@ -86,6 +88,6 @@ private struct UnsupportedPartsView: View {
             }
         }
         .padding(12)
-        .background(.fill.quaternary, in: .rect(cornerRadius: 14))
+        .background(Palette.fill, in: .rect(cornerRadius: 14))
     }
 }
