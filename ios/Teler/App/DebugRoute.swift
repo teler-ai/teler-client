@@ -52,6 +52,15 @@ enum DebugRoute: Equatable {
         #endif
     }
 
+    /// How long the demo waits between streamed parts, to photograph an answer being written.
+    static var demoChunkDelay: Duration {
+        #if DEBUG
+            let milliseconds = UserDefaults.standard.integer(forKey: "TelerDemoDelay")
+            if milliseconds > 0 { return .milliseconds(milliseconds) }
+        #endif
+        return .milliseconds(60)
+    }
+
     /// Another Teler origin, such as a local stack.
     static var origin: TelerOrigin? {
         #if DEBUG

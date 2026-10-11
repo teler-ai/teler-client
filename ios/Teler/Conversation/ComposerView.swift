@@ -1,17 +1,29 @@
 import SwiftUI
 
-/// The question field, with an amber send button once there's something to send.
+/// The question field. Its button sends, or stops Teler while it works.
 struct ComposerView: View {
     @Binding var text: String
     let canSend: Bool
+    var placeholder: LocalizedStringKey = "Ask about your data"
+    /// While Teler works, a Stop button; nil when there's nothing to stop.
+    var stop: (() -> Void)?
     let send: () -> Void
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
-            TextField("Ask about your data", text: $text, axis: .vertical)
+            TextField(placeholder, text: $text, axis: .vertical)
                 .lineLimit(1...6)
                 .padding(.vertical, 11)
-            if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if let stop {
+                Button(action: stop) {
+                    Image(systemName: "stop.fill")
+                        .font(.footnote)
+                        .foregroundStyle(Palette.background)
+                        .frame(width: 44, height: 44)
+                        .background(Palette.foreground, in: .circle)
+                }
+                .accessibilityLabel("Stop")
+            } else if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Button(action: send) {
                     Image(systemName: "arrow.up")
                         .font(.body.weight(.semibold))

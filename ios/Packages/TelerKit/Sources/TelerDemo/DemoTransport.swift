@@ -45,6 +45,11 @@ public final class DemoTransport: HTTPTransport, Sendable {
                 let accepted = state.withLock({ $0.startTurn(chat: path[2], question: text) })
             else { return Self.notFound() }
             return Self.json(202, accepted)
+        case (.get, 6) where path[3] == "artifact" && path[5] == "data":
+            guard let spec = DemoData.chartSpec(path[4]) else { return Self.notFound() }
+            return Self.json(200, spec)
+        case (.post, 6) where path[3] == "task" && path[5] == "cancel":
+            return Self.json(200, .object(["cancelled": .bool(false)]))
         case (.get, 6) where path[3] == "task" && path[5] == "stream":
             let task = path[4]
             guard let events = state.withLock({ $0.script(task: task) }) else { return Self.notFound() }

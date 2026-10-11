@@ -25,7 +25,11 @@ import Testing
         #expect(model.phase == .ready)
         #expect(model.title == "Quarterly revenue by region")
         #expect(model.items.map(\.role) == [.user, .assistant])
-        #expect(model.items.last?.content.map(\.type) == ["investigation_plan", "text"])
+        #expect(
+            model.items.last?.content.map(\.type) == [
+                "investigation_plan", "analysis_activity", "analysis_activity", "analysis_activity", "text",
+                "chart_artifact", "quick_actions",
+            ])
     }
 
     @Test func sendsAQuestionAndShowsTheStreamedAnswer() async throws {

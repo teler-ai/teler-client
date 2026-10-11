@@ -92,6 +92,15 @@ extension TelerAPIClient {
         }
     }
 
+    /// Stops a running turn. False when the server couldn't, for example
+    /// because it had already finished.
+    public func cancelTask(_ task: TaskID, in chat: ChatID) async throws -> Bool {
+        struct Result: Decodable { let cancelled: Bool }
+        return try await json(
+            Result.self, .post, "/api/chat/\(chat.rawValue)/task/\(task.rawValue)/cancel"
+        ).cancelled
+    }
+
     /// The signed-in member's active organization. This is the CLI session's
     /// endpoint; the mobile session will get its own.
     public func activeOrganization() async throws -> OrganizationID? {

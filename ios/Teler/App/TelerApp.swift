@@ -12,6 +12,7 @@ struct TelerApp: App {
     var body: some Scene {
         WindowGroup {
             RootView(app: app)
+                .environment(app)
                 .tint(Palette.primaryInk)
         }
     }

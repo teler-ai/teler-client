@@ -50,6 +50,13 @@ Scope: `ios/`. Also follow the repository root `AGENTS.md`.
   `screen:twofactor`, `screen:backup`, `screen:again`, `screen:setup` and
   `screen:update`. Use them with `scripts/build.sh --run` or
   `scripts/remote-build.sh --run`.
+- `-TelerDemoDelay <milliseconds>` slows the demo's streamed answers, to
+  photograph an answer while Teler works on it.
+- Answers render natively from the message parts: the plan and
+  `analysis_activity` parts become the steps (`AnswerLayout`), `chart_artifact`
+  parts are fetched from `/api/chat/:id/artifact/:slug/data` and drawn with
+  Swift Charts, and parts the web hides (reasoning, receipts, raw code) stay
+  hidden. Any other part shows a link to the web.
 - When the server ends the session (HTTP 401 outside sign-in), the app asks to
   sign in again over the open screens; HTTP 426 blocks it until updated; an
   account without an organization is sent to finish setting up on the web.

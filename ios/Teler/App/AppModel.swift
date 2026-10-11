@@ -16,7 +16,8 @@ final class AppModel {
             origin: origin, identity: .app, transport: URLSessionTransport(),
             store: KeychainSessionStore(origin: origin),
             demoClient: TelerAPIClient(
-                origin: DemoTransport.origin, identity: .app, transport: DemoTransport()))
+                origin: DemoTransport.origin, identity: .app,
+                transport: DemoTransport(chunkDelay: DebugRoute.demoChunkDelay)))
     }
 
     var client: TelerAPIClient { session.activeClient }

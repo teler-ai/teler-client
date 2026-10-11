@@ -12,6 +12,19 @@ public enum ContentField: Sendable, Hashable {
     case reasoning(String)
     case error(ContentError)
     case investigationPlan(InvestigationPlan)
+    /// What Teler did for a step, in plain words. Ordinary members get this
+    /// instead of the code or tool calls behind it.
+    case activity(AnalysisActivity)
+    /// A chart or table produced for the answer; its spec and data are fetched by slug.
+    case chart(ChartReference)
+    /// Follow-up questions to ask next.
+    case quickActions([QuickAction])
+    /// Web pages the answer drew on.
+    case webSources([WebSource])
+    /// A file or image the member attached to their question.
+    case attachment(name: String?, isImage: Bool)
+    /// A follow-up the member sent while Teler was working.
+    case steering(text: String, delivered: Bool)
     case unknown(type: String, raw: JSONValue)
 
     public var type: String {
@@ -21,8 +34,79 @@ public enum ContentField: Sendable, Hashable {
         case .reasoning: "reasoning"
         case .error: "error"
         case .investigationPlan: "investigation_plan"
+        case .activity: "analysis_activity"
+        case .chart: "chart_artifact"
+        case .quickActions: "quick_actions"
+        case .webSources: "web_search"
+        case .attachment(_, let isImage): isImage ? "image_reference" : "file_reference"
+        case .steering: "steering"
         case .unknown(let type, _): type
         }
+    }
+
+    /// Parts the web app never shows to members: internal pipeline state,
+    /// receipts and model reasoning. The app hides them too.
+    public static let hiddenTypes: Set<String> = [
+        "reasoning", "waiting_pipeline", "pipeline_error", "enriched_content", "deep_analysis_plan",
+        "deep_analysis", "evidence_manifest", "source_citations", "chart_appearance_context",
+        "agent_work_receipt", "verification", "run_references", "analysis_mode", "automatic_review",
+        "code_execution", "tool_call", "next_steps", "memory_activity", "persistence_receipt",
+    ]
+}
+
+public struct AnalysisActivity: Sendable, Hashable {
+    /// Such as `checking-available-data` or `exploring-data`.
+    public let kind: String
+    /// `running`, `completed`, `retrying` or `delegation-failed`.
+    public let status: String
+    public let description: String?
+    public let milliseconds: Int?
+    public let planStepID: String?
+
+    public init(
+        kind: String, status: String, description: String? = nil, milliseconds: Int? = nil,
+        planStepID: String? = nil
+    ) {
+        self.kind = kind
+        self.status = status
+        self.description = description
+        self.milliseconds = milliseconds
+        self.planStepID = planStepID
+    }
+}
+
+public struct ChartReference: Sendable, Hashable {
+    public let slug: String
+    public let chartType: String
+    public let title: String
+    public let description: String?
+
+    public init(slug: String, chartType: String, title: String, description: String? = nil) {
+        self.slug = slug
+        self.chartType = chartType
+        self.title = title
+        self.description = description
+    }
+}
+
+public struct QuickAction: Sendable, Hashable {
+    public let label: String
+    /// The question it asks.
+    public let value: String
+
+    public init(label: String, value: String) {
+        self.label = label
+        self.value = value
+    }
+}
+
+public struct WebSource: Sendable, Hashable {
+    public let url: String
+    public let title: String?
+
+    public init(url: String, title: String? = nil) {
+        self.url = url
+        self.title = title
     }
 }
 
@@ -59,9 +143,48 @@ extension ContentField: Decodable {
             return json["text"]?.stringValue.map(ContentField.reasoning)
         case "error":
             guard let text = json["text"]?.stringValue else { return nil }
-            return .error(ContentError(text: text, code: json["code"]?.stringValue))
+            let code = json["errorCode"]?.stringValue ?? json["code"]?.stringValue
+            return .error(ContentError(text: text, code: code))
         case "investigation_plan":
             return InvestigationPlan(json: json).map(ContentField.investigationPlan)
+        case "analysis_activity":
+            guard let kind = json["activity"]?.stringValue, let status = json["status"]?.stringValue else {
+                return nil
+            }
+            return .activity(
+                AnalysisActivity(
+                    kind: kind, status: status, description: json["description"]?.stringValue,
+                    milliseconds: json["executionTimeMs"]?.intValue,
+                    planStepID: json["investigationStepId"]?.stringValue))
+        case "chart_artifact":
+            guard let slug = json["slug"]?.stringValue, let title = json["title"]?.stringValue else {
+                return nil
+            }
+            return .chart(
+                ChartReference(
+                    slug: slug, chartType: json["chartType"]?.stringValue ?? "", title: title,
+                    description: json["description"]?.stringValue))
+        case "quick_actions":
+            let actions = (json["actions"]?.arrayValue ?? []).compactMap { action -> QuickAction? in
+                guard let label = action["label"]?.stringValue, let value = action["value"]?.stringValue,
+                    !label.isEmpty, !value.isEmpty
+                else { return nil }
+                return QuickAction(label: label, value: value)
+            }
+            return actions.isEmpty ? nil : .quickActions(actions)
+        case "web_search":
+            let sources = (json["sources"]?.arrayValue ?? []).compactMap { source -> WebSource? in
+                guard let url = source["url"]?.stringValue else { return nil }
+                return WebSource(url: url, title: source["title"]?.stringValue)
+            }
+            return sources.isEmpty ? nil : .webSources(sources)
+        case "image_reference":
+            return .attachment(name: nil, isImage: true)
+        case "file_reference":
+            return .attachment(name: json["name"]?.stringValue, isImage: json["preview"]?.stringValue == "image")
+        case "steering":
+            guard let text = json["text"]?.stringValue else { return nil }
+            return .steering(text: text, delivered: json["delivery"]?.stringValue != "undelivered")
         default:
             return nil
         }
