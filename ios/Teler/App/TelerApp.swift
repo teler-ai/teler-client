@@ -4,6 +4,7 @@ import TelerFeatures
 @main
 struct TelerApp: App {
     @State private var app = AppModel()
+    @AppStorage("appearance") private var appearance = Appearance.system
 
     init() {
         Typeface.setUp()
@@ -14,6 +15,7 @@ struct TelerApp: App {
             RootView(app: app)
                 .environment(app)
                 .tint(Palette.primaryInk)
+                .preferredColorScheme(appearance.colorScheme)
         }
     }
 }
@@ -64,14 +66,14 @@ struct RootView: View {
                     FinishSetupView(app: app, user: user)
                 case .signedIn(let user):
                     MainView(app: app)
-                        .id(false)
+                        .id(app.workspaceGeneration)
                         .sheet(isPresented: sessionExpired) {
                             SignInView(app: app, mode: .again(email: user?.email))
                                 .interactiveDismissDisabled()
                         }
                 case .demo:
                     MainView(app: app)
-                        .id(true)
+                        .id(-1)
                 }
             }
         }

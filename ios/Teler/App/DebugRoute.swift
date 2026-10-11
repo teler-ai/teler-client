@@ -23,6 +23,7 @@ enum DebugRoute: Equatable {
     /// `screen:wrong-password`, `screen:again`, `screen:setup` or `screen:update`.
     case screen(String)
     case dashboard(DashboardID)
+    case settings
 
     static var atLaunch: DebugRoute? {
         #if DEBUG
@@ -42,6 +43,7 @@ enum DebugRoute: Equatable {
             case "tab:dashboards": return .tab(.dashboards)
             case "tab:search": return .tab(.search)
             case "new": return .newChat
+            case "settings": return .settings
             default: break
             }
         #endif

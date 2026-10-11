@@ -9,6 +9,13 @@ import TelerKit
 final class AppModel {
     let session: SessionModel
     let connectivity = Connectivity()
+    var showsSettings = false
+    /// Changes when the member switches organization, so every screen starts afresh.
+    private(set) var workspaceGeneration = 0
+
+    func reloadForNewOrganization() {
+        workspaceGeneration += 1
+    }
 
     init() {
         let origin = DebugRoute.origin ?? (try! TelerOrigin("https://app.teler.ai"))

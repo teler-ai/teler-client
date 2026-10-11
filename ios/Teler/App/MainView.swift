@@ -52,6 +52,9 @@ struct MainView: View {
         }
         // The search tab's field; on the TabView, iOS places it for that tab.
         .searchable(text: $searchText, prompt: "Search or ask")
+        .sheet(isPresented: Binding(get: { app.showsSettings }, set: { app.showsSettings = $0 })) {
+            SettingsView(app: app, workspace: workspace)
+        }
         .task { await openLaunchRoute() }
     }
 
@@ -108,6 +111,8 @@ struct MainView: View {
             tab = .dashboards
             try? await Task.sleep(for: .milliseconds(500))
             paths[.dashboards] = [.dashboard(dashboard)]
+        case .settings:
+            app.showsSettings = true
         case .screen:
             break
         }
@@ -132,26 +137,13 @@ struct MainToolbar: ToolbarContent {
     }
 }
 
-/// The member's initials, opening the account's actions.
+/// The member's initials, opening Settings.
 struct AccountMenu: View {
     let app: AppModel
 
     var body: some View {
-        Menu {
-            if case .signedIn(let user?) = app.session.state {
-                Section(user.name ?? user.email ?? "") {
-                    if let email = user.email, user.name != nil { Text(email) }
-                }
-                Button("Sign out", systemImage: "rectangle.portrait.and.arrow.right", role: .destructive) {
-                    Task { await app.session.signOut() }
-                }
-            } else if app.isDemo {
-                Section("You're exploring sample data.") {
-                    Button("Sign in", systemImage: "person.crop.circle") {
-                        Task { await app.session.signOut() }
-                    }
-                }
-            }
+        Button {
+            app.showsSettings = true
         } label: {
             if case .signedIn(let user?) = app.session.state {
                 Avatar(initials: Avatar.initials(for: user))
@@ -159,6 +151,6 @@ struct AccountMenu: View {
                 Image(systemName: "person.crop.circle")
             }
         }
-        .accessibilityLabel("Account")
+        .accessibilityLabel("Account and settings")
     }
 }
