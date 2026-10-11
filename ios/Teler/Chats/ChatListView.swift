@@ -24,6 +24,7 @@ struct ChatListView: View {
                         firstQuestion: firstQuestions[chat])
                 }
                 .toolbar {
+                    ToolbarItem(placement: .topBarLeading) { accountMenu }
                     ToolbarItem(placement: .primaryAction) {
                         Button("New chat", systemImage: "square.and.pencil") {
                             Task {
@@ -51,6 +52,21 @@ struct ChatListView: View {
         .onChange(of: path) { _, newPath in
             // Returning to the list shows titles and order changed by the chat.
             if newPath.isEmpty { Task { await model.load() } }
+        }
+    }
+
+    private var accountMenu: some View {
+        Menu {
+            if case .signedIn(let user?) = app.session.state {
+                Section(user.name ?? user.email ?? "") {
+                    if let email = user.email, user.name != nil { Text(email) }
+                }
+            }
+            Button(app.isDemo ? "Leave the demo" : "Sign out", role: .destructive) {
+                Task { await app.session.signOut() }
+            }
+        } label: {
+            Label("Account", systemImage: "person.crop.circle")
         }
     }
 
@@ -84,7 +100,7 @@ struct ChatListView: View {
                 if app.isDemo {
                     Section {
                         Label(
-                            "You're looking at sample chats. Signing in to your workspace comes next.",
+                            "You're exploring sample chats. Leave the demo to sign in to your workspace.",
                             systemImage: "sparkles"
                         )
                         .font(.footnote)

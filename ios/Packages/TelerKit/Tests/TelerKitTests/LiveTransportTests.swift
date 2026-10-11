@@ -36,6 +36,19 @@ struct LiveTransportTests {
         #expect(first.duration(to: last) > .milliseconds(800))
     }
 
+    @Test func keepsTheCookiesFromSeveralSetCookieHeaders() async throws {
+        let transport = URLSessionTransport()
+        defer { transport.invalidate() }
+        let jar = CookieJar()
+        let origin = ProcessInfo.processInfo.environment["TELERKIT_SMOKE_ORIGIN"] ?? ""
+        let client = TelerAPIClient(
+            origin: try TelerOrigin(origin),
+            identity: ClientIdentity(name: "teler-ios", version: "0.1.0")!,
+            transport: transport, authentication: .session(jar))
+        #expect(try await client.signIn(email: "ada@example.com", password: "secret") == .signedIn)
+        #expect(await jar.headerValue() == "t.session_token=tok.sig; t.trust_device=dev.sig")
+    }
+
     @Test func refusesARedirect() async throws {
         let transport = URLSessionTransport()
         defer { transport.invalidate() }

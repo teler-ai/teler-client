@@ -40,6 +40,24 @@ extension TelerAPIClient {
             origin: try! TelerOrigin("https://app.teler.example"),
             identity: ClientIdentity(name: "teler-ios", version: "0.1.0")!,
             transport: transport,
-            accessToken: { token })
+            authentication: .bearer { token })
     }
+
+    static func session(_ transport: StubTransport, jar: CookieJar) -> TelerAPIClient {
+        TelerAPIClient(
+            origin: try! TelerOrigin("https://app.teler.example"),
+            identity: ClientIdentity(name: "teler-ios", version: "0.1.0")!,
+            transport: transport,
+            authentication: .session(jar))
+    }
+}
+
+/// `Set-Cookie` values in the shape Better Auth sends them.
+enum Cookies {
+    static let session =
+        "__Secure-teler.session_token=tok.sig; Max-Age=604800; Path=/; HttpOnly; Secure; SameSite=Lax"
+    static let twoFactor =
+        "__Secure-teler.two_factor=pending.sig; Max-Age=600; Path=/; HttpOnly; Secure; SameSite=Lax"
+    static let sessionCleared =
+        "__Secure-teler.session_token=; Max-Age=0; Path=/; HttpOnly; Secure; SameSite=Lax"
 }

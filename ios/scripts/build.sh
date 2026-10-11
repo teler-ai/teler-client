@@ -45,7 +45,8 @@ fi
 
 xcrun simctl install "$device" "$app"
 launch_args=()
-[[ -n "${TELER_ROUTE:-}" ]] && launch_args=(-TelerRoute "$TELER_ROUTE")
+[[ -n "${TELER_DEMO:-}" ]] && launch_args+=(-TelerDemo YES)
+[[ -n "${TELER_ROUTE:-}" ]] && launch_args+=(-TelerRoute "$TELER_ROUTE")
 # macOS's bash 3.2 treats an empty array as unset under `set -u`.
 xcrun simctl launch --terminate-running-process "$device" ai.teler.app \
   ${launch_args[@]+"${launch_args[@]}"} >/dev/null

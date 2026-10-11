@@ -24,7 +24,9 @@ public enum TelerAPIError: Error, Equatable, Sendable {
     /// digits and underscores and a numeric `minVersion` are read from the body.
     static func from(head: HTTPResponseHead, body: Data) -> TelerAPIError {
         let json = try? JSONDecoder().decode(JSONValue.self, from: body)
-        let code = json?["code"]?.stringValue.flatMap(Self.safeCode)
+        // Better Auth puts the code at the top level; Teler's own routes may
+        // nest it as `{ "error": { "code" } }`.
+        let code = (json?["code"] ?? json?["error"]?["code"])?.stringValue.flatMap(Self.safeCode)
         if code == "CLIENT_UPDATE_REQUIRED" {
             let minimum = json?["minVersion"]?.stringValue.flatMap {
                 ClientIdentity.isVersion($0) ? $0 : nil

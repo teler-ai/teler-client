@@ -1,13 +1,22 @@
 import Foundation
 
-/// Calls Teler's HTTP API as an authenticated client, like the CLI does:
-/// bearer token, `Teler-Client` version header, no redirects, and errors that
-/// never echo server or network text.
+/// How the client proves who it is.
+public enum Authentication: Sendable {
+    case none
+    /// A bearer token, as the CLI uses.
+    case bearer(@Sendable () async -> String?)
+    /// The same cookie session as the web app. Requests carry the cookies and
+    /// the origin's `Origin`, as the web app's own requests do.
+    case session(CookieJar)
+}
+
+/// Calls Teler's HTTP API as an authenticated client: `Teler-Client` version
+/// header, no redirects, and errors that never echo server or network text.
 public struct TelerAPIClient: Sendable {
     public let origin: TelerOrigin
     public let identity: ClientIdentity
+    public let authentication: Authentication
     private let transport: any HTTPTransport
-    private let accessToken: @Sendable () async -> String?
 
     static let maximumErrorBody = 64 * 1024
     static let maximumJSONBody = 16 * 1024 * 1024
@@ -16,12 +25,12 @@ public struct TelerAPIClient: Sendable {
         origin: TelerOrigin,
         identity: ClientIdentity,
         transport: any HTTPTransport,
-        accessToken: @escaping @Sendable () async -> String? = { nil }
+        authentication: Authentication = .none
     ) {
         self.origin = origin
         self.identity = identity
         self.transport = transport
-        self.accessToken = accessToken
+        self.authentication = authentication
     }
 
     /// Sends a request and returns the successful response with its body
@@ -38,7 +47,15 @@ public struct TelerAPIClient: Sendable {
         headers["Accept"] = accept
         headers["Teler-Client"] = identity.headerValue
         headers["User-Agent"] = identity.headerValue
-        if let token = await accessToken() { headers["Authorization"] = "Bearer \(token)" }
+        switch authentication {
+        case .none:
+            break
+        case .bearer(let token):
+            if let token = await token() { headers["Authorization"] = "Bearer \(token)" }
+        case .session(let jar):
+            if let cookies = await jar.headerValue() { headers["Cookie"] = cookies }
+            headers["Origin"] = origin.description
+        }
         if body != nil, headers["Content-Type"] == nil {
             headers["Content-Type"] = "application/json"
         }
@@ -53,6 +70,9 @@ public struct TelerAPIClient: Sendable {
             throw error
         } catch {
             throw TelerAPIError.network
+        }
+        if case .session(let jar) = authentication, let setCookie = response.head.header("Set-Cookie") {
+            await jar.update(setCookie: setCookie)
         }
         let status = response.head.statusCode
         if (300..<400).contains(status) { throw TelerAPIError.redirectRefused(status: status) }
@@ -69,9 +89,10 @@ public struct TelerAPIClient: Sendable {
         _ method: HTTPMethod = .get,
         _ path: String,
         query: [URLQueryItem] = [],
+        headers: [String: String] = [:],
         body: Data? = nil
     ) async throws -> Response {
-        let response = try await send(method, path, query: query, body: body)
+        let response = try await send(method, path, query: query, headers: headers, body: body)
         let data = try await response.collectBody(limit: Self.maximumJSONBody)
         do {
             return try Self.makeDecoder().decode(Response.self, from: data)

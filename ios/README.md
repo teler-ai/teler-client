@@ -3,10 +3,10 @@
 A native SwiftUI client for Teler, iOS 26 and later. It talks to Teler's
 public HTTP API like the CLI does.
 
-This first version runs on an offline demo API with sample chats, because
-signing in from the app needs a mobile session on the server first. Chats,
-streamed answers, investigation plans and reports are native; message parts the
-app cannot show yet are marked and link to the same chat on the web.
+You sign in with your Teler email and password (and two-factor code, if your
+account uses one), or explore sample chats offline. Chats, streamed answers,
+investigation plans and reports are native; message parts the app cannot show
+yet are marked and link to the same chat on the web.
 
 ## Build
 
