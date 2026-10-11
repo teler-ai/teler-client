@@ -22,6 +22,7 @@ enum DebugRoute: Equatable {
     /// A sign-in or session screen, by name: `screen:twofactor`, `screen:backup`,
     /// `screen:wrong-password`, `screen:again`, `screen:setup` or `screen:update`.
     case screen(String)
+    case dashboard(DashboardID)
 
     static var atLaunch: DebugRoute? {
         #if DEBUG
@@ -32,9 +33,13 @@ enum DebugRoute: Equatable {
             if value.hasPrefix("ask:"), value.count > 4 { return .ask(String(value.dropFirst(4))) }
             if value.hasPrefix("search:"), value.count > 7 { return .search(String(value.dropFirst(7))) }
             if value.hasPrefix("screen:"), value.count > 7 { return .screen(String(value.dropFirst(7))) }
+            if value.hasPrefix("dashboard:"), let id = DashboardID(rawValue: String(value.dropFirst(10))) {
+                return .dashboard(id)
+            }
             switch value {
             case "tab:home": return .tab(.home)
             case "tab:chats": return .tab(.chats)
+            case "tab:dashboards": return .tab(.dashboards)
             case "tab:search": return .tab(.search)
             case "new": return .newChat
             default: break

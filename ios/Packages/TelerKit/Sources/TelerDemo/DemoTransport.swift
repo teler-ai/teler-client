@@ -21,6 +21,9 @@ public final class DemoTransport: HTTPTransport, Sendable {
         if request.method == .get, path == ["api", "teler-cli", "me"] {
             return Self.json(200, .object(["activeOrganizationId": .string(DemoData.organization.rawValue)]))
         }
+        if request.method == .get, path.count >= 2, path[0] == "api", path[1] == "dashboard" {
+            return dashboard(path)
+        }
         guard path.count >= 2, path[0] == "api", path[1] == "chat" else { return Self.notFound() }
         switch (request.method, path.count) {
         case (.get, 2):
@@ -56,6 +59,19 @@ public final class DemoTransport: HTTPTransport, Sendable {
             // Like the server, a reconnect resumes after the parts already sent.
             let resumeAfter = request.headers["Last-Event-ID"].flatMap(Int.init) ?? 0
             return stream(task: task, events.filter { $0.cursor > resumeAfter || $0.isTerminal })
+        default:
+            return Self.notFound()
+        }
+    }
+
+    private func dashboard(_ path: [String]) -> HTTPStreamingResponse {
+        switch path.count {
+        case 2:
+            return Self.json(200, DemoData.dashboardPage())
+        case 3:
+            return DemoData.dashboardDetail(path[2]).map { Self.json(200, $0) } ?? Self.notFound()
+        case 6 where path[3] == "widget" && path[5] == "data":
+            return DemoData.widgetSpec(path[4]).map { Self.json(200, $0) } ?? Self.notFound()
         default:
             return Self.notFound()
         }

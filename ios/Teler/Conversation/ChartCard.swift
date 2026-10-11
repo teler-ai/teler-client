@@ -63,7 +63,7 @@ struct ChartCard: View {
     }
 }
 
-private struct ChartBody: View {
+struct ChartBody: View {
     let spec: ChartSpec
     let webURL: URL?
 
@@ -241,34 +241,11 @@ private struct MetricTiles: View {
         let metrics: [JSONValue] = spec.type == "metric" ? [spec.data] : spec.data["metrics"]?.arrayValue ?? []
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
             ForEach(Array(metrics.enumerated()), id: \.offset) { _, metric in
-                VStack(alignment: .leading, spacing: 4) {
-                    if let title = metric["title"]?.stringValue {
-                        Text(title).font(.footnote).foregroundStyle(Palette.mutedForeground)
-                    }
-                    Text(metric["value"]?.display ?? "")
-                        .font(.title2.weight(.semibold))
-                        .monospacedDigit()
-                        .foregroundStyle(Palette.foreground)
-                        .minimumScaleFactor(0.6)
-                        .lineLimit(1)
-                    if let delta = metric["delta"]?.display, !delta.isEmpty {
-                        Label(delta, systemImage: trendSymbol(metric["trend"]?.stringValue))
-                            .font(.footnote.weight(.medium))
-                            .foregroundStyle(Palette.mutedForeground)
-                    }
-                }
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Palette.fill, in: .rect(cornerRadius: 14))
+                KPITile(
+                    title: metric["title"]?.stringValue ?? spec.title ?? "",
+                    value: metric["value"]?.display ?? "", delta: metric["delta"]?.display,
+                    trend: Trend(metric["trend"]?.stringValue))
             }
-        }
-    }
-
-    private func trendSymbol(_ trend: String?) -> String {
-        switch trend {
-        case "up": "arrow.up"
-        case "down": "arrow.down"
-        default: "minus"
         }
     }
 }

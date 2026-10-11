@@ -198,6 +198,119 @@ public enum DemoData {
         }
     }
 
+    static let executiveDashboard = "dash_01jd2f6y8m3k9q7v5t1w4x0bns"
+    static let salesDashboard = "dash_01jd2f9c4h6p2r8z3y5v7n1gqd"
+
+    /// The demo's dashboards, as `GET /api/dashboard` lists them.
+    static func dashboardPage(now: Date = Date()) -> JSONValue {
+        func summary(_ id: String, _ name: String, _ description: String, minutesAgo: Double, widgets: [String])
+            -> JSONValue
+        {
+            let refreshed = JSONValue.string(timestamp(now.addingTimeInterval(-minutesAgo * 60)))
+            return .object([
+                "id": .string(id), "name": .string(name), "description": .string(description),
+                "organizationId": .string(organization.rawValue), "visibility": .string("organization"),
+                "permission": .string("owner"), "lastRefreshedAt": refreshed, "updatedAt": refreshed,
+                "widgetCount": .number(Double(widgets.count)),
+                "widgetPreviews": .array(
+                    widgets.map { .object(["artifactType": .string("metric"), "title": .string($0)]) }),
+            ])
+        }
+        return .object([
+            "dashboards": .array([
+                summary(
+                    executiveDashboard, "Executive overview", "Revenue, orders and churn at a glance",
+                    minutesAgo: 5, widgets: ["Headline numbers", "Monthly revenue by region", "Top products", "Revenue by region"]),
+                summary(
+                    salesDashboard, "Product sales", "What sells, and where", minutesAgo: 62,
+                    widgets: ["Top products", "Monthly revenue by region"]),
+            ]),
+            "hasMore": .bool(false), "nextCursor": .null,
+        ])
+    }
+
+    /// A demo dashboard's widgets, as `GET /api/dashboard/:id?include=metadata` returns them.
+    static func dashboardDetail(_ id: String, now: Date = Date()) -> JSONValue? {
+        func widget(_ widgetID: String, _ type: String, _ title: String, x: Int, y: Int, w: Int) -> JSONValue {
+            .object([
+                "id": .string(widgetID), "dashboardId": .string(id),
+                "position": .object(["x": .number(Double(x)), "y": .number(Double(y)), "w": .number(Double(w)), "h": .number(2)]),
+                "sortOrder": .number(Double(y * 4 + x)), "config": .object([:]),
+                "artifact": .object(["id": .string("art_" + widgetID), "type": .string(type), "title": .string(title)]),
+            ])
+        }
+        let widgets: [JSONValue]
+        let name: String
+        switch id {
+        case executiveDashboard:
+            name = "Executive overview"
+            widgets = [
+                widget("wgt_headline", "metric_grid", "Headline numbers", x: 0, y: 0, w: 4),
+                widget("wgt_revenue_month", "line", "Monthly revenue by region", x: 0, y: 1, w: 4),
+                widget("wgt_top_products", "bar", "Top products", x: 0, y: 2, w: 4),
+                widget("wgt_region_table", "table", "Revenue by region", x: 0, y: 3, w: 4),
+            ]
+        case salesDashboard:
+            name = "Product sales"
+            widgets = [
+                widget("wgt_top_products", "bar", "Top products", x: 0, y: 0, w: 4),
+                widget("wgt_revenue_month", "line", "Monthly revenue by region", x: 0, y: 1, w: 4),
+            ]
+        default:
+            return nil
+        }
+        let refreshed = JSONValue.string(timestamp(now.addingTimeInterval(-5 * 60)))
+        return .object([
+            "id": .string(id), "name": .string(name), "description": .null,
+            "lastRefreshedAt": refreshed, "refreshInterval": .string("1h"),
+            "refresh": .object(["status": .string("ready"), "lastAttemptAt": refreshed]),
+            "widgets": .array(widgets),
+        ])
+    }
+
+    /// A demo widget's data, in Teler's chart format.
+    static func widgetSpec(_ widget: String) -> JSONValue? {
+        switch widget {
+        case "wgt_headline":
+            func metric(_ title: String, _ value: String, _ delta: String, _ trend: String) -> JSONValue {
+                .object(["title": .string(title), "value": .string(value), "delta": .string(delta), "trend": .string(trend)])
+            }
+            return .object([
+                "version": .number(1), "type": .string("metric_grid"), "title": .string("Headline numbers"),
+                "config": .object([:]),
+                "data": .object([
+                    "metrics": .array([
+                        metric("Revenue", "€1.62M", "6.4%", "up"), metric("Orders", "41,380", "3.1%", "up"),
+                        metric("Avg order value", "€39.15", "3.2%", "up"),
+                        metric("Subscriber churn", "3.4%", "0.7 pt", "down"),
+                    ])
+                ]),
+            ])
+        case "wgt_revenue_month":
+            return chartSpec("revenue-by-region")
+        case "wgt_top_products":
+            return chartSpec("top-products")
+        case "wgt_region_table":
+            func column(_ values: [JSONValue], _ dtype: String) -> JSONValue {
+                .object(["values": .array(values), "dtype": .string(dtype)])
+            }
+            return .object([
+                "version": .number(1), "type": .string("table"), "title": .string("Revenue by region"),
+                "description": .string("Q3 2026 · EUR"),
+                "config": .object(["columns": .array([.string("Region"), .string("Revenue"), .string("Orders")])]),
+                "data": .object([
+                    "columns": .object([
+                        "Region": column(["Iberia", "DACH", "Benelux", "Nordics"].map(JSONValue.string), "string"),
+                        "Revenue": column([1_620_000, 1_310_000, 710_000, 560_000].map(JSONValue.number), "number"),
+                        "Orders": column([16_210, 12_980, 7_400, 4_790].map(JSONValue.number), "number"),
+                    ])
+                ]),
+            ])
+        default:
+            return nil
+        }
+    }
+
     /// The questions a new chat offers, as the server writes them for an organization's tables.
     static let starterPrompts = [
         "Which region grew fastest last quarter?",

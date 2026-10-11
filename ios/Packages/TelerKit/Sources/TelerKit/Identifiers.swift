@@ -57,3 +57,12 @@ public struct OrganizationID: TelerIdentifier {
         self.rawValue = rawValue
     }
 }
+
+public struct DashboardID: TelerIdentifier {
+    public static let prefix = "dash"
+    public let rawValue: String
+    public init?(rawValue: String) {
+        guard IdentifierFormat.isValid(rawValue, prefix: Self.prefix) else { return nil }
+        self.rawValue = rawValue
+    }
+}

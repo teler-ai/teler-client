@@ -5,6 +5,7 @@ import TelerKit
 enum AppTab: Hashable {
     case home
     case chats
+    case dashboards
     case search
 }
 
@@ -16,6 +17,7 @@ enum Route: Hashable {
     case newChat
     /// A new chat asking `question` right away.
     case ask(String)
+    case dashboard(DashboardID)
 }
 
 /// The app for an account or the sample: Today, Chats and search, each tab
@@ -40,6 +42,9 @@ struct MainView: View {
             }
             Tab("Chats", systemImage: "bubble.left", value: AppTab.chats) {
                 stack(.chats) { ChatListView(app: app, workspace: workspace, open: open) }
+            }
+            Tab("Dashboards", systemImage: "square.grid.2x2", value: AppTab.dashboards) {
+                stack(.dashboards) { DashboardListView(app: app, workspace: workspace, open: open) }
             }
             Tab(value: AppTab.search, role: .search) {
                 stack(.search) { SearchView(app: app, workspace: workspace, query: searchText, open: open) }
@@ -67,6 +72,8 @@ struct MainView: View {
             NewChatView(app: app, workspace: workspace)
         case .ask(let question):
             NewChatView(app: app, workspace: workspace, asking: question)
+        case .dashboard(let dashboard):
+            DashboardView(app: app, workspace: workspace, dashboard: dashboard, open: open)
         }
     }
 
@@ -97,6 +104,10 @@ struct MainView: View {
         case .search(let text):
             tab = .search
             searchText = text
+        case .dashboard(let dashboard):
+            tab = .dashboards
+            try? await Task.sleep(for: .milliseconds(500))
+            paths[.dashboards] = [.dashboard(dashboard)]
         case .screen:
             break
         }
