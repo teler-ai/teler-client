@@ -22,27 +22,35 @@ echo "Built $app with $(xcodebuild -version | head -n 1)" >&2
 
 $run || exit 0
 
-# Reuse a booted simulator, or boot the newest iPhone available.
+# Reuse a booted simulator, or boot $TELER_SIMULATOR (default: an iPhone 18 Pro,
+# the size the designs use), or else the last iPhone available.
 device=$(xcrun simctl list devices booted -j | /usr/bin/python3 -c '
 import json, sys
 for runtime, devices in json.load(sys.stdin)["devices"].items():
     for device in devices:
         print(device["udid"]); sys.exit()')
 if [[ -z "$device" ]]; then
-  device=$(xcrun simctl list devices available -j | /usr/bin/python3 -c '
-import json, sys
+  device=$(xcrun simctl list devices available -j | TELER_SIMULATOR="${TELER_SIMULATOR:-iPhone 18 Pro}" /usr/bin/python3 -c '
+import json, os, sys
 iphones = [d for r, ds in json.load(sys.stdin)["devices"].items() if "iOS" in r
            for d in ds if d["name"].startswith("iPhone")]
-print(iphones[-1]["udid"] if iphones else "")')
+wanted = [d for d in iphones if d["name"] == os.environ["TELER_SIMULATOR"]]
+print((wanted or iphones or [{"udid": ""}])[-1]["udid"])')
   [[ -n "$device" ]] || { echo "No iPhone simulator is installed" >&2; exit 1; }
   xcrun simctl boot "$device"
   xcrun simctl bootstatus "$device" -b >/dev/null
+  # A fresh boot keeps setting up the home screen after it reports ready.
+  sleep 30
 fi
 
 xcrun simctl install "$device" "$app"
-xcrun simctl launch --terminate-running-process "$device" ai.teler.app >/dev/null
-sleep 3
+launch_args=()
+[[ -n "${TELER_ROUTE:-}" ]] && launch_args=(-TelerRoute "$TELER_ROUTE")
+# macOS's bash 3.2 treats an empty array as unset under `set -u`.
+xcrun simctl launch --terminate-running-process "$device" ai.teler.app \
+  ${launch_args[@]+"${launch_args[@]}"} >/dev/null
+sleep "${TELER_SCREENSHOT_DELAY:-4}"
 mkdir -p .build/screenshots
 shot=".build/screenshots/teler-$(date +%Y%m%d-%H%M%S).png"
-xcrun simctl io "$device" screenshot "$shot" >/dev/null
+xcrun simctl io "$device" screenshot "$shot" >/dev/null 2>&1
 echo "$PWD/$shot"

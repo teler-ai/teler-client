@@ -6,6 +6,8 @@ struct ChatListView: View {
     let app: AppModel
     @State private var model: ChatListModel
     @State private var path: [ChatID] = []
+    @State private var firstQuestions: [ChatID: String] = [:]
+    @State private var routed = false
 
     init(app: AppModel) {
         self.app = app
@@ -17,7 +19,9 @@ struct ChatListView: View {
             content
                 .navigationTitle("Chats")
                 .navigationDestination(for: ChatID.self) { chat in
-                    ConversationView(chat: chat, client: app.client, webURL: app.webURL(for: chat))
+                    ConversationView(
+                        chat: chat, client: app.client, webURL: app.webURL(for: chat),
+                        firstQuestion: firstQuestions[chat])
                 }
                 .toolbar {
                     ToolbarItem(placement: .primaryAction) {
@@ -40,10 +44,26 @@ struct ChatListView: View {
                     Text(model.creationProblem?.message ?? "")
                 }
         }
-        .task { await model.load() }
+        .task {
+            await model.load()
+            await openLaunchRoute()
+        }
         .onChange(of: path) { _, newPath in
             // Returning to the list shows titles and order changed by the chat.
             if newPath.isEmpty { Task { await model.load() } }
+        }
+    }
+
+    private func openLaunchRoute() async {
+        guard !routed, let route = DebugRoute.atLaunch else { return }
+        routed = true
+        switch route {
+        case .chat(let chat):
+            path.append(chat)
+        case .ask(let question):
+            guard let chat = await model.createChat() else { return }
+            firstQuestions[chat] = question
+            path.append(chat)
         }
     }
 

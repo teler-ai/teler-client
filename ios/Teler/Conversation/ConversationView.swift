@@ -4,11 +4,15 @@ import TelerKit
 
 struct ConversationView: View {
     @State private var model: ConversationModel
+    @State private var askedFirstQuestion = false
     private let webURL: URL?
+    private let firstQuestion: String?
 
-    init(chat: ChatID, client: TelerAPIClient, webURL: URL?) {
+    /// `firstQuestion` is sent once when a new, empty chat opens.
+    init(chat: ChatID, client: TelerAPIClient, webURL: URL?, firstQuestion: String? = nil) {
         _model = State(initialValue: ConversationModel(chat: chat, client: client))
         self.webURL = webURL
+        self.firstQuestion = firstQuestion
     }
 
     var body: some View {
@@ -36,7 +40,14 @@ struct ConversationView: View {
         }
         .navigationTitle(model.title ?? String(localized: "New chat"))
         .navigationBarTitleDisplayMode(.inline)
-        .task { await model.load() }
+        .task {
+            await model.load()
+            if let firstQuestion, !askedFirstQuestion, model.items.isEmpty {
+                askedFirstQuestion = true
+                model.draft = firstQuestion
+                await model.send()
+            }
+        }
         .onDisappear { model.stop() }
     }
 

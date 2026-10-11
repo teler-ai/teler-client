@@ -2,7 +2,8 @@
 # From Linux (or any machine), copies ios/ to a Mac over SSH, runs
 # scripts/build.sh there and copies back the screenshot when --run is given.
 #
-#   TELER_MAC_HOST=user@mac-host [TELER_MAC_KEY=~/.ssh/key] scripts/remote-build.sh [--run]
+#   TELER_MAC_HOST=user@mac-host [TELER_MAC_KEY=~/.ssh/key] [TELER_SIMULATOR="iPhone 18 Pro"] \
+#     [TELER_ROUTE="chat:<id>" | TELER_ROUTE="ask:<question>"] scripts/remote-build.sh [--run]
 #
 # The Mac needs Xcode and XcodeGen, and nothing else: no GitHub access and no
 # credentials. Source is copied into ~/teler-ios on the Mac.
@@ -17,7 +18,10 @@ rsync -az --delete -e "ssh ${ssh_args[*]}" \
   --exclude .build --exclude Teler.xcodeproj --exclude '.swiftpm' \
   ./ "$host:teler-ios/"
 
-output=$(ssh "${ssh_args[@]}" "$host" "cd teler-ios && PATH=/opt/homebrew/bin:\$PATH scripts/build.sh ${1:-}")
+remote_env="PATH=/opt/homebrew/bin:\$PATH"
+[[ -n "${TELER_SIMULATOR:-}" ]] && remote_env+=" TELER_SIMULATOR=$(printf %q "$TELER_SIMULATOR")"
+[[ -n "${TELER_ROUTE:-}" ]] && remote_env+=" TELER_ROUTE=$(printf %q "$TELER_ROUTE")"
+output=$(ssh "${ssh_args[@]}" "$host" "cd teler-ios && $remote_env scripts/build.sh ${1:-}")
 echo "$output"
 
 if [[ "${1:-}" == "--run" ]]; then
