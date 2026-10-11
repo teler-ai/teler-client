@@ -97,6 +97,8 @@ struct MainView: View {
         case .search(let text):
             tab = .search
             searchText = text
+        case .screen:
+            break
         }
     }
 }

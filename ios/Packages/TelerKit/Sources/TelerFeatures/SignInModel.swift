@@ -43,7 +43,10 @@ public final class SignInModel {
         guard !isWorking else { return false }
         switch step {
         case .credentials: return trimmedEmail.contains("@") && !password.isEmpty
-        case .secondFactor: return !code.trimmingCharacters(in: .whitespaces).isEmpty
+        case .secondFactor:
+            let code = code.trimmingCharacters(in: .whitespaces)
+            return factor == .authenticatorCode
+                ? code.count == 6 && code.allSatisfy(\.isNumber) : !code.isEmpty
         }
     }
 
@@ -53,6 +56,12 @@ public final class SignInModel {
         case .credentials: await signIn(captcha: nil)
         case .secondFactor: await verifyCode()
         }
+    }
+
+    /// Clears a previous reset, for asking again.
+    public func beginPasswordReset() {
+        resetEmailSent = false
+        problem = nil
     }
 
     public func requestPasswordReset() async {
@@ -76,6 +85,13 @@ public final class SignInModel {
         awaitingCaptcha = nil
         captchaSiteKey = nil
     }
+
+    #if DEBUG
+        /// Opens the two-factor step without a server, for screenshots.
+        public func showSecondFactorForScreenshots() {
+            step = .secondFactor
+        }
+    #endif
 
     /// Leaves the two-factor step to sign in again.
     public func startOver() {
@@ -135,6 +151,9 @@ public final class SignInModel {
                 }
             case .signInExpired:
                 startOver()
+                self.problem = problem
+            case .invalidCredentials:
+                password = ""
                 self.problem = problem
             default:
                 self.problem = problem

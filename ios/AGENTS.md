@@ -45,5 +45,11 @@ Scope: `ios/`. Also follow the repository root `AGENTS.md`.
   run `TELERKIT_SMOKE_ORIGIN=http://127.0.0.1:48731 swift test --package-path ios/Packages/TelerKit`.
 - Debug launch arguments for screenshots: `TELER_DEMO=1` opens the demo and
   `TELER_ROUTE` opens a screen: `tab:home`, `tab:chats`, `tab:search`, `new`,
-  `chat:<id>`, `ask:<question>` or `search:<text>`. Use them with
-  `scripts/build.sh --run` or `scripts/remote-build.sh --run`.
+  `chat:<id>`, `ask:<question>` or `search:<text>`. Sign-in and session states
+  open without a server: `screen:start`, `screen:wrong-password`,
+  `screen:twofactor`, `screen:backup`, `screen:again`, `screen:setup` and
+  `screen:update`. Use them with `scripts/build.sh --run` or
+  `scripts/remote-build.sh --run`.
+- When the server ends the session (HTTP 401 outside sign-in), the app asks to
+  sign in again over the open screens; HTTP 426 blocks it until updated; an
+  account without an organization is sent to finish setting up on the web.

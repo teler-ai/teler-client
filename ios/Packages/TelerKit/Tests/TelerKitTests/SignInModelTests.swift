@@ -68,7 +68,9 @@ import Testing
         await signIn.submit()
         #expect(signIn.problem == .invalidCredentials)
         #expect(signIn.step == .credentials)
+        #expect(signIn.password.isEmpty)
 
+        signIn.password = "right"
         await signIn.submit()
         signIn.code = "000000"
         await signIn.submit()
@@ -119,6 +121,7 @@ import Testing
         let store = MemorySessionStore([saved])
         let transport = StubTransport([
             .response(status: 200, chunks: [user]),
+            .response(status: 200, chunks: [#"{"activeOrganizationId":"org_01jczpznh32py20pd8y10ef9cq"}"#]),
             .response(status: 200, headers: ["Set-Cookie": Cookies.sessionCleared], chunks: [#"{"success":true}"#]),
         ])
         let session = session(transport, store: store)

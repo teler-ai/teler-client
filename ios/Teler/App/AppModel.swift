@@ -8,6 +8,7 @@ import TelerKit
 @MainActor @Observable
 final class AppModel {
     let session: SessionModel
+    let connectivity = Connectivity()
 
     init() {
         let origin = DebugRoute.origin ?? (try! TelerOrigin("https://app.teler.ai"))
