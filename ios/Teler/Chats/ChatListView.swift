@@ -109,74 +109,84 @@ struct ChatSearchResults: View {
     let query: String
     let search: ChatSearchModel
     let open: (Route) -> Void
+    /// False in the read-only sample, where nothing starts a new chat.
+    var canAsk = true
 
     private var text: String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     var body: some View {
         List {
-            Section {
-                Button {
-                    open(.ask(text))
-                } label: {
-                    HStack(spacing: 12) {
-                        IconTile { TelerMark().padding(6) }
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Ask Teler: “\(text)”")
-                                .font(.body)
-                                .foregroundStyle(Palette.foreground)
-                                .lineLimit(2)
-                            Text("Starts a new chat")
-                                .font(.subheadline)
-                                .foregroundStyle(Palette.mutedForeground)
-                        }
-                        Spacer(minLength: 8)
-                        Image(systemName: "chevron.right")
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(Palette.tertiary)
-                    }
-                }
-            }
-            .listRowBackground(Palette.card)
-            switch search.phase {
-            case .found where !search.results.isEmpty:
-                Section {
-                    ForEach(search.results) { chat in
-                        Button {
-                            open(.chat(chat.id))
-                        } label: {
-                            ChatRow(chat: chat, time: ChatTime.label(chat.updatedAt), highlight: text)
-                        }
-                    }
-                } header: {
-                    Text("Chats")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Palette.mutedForeground)
-                        .textCase(nil)
-                        .sectionHeaderInsets()
-                }
-                .listRowBackground(Palette.card)
-            case .found:
-                Section {
-                    ContentUnavailableView {
-                        Label("No chats match “\(text)”", systemImage: "magnifyingglass")
-                    } description: {
-                        Text("Check the spelling, or ask Teler to work it out from your data.")
-                    }
-                }
-                .listRowBackground(Color.clear)
-            case .failed(let problem):
-                Section {
-                    Label(problem.message, systemImage: "exclamationmark.triangle")
-                        .font(.subheadline)
-                        .foregroundStyle(Palette.mutedForeground)
-                }
-                .listRowBackground(Color.clear)
-            case .idle, .searching:
-                EmptyView()
-            }
+            if canAsk { askRow }
+            results
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .background(Palette.background)
+    }
+
+    private var askRow: some View {
+        Section {
+            Button {
+                open(.ask(text))
+            } label: {
+                HStack(spacing: 12) {
+                    IconTile { TelerMark().padding(6) }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Ask Teler: “\(text)”")
+                            .font(.body)
+                            .foregroundStyle(Palette.foreground)
+                            .lineLimit(2)
+                        Text("Starts a new chat")
+                            .font(.subheadline)
+                            .foregroundStyle(Palette.mutedForeground)
+                    }
+                    Spacer(minLength: 8)
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(Palette.tertiary)
+                }
+            }
+        }
+        .listRowBackground(Palette.card)
+    }
+
+    @ViewBuilder private var results: some View {
+        switch search.phase {
+        case .found where !search.results.isEmpty:
+            Section {
+                ForEach(search.results) { chat in
+                    Button {
+                        open(.chat(chat.id))
+                    } label: {
+                        ChatRow(chat: chat, time: ChatTime.label(chat.updatedAt), highlight: text)
+                    }
+                }
+            } header: {
+                Text("Chats")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Palette.mutedForeground)
+                    .textCase(nil)
+                    .sectionHeaderInsets()
+            }
+            .listRowBackground(Palette.card)
+        case .found:
+            Section {
+                ContentUnavailableView {
+                    Label("No chats match “\(text)”", systemImage: "magnifyingglass")
+                } description: {
+                    Text("Check the spelling, or ask Teler to work it out from your data.")
+                }
+            }
+            .listRowBackground(Color.clear)
+        case .failed(let problem):
+            Section {
+                Label(problem.message, systemImage: "exclamationmark.triangle")
+                    .font(.subheadline)
+                    .foregroundStyle(Palette.mutedForeground)
+            }
+            .listRowBackground(Color.clear)
+        case .idle, .searching:
+            EmptyView()
+        }
     }
 }

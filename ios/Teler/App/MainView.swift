@@ -71,11 +71,17 @@ struct MainView: View {
         .task { await openLaunchRoute() }
     }
 
+    /// A tab's navigation stack. In the sample its top screen keeps the way
+    /// to sign in in view; screens pushed on it have their own.
     private func stack(_ tab: AppTab, @ViewBuilder root: () -> some View) -> some View {
         NavigationStack(path: path(tab)) {
-            root().navigationDestination(for: Route.self) { route in
-                destination(route)
-            }
+            root()
+                .safeAreaInset(edge: .bottom) {
+                    if app.isSample { SampleBar(app: app) }
+                }
+                .navigationDestination(for: Route.self) { route in
+                    destination(route)
+                }
         }
     }
 
@@ -152,15 +158,80 @@ struct MainToolbar: ToolbarContent {
     var compose: (() -> Void)?
 
     var body: some ToolbarContent {
-        if let compose {
+        if let compose, !app.isSample {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("New chat", systemImage: "square.and.pencil", action: compose)
             }
             ToolbarSpacer(.fixed, placement: .topBarTrailing)
         }
         ToolbarItem(placement: .topBarTrailing) {
-            AccountMenu(app: app)
+            if app.isSample { SampleMenu(app: app) } else { AccountMenu(app: app) }
         }
+    }
+}
+
+/// In the sample, in place of the account: the way to sign in.
+struct SampleMenu: View {
+    let app: AppModel
+
+    var body: some View {
+        Menu {
+            Button("Sign in", systemImage: "person.crop.circle", action: app.leaveSample)
+            Button("Leave the sample", systemImage: "rectangle.portrait.and.arrow.right", action: app.leaveSample)
+        } label: {
+            Image(systemName: "flask")
+        }
+        .accessibilityLabel("Sample data")
+    }
+}
+
+/// Above the tab bar while exploring the sample: what it is, and Sign in.
+struct SampleBar: View {
+    let app: AppModel
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "flask").foregroundStyle(Palette.mutedForeground)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Sample data").font(.subheadline.weight(.semibold))
+                Text("A made-up company to explore").font(.caption).foregroundStyle(Palette.mutedForeground)
+            }
+            Spacer(minLength: 8)
+            Button("Sign in", action: app.leaveSample)
+                .font(.subheadline.weight(.semibold))
+                .buttonStyle(.glassProminent)
+        }
+        .foregroundStyle(Palette.foreground)
+        .padding(.horizontal, 16)
+        .frame(minHeight: 56)
+        .glassEffect(.regular, in: .rect(cornerRadius: 26))
+        .padding(.horizontal, 12)
+        .padding(.bottom, 6)
+    }
+}
+
+/// In place of the composer in a sample chat.
+struct SampleReadOnlyBar: View {
+    let app: AppModel
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "lock").foregroundStyle(Palette.mutedForeground)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Sample chats are read-only").font(.subheadline.weight(.semibold))
+                Text("Sign in to ask your own questions").font(.caption).foregroundStyle(Palette.mutedForeground)
+            }
+            Spacer(minLength: 8)
+            Button("Sign in", action: app.leaveSample)
+                .font(.subheadline.weight(.semibold))
+                .buttonStyle(.glassProminent)
+        }
+        .foregroundStyle(Palette.foreground)
+        .padding(.horizontal, 16)
+        .frame(minHeight: 56)
+        .glassEffect(.regular, in: .rect(cornerRadius: 26))
+        .padding(.horizontal, 12)
+        .padding(.bottom, 8)
     }
 }
 

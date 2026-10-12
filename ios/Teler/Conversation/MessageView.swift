@@ -31,6 +31,8 @@ struct AnswerContext {
     var editQuestion: (() -> Void)?
     /// Where each of Teler's questions stands, by tool call.
     var questionStatuses: [String: QuestionStatus] = [:]
+    /// False in the read-only sample: nothing asks Teler anything.
+    var canAsk = true
 }
 
 private struct UserBubble: View {
@@ -113,7 +115,7 @@ private struct AnswerView: View {
             if let error = layout.error, !item.isStreaming {
                 ErrorCard(error: error, context: context)
             }
-            if context.isLatest, !item.isStreaming, !layout.nextQuestions.isEmpty {
+            if context.isLatest, context.canAsk, !item.isStreaming, !layout.nextQuestions.isEmpty {
                 NextQuestions(questions: layout.nextQuestions, ask: context.ask)
             }
         }

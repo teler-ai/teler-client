@@ -51,6 +51,10 @@ Scope: `ios/`. Also follow the repository root `AGENTS.md`.
   `screen:twofactor`, `screen:backup`, `screen:again`, `screen:setup` and
   `screen:update`. Use them with `scripts/build.sh --run` or
   `scripts/remote-build.sh --run`.
+- The sample people explore before signing in is read-only (board 01c): no
+  composer, no Ask Teler, no next questions and no Needs you actions, with
+  "Sample data · Sign in" on the top-level screens. `-TelerDemoAsk YES` lets
+  the demo answer new questions again, for screenshots of Teler at work.
 - `-TelerDemoDelay <milliseconds>` slows the demo's streamed answers, to
   photograph an answer while Teler works on it.
 - Answers render natively from the message parts: the plan and

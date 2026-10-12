@@ -81,6 +81,16 @@ enum DebugRoute: Equatable {
         #endif
     }
 
+    /// The demo answers new questions, for screenshots of Teler at work;
+    /// otherwise it's the read-only sample people explore.
+    static var demoAllowsAsking: Bool {
+        #if DEBUG
+            return UserDefaults.standard.bool(forKey: "TelerDemoAsk")
+        #else
+            return false
+        #endif
+    }
+
     /// Opens the demo instead of the sign-in screen.
     static var startsInDemo: Bool {
         #if DEBUG

@@ -40,7 +40,7 @@ struct ConversationView: View {
                 ForEach(model.items) { item in
                     MessageView(item: item, context: context(for: item))
                 }
-                if let flow = model.questionFlow {
+                if let flow = model.questionFlow, !app.isSample {
                     QuestionCard(model: model, flow: flow)
                         .transition(.opacity.combined(with: .move(edge: .bottom)))
                 }
@@ -58,21 +58,10 @@ struct ConversationView: View {
         .refreshable { await model.load() }
         .overlay { placeholder }
         .safeAreaInset(edge: .bottom) {
-            ComposerView(
-                text: $model.draft, canSend: model.canSend && app.connectivity.isOnline,
-                placeholder: composerPlaceholder,
-                stop: model.isAnswering ? { Task { await model.cancel() } } : nil,
-                chips: model.attachments.items.map(AttachmentChip.init),
-                attach: model.questionFlow == nil ? { attaching = true } : nil,
-                removeChip: { model.attachments.remove($0) },
-                retryChip: { model.attachments.retry($0) }
-            ) {
-                // While Teler waits for answers, typing answers the current question.
-                if model.questionFlow != nil {
-                    Task { await model.answerInOwnWords() }
-                } else {
-                    Task { await model.send() }
-                }
+            if app.isSample {
+                SampleReadOnlyBar(app: app)
+            } else {
+                composer
             }
         }
         .navigationTitle(model.title ?? String(localized: "New chat"))
@@ -122,6 +111,25 @@ struct ConversationView: View {
         .animation(.snappy, value: model.questionFlow?.call.toolCallID)
     }
 
+    private var composer: some View {
+        ComposerView(
+            text: $model.draft, canSend: model.canSend && app.connectivity.isOnline,
+            placeholder: composerPlaceholder,
+            stop: model.isAnswering ? { Task { await model.cancel() } } : nil,
+            chips: model.attachments.items.map(AttachmentChip.init),
+            attach: model.questionFlow == nil ? { attaching = true } : nil,
+            removeChip: { model.attachments.remove($0) },
+            retryChip: { model.attachments.retry($0) }
+        ) {
+            // While Teler waits for answers, typing answers the current question.
+            if model.questionFlow != nil {
+                Task { await model.answerInOwnWords() }
+            } else {
+                Task { await model.send() }
+            }
+        }
+    }
+
     private var composerPlaceholder: LocalizedStringKey {
         if model.questionFlow != nil { return "Or answer in your own words…" }
         return model.items.isEmpty ? "Ask about your data" : "Ask a follow-up"
@@ -135,7 +143,7 @@ struct ConversationView: View {
             ask: { question in Task { await model.ask(question) } },
             retry: model.lastQuestion.map { question in { Task { await model.ask(question) } } },
             editQuestion: model.lastQuestion.map { question in { model.draft = question } },
-            questionStatuses: model.questionStatuses)
+            questionStatuses: model.questionStatuses, canAsk: !app.isSample)
     }
 
     @ViewBuilder private var placeholder: some View {

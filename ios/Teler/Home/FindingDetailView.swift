@@ -89,7 +89,7 @@ struct FindingDetailView: View {
         .toolbar(.hidden, for: .tabBar)
         .safeAreaInset(edge: .bottom) {
             HStack(spacing: 10) {
-                if finding.isWaiting {
+                if finding.isWaiting, !app.isSample {
                     Button {
                         Task { await markSeen() }
                     } label: {

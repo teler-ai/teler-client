@@ -27,7 +27,7 @@ struct SearchView: View {
             if query.trimmingCharacters(in: .whitespaces).isEmpty {
                 start
             } else {
-                ChatSearchResults(query: query, search: search, open: open)
+                ChatSearchResults(query: query, search: search, open: open, canAsk: !app.isSample)
             }
         }
         .navigationTitle("Search")
@@ -41,7 +41,7 @@ struct SearchView: View {
 
     private var start: some View {
         List {
-            if !suggestions.isEmpty {
+            if !suggestions.isEmpty, !app.isSample {
                 Section {
                     ForEach(suggestions) { prompt in
                         Button {

@@ -9,6 +9,8 @@ struct NeedsYouRow: View {
     let item: NeedsYouModel.Item
     let model: NeedsYouModel
     let isOnline: Bool
+    /// False in the read-only sample.
+    var canAct = true
     let open: (Route) -> Void
     @State private var reviewing: AccessRequest?
     @State private var declining: AccessRequest?
@@ -56,15 +58,17 @@ struct NeedsYouRow: View {
                                 .foregroundStyle(Palette.mutedForeground)
                         }
                     }
-                    HStack(spacing: 8) {
-                        Button("Give access") { reviewing = request }
-                            .buttonStyle(.glassProminent)
-                        Button("Decline…") { declining = request }
-                            .buttonStyle(.glass)
+                    if canAct {
+                        HStack(spacing: 8) {
+                            Button("Give access") { reviewing = request }
+                                .buttonStyle(.glassProminent)
+                            Button("Decline…") { declining = request }
+                                .buttonStyle(.glass)
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .disabled(!isOnline)
                     }
-                    .font(.subheadline.weight(.semibold))
-                    .disabled(!isOnline)
-                    if !isOnline {
+                    if !isOnline, canAct {
                         Text("You can answer when you're back online.")
                             .font(.footnote)
                             .foregroundStyle(Palette.mutedForeground)

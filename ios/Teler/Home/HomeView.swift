@@ -64,7 +64,9 @@ struct HomeView: View {
         Section {
             if hasNeeds {
                 ForEach(showsAllNeeds ? needsYou.items : needsYou.waiting) { item in
-                    NeedsYouRow(item: item, model: needsYou, isOnline: app.connectivity.isOnline, open: open)
+                    NeedsYouRow(
+                        item: item, model: needsYou, isOnline: app.connectivity.isOnline, canAct: !app.isSample,
+                        open: open)
                 }
                 if needsYou.items.count > NeedsYouModel.limit, !showsAllNeeds {
                     Button("\(needsYou.items.count - NeedsYouModel.limit) more") { showsAllNeeds = true }

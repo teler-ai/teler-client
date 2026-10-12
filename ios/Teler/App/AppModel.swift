@@ -29,6 +29,13 @@ final class AppModel {
 
     var client: TelerAPIClient { session.activeClient }
     var isDemo: Bool { session.state == .demo }
+    /// The sample people explore before signing in: read-only, with a way to sign in always in view.
+    var isSample: Bool { isDemo && !DebugRoute.demoAllowsAsking }
+
+    /// Leaves the sample for the sign-in screen.
+    func leaveSample() {
+        Task { await session.signOut() }
+    }
 
     /// The language the app shows, for text Teler writes, such as starter questions.
     let language = Bundle.main.preferredLocalizations.first ?? "en"
