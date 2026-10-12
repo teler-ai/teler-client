@@ -238,8 +238,8 @@ public struct ApprovalRequest: Sendable, Hashable {
         approvalID = id
         toolName = json["approvalKind"]?.stringValue == "repository_operation" ? "repository_operation" : tool
         approved = json["approved"]?.boolValue
-        expiresAt = json["expiresAt"]?.stringValue.flatMap { try? Date($0, strategy: .iso8601) }
-        consumedAt = json["consumedAt"]?.stringValue.flatMap { try? Date($0, strategy: .iso8601) }
+        expiresAt = json["expiresAt"]?.stringValue.flatMap(TelerAPIClient.parseISO8601)
+        consumedAt = json["consumedAt"]?.stringValue.flatMap(TelerAPIClient.parseISO8601)
         let input = json["input"]
         subject = (input?["query"]?.stringValue ?? input?["url"]?.stringValue)?.trimmed
     }
