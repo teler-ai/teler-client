@@ -21,6 +21,12 @@ struct SettingsView: View {
     @State private var model: SettingsModel
     @State private var showsOrganizations = false
     @State private var confirmsSignOut = false
+    @State private var deletion: AccountDeletionModel?
+    @State private var isCheckingDeletion = false
+    @State private var showsDeletionBlocked = false
+    @State private var confirmsDeletion = false
+    @State private var provingCheck: AccountDeletionCheck?
+    @State private var showsDeletionProgress = false
     @AppStorage("appearance") private var appearance = Appearance.system
     @Environment(\.dismiss) private var dismiss
 
@@ -64,6 +70,23 @@ struct SettingsView: View {
                         Button("Sign out", role: .destructive) { confirmsSignOut = true }
                             .foregroundStyle(Palette.destructiveInk)
                     }
+                    Section {
+                        Button(role: .destructive) {
+                            Task { await startDeletion() }
+                        } label: {
+                            HStack {
+                                Text("Delete account")
+                                Spacer()
+                                if isCheckingDeletion { ProgressView() }
+                            }
+                        }
+                        .foregroundStyle(Palette.destructiveInk)
+                        .disabled(isCheckingDeletion)
+                    } footer: {
+                        Text(
+                            "Permanently deletes your account and personal data. If you're the only owner of an organization, make someone else an owner first."
+                        )
+                    }
                 }
                 about
             }
@@ -84,6 +107,29 @@ struct SettingsView: View {
                     app.reloadForNewOrganization()
                 }
             }
+            .navigationDestination(isPresented: $showsDeletionBlocked) {
+                if case .blocked(let check)? = deletion?.phase { DeletionBlockedView(app: app, check: check) }
+            }
+            .alert("Delete your account?", isPresented: $confirmsDeletion) {
+                Button("Delete", role: .destructive) { Task { await prepareDeletion() } }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text(
+                    "This permanently deletes your account and your personal chats, files and dashboards. Organizations you share keep their shared content. You can't undo this."
+                )
+            }
+            .sheet(
+                isPresented: Binding(get: { provingCheck != nil }, set: { if !$0 { provingCheck = nil } }),
+                onDismiss: deletionSheetClosed
+            ) {
+                if let deletion, let provingCheck { ConfirmIdentitySheet(model: deletion, check: provingCheck) }
+            }
+            .fullScreenCover(isPresented: $showsDeletionProgress) {
+                DeletionProgressView(phase: deletion?.phase ?? .deleting) {
+                    dismiss()
+                    Task { await app.session.finishDeletedAccount() }
+                }
+            }
             .alert("Sign out of Teler on this iPhone?", isPresented: $confirmsSignOut) {
                 Button("Sign out", role: .destructive) {
                     dismiss()
@@ -102,6 +148,42 @@ struct SettingsView: View {
                 Text(model.problem?.message ?? "")
             }
             .task { if !app.isDemo { await model.load() } }
+        }
+    }
+
+    /// Checks what blocks deletion, then asks to confirm or shows what to fix.
+    private func startDeletion() async {
+        isCheckingDeletion = true
+        let deletion = AccountDeletionModel(client: app.client)
+        deletion.sessionsEnding = { [session = app.session] in session.isDeletingAccount = true }
+        self.deletion = deletion
+        await deletion.check()
+        isCheckingDeletion = false
+        switch deletion.phase {
+        case .blocked: showsDeletionBlocked = true
+        case .ready: confirmsDeletion = true
+        case .failed(let problem): model.problem = problem
+        default: break
+        }
+    }
+
+    private func prepareDeletion() async {
+        guard let deletion else { return }
+        await deletion.prepare()
+        switch deletion.phase {
+        case .proving(let check): provingCheck = check
+        case .blocked: showsDeletionBlocked = true
+        case .failed(let problem): model.problem = problem
+        default: break
+        }
+    }
+
+    /// Once confirmed, the deletion's progress takes the whole screen.
+    private func deletionSheetClosed() {
+        switch deletion?.phase {
+        case .deleting?, .deleted?, .accepted?: showsDeletionProgress = true
+        case .blocked?: showsDeletionBlocked = true
+        default: break
         }
     }
 

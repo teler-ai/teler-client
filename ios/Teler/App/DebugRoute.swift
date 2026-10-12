@@ -22,8 +22,9 @@ enum DebugRoute: Equatable {
     case tab(AppTab)
     case newChat
     case search(String)
-    /// A sign-in or session screen, by name: `screen:twofactor`, `screen:backup`,
-    /// `screen:wrong-password`, `screen:again`, `screen:setup` or `screen:update`.
+    /// A sign-in, session or account deletion screen, by name: `screen:twofactor`, `screen:backup`,
+    /// `screen:wrong-password`, `screen:again`, `screen:setup`, `screen:update`,
+    /// `screen:delete-blocked`, `screen:delete-confirm`, `screen:deleting` or `screen:deleted`.
     case screen(String)
     case dashboard(DashboardID)
     case settings
@@ -116,6 +117,32 @@ enum DebugRoute: Equatable {
         let name: String
         private let laia = SignedInUser(id: "usr_1", name: "Laia Puig", email: "laia@example.com")
 
+        /// What the server's deletion check says, for screenshots of each screen.
+        static func sampleCheck(blocked: Bool) -> AccountDeletionCheck {
+            let organizations: JSONValue = .array([
+                .object([
+                    "id": .string("org_1"), "name": .string("Roure Coffee"), "slug": .string("roure-coffee"),
+                    "currentMemberRole": .string("owner"), "otherMemberCount": .number(4),
+                    "eligibleSuccessorCount": .number(3),
+                ]),
+                .object([
+                    "id": .string("org_2"), "name": .string("Roure Wholesale"), "slug": .string("roure-wholesale"),
+                    "currentMemberRole": .string("admin"), "otherMemberCount": .number(6),
+                    "eligibleSuccessorCount": .number(2),
+                ]),
+            ])
+            return AccountDeletionCheck(
+                json: .object([
+                    "canDelete": .bool(!blocked),
+                    "identity": .object(["method": .string("password"), "totpRequired": .bool(!blocked)]),
+                    "blockers": .array(
+                        blocked
+                            ? [.object(["code": .string("shared_organization_owner"), "organizationId": .string("org_1")])]
+                            : []),
+                    "organizations": blocked ? organizations : .array([]),
+                ]))!
+        }
+
         var body: some View {
             switch name {
             case "twofactor":
@@ -139,6 +166,17 @@ enum DebugRoute: Equatable {
                 FinishSetupView(app: app, user: laia)
             case "update":
                 UpdateRequiredView()
+            case "delete-blocked":
+                NavigationStack { DeletionBlockedView(app: app, check: Self.sampleCheck(blocked: true)) }
+            case "delete-confirm":
+                Color.clear.sheet(isPresented: .constant(true)) {
+                    ConfirmIdentitySheet(
+                        model: AccountDeletionModel(client: app.client), check: Self.sampleCheck(blocked: false))
+                }
+            case "deleting":
+                DeletionProgressView(phase: .deleting) {}
+            case "deleted":
+                DeletionProgressView(phase: .deleted) {}
             default:
                 SignInView(app: app)
             }

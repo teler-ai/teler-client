@@ -6,11 +6,22 @@ public struct StoredCookie: Sendable, Hashable, Codable {
     public let name: String
     public let value: String
     public let expires: Date?
+    /// The paths it's sent to, such as `/api/account`; nil for every path.
+    public let path: String?
 
-    public init(name: String, value: String, expires: Date?) {
+    public init(name: String, value: String, expires: Date?, path: String? = nil) {
         self.name = name
         self.value = value
         self.expires = expires
+        self.path = path
+    }
+
+    /// Whether the cookie goes with a request to `requestPath` (RFC 6265, 5.1.4).
+    func matches(_ requestPath: String) -> Bool {
+        guard let path, path != "/" else { return true }
+        guard requestPath.hasPrefix(path) else { return false }
+        return requestPath.count == path.count || path.hasSuffix("/")
+            || requestPath[requestPath.index(requestPath.startIndex, offsetBy: path.count)] == "/"
     }
 }
 
@@ -47,10 +58,10 @@ public actor CookieJar {
         }
     }
 
-    /// The `Cookie` header for the next request, or nil when there are none.
-    public func headerValue(now: Date = Date()) -> String? {
+    /// The `Cookie` header for a request to `path`, or nil when there are none.
+    public func headerValue(for path: String = "/", now: Date = Date()) -> String? {
         let live = cookies.values
-            .filter { $0.expires.map { $0 > now } ?? true }
+            .filter { ($0.expires.map { $0 > now } ?? true) && $0.matches(path) }
             .sorted { $0.name < $1.name }
         return live.isEmpty ? nil : live.map { "\($0.name)=\($0.value)" }.joined(separator: "; ")
     }
@@ -63,7 +74,7 @@ public actor CookieJar {
         for cookie in received {
             cookies[cookie.name] =
                 cookie.isExpired
-                ? nil : StoredCookie(name: cookie.name, value: cookie.value, expires: cookie.expires)
+                ? nil : StoredCookie(name: cookie.name, value: cookie.value, expires: cookie.expires, path: cookie.path)
         }
         persist()
     }
@@ -92,6 +103,7 @@ enum SetCookie {
         let value: String
         let expires: Date?
         let isExpired: Bool
+        var path: String?
     }
 
     /// URLSession joins repeated `Set-Cookie` headers with commas, and
@@ -123,18 +135,20 @@ enum SetCookie {
         guard !name.isEmpty else { return nil }
         var maxAge: Int?
         var expires: Date?
+        var path: String?
         for attribute in parts.dropFirst() {
             let field = attribute.split(separator: "=", maxSplits: 1).map(String.init)
             switch field.first?.lowercased() {
             case "max-age": maxAge = field.count == 2 ? Int(field[1]) : nil
             case "expires": expires = field.count == 2 ? httpDate(field[1]) : nil
+            case "path": path = field.count == 2 && field[1].hasPrefix("/") ? field[1] : nil
             default: break
             }
         }
         let expiry = maxAge.map { now.addingTimeInterval(TimeInterval($0)) } ?? expires
         return Cookie(
             name: name, value: value, expires: expiry,
-            isExpired: value.isEmpty || expiry.map { $0 <= now } ?? false)
+            isExpired: value.isEmpty || expiry.map { $0 <= now } ?? false, path: path)
     }
 
     private static func httpDate(_ text: String) -> Date? {

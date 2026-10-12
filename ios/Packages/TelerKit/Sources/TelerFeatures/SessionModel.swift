@@ -44,8 +44,9 @@ public final class SessionModel {
         switch status {
         case 426:
             updateRequired = true
-        case 401 where !path.hasPrefix("/api/auth/"):
-            // Sign-in's own failures are answered on the sign-in screen.
+        case 401 where !path.hasPrefix("/api/auth/") && !path.hasPrefix("/api/account/") && !isDeletingAccount:
+            // Sign-in's and account deletion's own failures are answered on
+            // their screens, and a deleted account's sessions end on purpose.
             if case .signedIn = state { sessionExpired = true }
         default:
             break
@@ -88,6 +89,18 @@ public final class SessionModel {
 
     public func startDemo() {
         state = .demo
+    }
+
+    /// True once an account deletion is confirmed: every session ends, so
+    /// requests failing as signed out are expected rather than a reason to sign in again.
+    public var isDeletingAccount = false
+
+    /// Leaves a deleted account: nothing is left to sign out of on the server.
+    public func finishDeletedAccount() async {
+        await jar.clear()
+        sessionExpired = false
+        isDeletingAccount = false
+        state = .signedOut
     }
 
     /// Ends the session on the server when reachable, and always on the device.

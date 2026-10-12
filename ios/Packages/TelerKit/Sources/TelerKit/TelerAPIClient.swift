@@ -53,7 +53,7 @@ public struct TelerAPIClient: Sendable {
         case .bearer(let token):
             if let token = await token() { headers["Authorization"] = "Bearer \(token)" }
         case .session(let jar):
-            if let cookies = await jar.headerValue() { headers["Cookie"] = cookies }
+            if let cookies = await jar.headerValue(for: path) { headers["Cookie"] = cookies }
             headers["Origin"] = origin.description
         }
         if body != nil, headers["Content-Type"] == nil {
