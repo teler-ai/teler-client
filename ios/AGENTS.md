@@ -79,14 +79,15 @@ Scope: `ios/`. Also follow the repository root `AGENTS.md`.
   chips. Files picked for a new chat wait until the first question creates it.
   `-TelerAttach YES` attaches sample files to the chat a route opens.
 - Delete account follows the web's account page
-  (`apps/auth/web/src/portal/account-deletion-dialog.tsx`): `GET
-  /api/account/preflight`, `POST /api/account/prepare` (it sets a recovery
-  cookie scoped to `/api/account`, so the cookie jar honors cookie paths),
-  `identity-email` for accounts without a password, `confirm` with the
+  (`apps/auth/web/src/portal/account-deletion-dialog.tsx`):
+  `GET /api/account/preflight`, then `POST /api/account/prepare`, which sets a
+  recovery cookie scoped to `/api/account` (so the cookie jar honors cookie
+  paths), `identity-email` for accounts without a password, `confirm` with the
   password or emailed code plus the authenticator code, then `completion`
   until it finishes. The same `Idempotency-Key` runs through one deletion. The
   system alert stands in for typing "DELETE MY ACCOUNT". Debug screens:
-  `screen:delete-blocked`, `screen:delete-confirm`, `screen:deleting`, `screen:deleted`.
+  `screen:delete-blocked`, `screen:delete-confirm`, `screen:deleting` and
+  `screen:deleted`.
 - Every turn sends the app's `language` and the member's `timeZone`; without
   them the server answers in English and reads dates in UTC.
 - Charts follow the web's rules so a chart reads the same on both: series
