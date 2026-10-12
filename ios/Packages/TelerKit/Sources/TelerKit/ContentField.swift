@@ -25,6 +25,12 @@ public enum ContentField: Sendable, Hashable {
     case attachment(name: String?, isImage: Bool)
     /// A follow-up the member sent while Teler was working.
     case steering(text: String, delivered: Bool)
+    /// Questions Teler asked; the turn waits for the member's answers.
+    case question(AskUserCall)
+    /// The member's answers to Teler's questions, on the message that sent them.
+    case questionAnswers(QuestionAnswers)
+    /// A permission Teler asked for before an action.
+    case approval(ApprovalRequest)
     case unknown(type: String, raw: JSONValue)
 
     public var type: String {
@@ -40,6 +46,9 @@ public enum ContentField: Sendable, Hashable {
         case .webSources: "web_search"
         case .attachment(_, let isImage): isImage ? "image_reference" : "file_reference"
         case .steering: "steering"
+        case .question: "ask_user"
+        case .questionAnswers: "question_answers"
+        case .approval: "web_approval"
         case .unknown(let type, _): type
         }
     }
@@ -51,6 +60,7 @@ public enum ContentField: Sendable, Hashable {
         "deep_analysis", "evidence_manifest", "source_citations", "chart_appearance_context",
         "agent_work_receipt", "verification", "run_references", "analysis_mode", "automatic_review",
         "code_execution", "tool_call", "next_steps", "memory_activity", "persistence_receipt",
+        "question_answer_change",
     ]
 }
 
@@ -185,6 +195,12 @@ extension ContentField: Decodable {
         case "steering":
             guard let text = json["text"]?.stringValue else { return nil }
             return .steering(text: text, delivered: json["delivery"]?.stringValue != "undelivered")
+        case "tool_call" where json["toolName"]?.stringValue == "askUser":
+            return AskUserCall(json: json).map(ContentField.question)
+        case "question_answers":
+            return QuestionAnswers(json: json).map(ContentField.questionAnswers)
+        case "web_approval":
+            return ApprovalRequest(json: json).map(ContentField.approval)
         default:
             return nil
         }

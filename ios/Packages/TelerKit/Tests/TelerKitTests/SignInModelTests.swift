@@ -137,6 +137,6 @@ import Testing
         let session = session(StubTransport([]))
         session.startDemo()
         #expect(session.state == .demo)
-        #expect(try await session.activeClient.chats().chats.count == 3)
+        #expect(try await session.activeClient.chats().chats.count == 5)
     }
 }

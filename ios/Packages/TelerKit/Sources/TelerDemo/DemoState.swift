@@ -81,13 +81,18 @@ struct DemoState: Sendable {
         return id
     }
 
-    mutating func startTurn(chat id: String, question: String) -> JSONValue? {
+    /// `answers` is the receipt for answers to Teler's questions, stored with the question.
+    mutating func startTurn(chat id: String, question: String, answers: JSONValue? = nil) -> JSONValue? {
         guard let index = chats.firstIndex(where: { $0.id == id }) else { return nil }
         let now = Date()
+        var content: [JSONValue] = [.object(["type": .string("text"), "text": .string(question)])]
+        if case .object(var receipt)? = answers {
+            receipt["type"] = .string("question_answers")
+            receipt["schemaVersion"] = .number(1)
+            content.append(.object(receipt))
+        }
         let userMessage = Message(
-            id: DemoData.newID("msg"), role: "user",
-            content: [.object(["type": .string("text"), "text": .string(question)])],
-            createdAt: now, completedAt: now)
+            id: DemoData.newID("msg"), role: "user", content: content, createdAt: now, completedAt: now)
         let answerID = DemoData.newID("msg")
         let taskID = DemoData.newID("atask")
         let script = DemoData.liveAnswer(to: question)

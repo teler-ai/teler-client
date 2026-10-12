@@ -23,7 +23,7 @@ struct NewChatView: View {
         if let started {
             ConversationView(
                 chat: started.chat, client: workspace.client, webURL: app.webURL(for: started.chat),
-                firstQuestion: started.question)
+                language: app.language, firstQuestion: started.question)
         } else {
             prompt
         }

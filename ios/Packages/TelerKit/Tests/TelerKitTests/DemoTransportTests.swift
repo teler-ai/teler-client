@@ -16,9 +16,10 @@ import Testing
     @Test func listsTheSampleChatsNewestFirst() async throws {
         let page = try await client().chats()
         #expect(page.chats.map(\.title) == [
-            "Quarterly revenue by region", "Why did churn rise in September?", "Top products this week",
+            "Q3 revenue for the board", "Quarterly revenue by region", "Coffee costs against market prices",
+            "Why did churn rise in September?", "Top products this week",
         ])
-        let detail = try await client().chat(page.chats[2].id)
+        let detail = try await client().chat(page.chats[4].id)
         #expect(detail.messages.last?.content.map(\.type) == ["text", "chart_artifact", "text"])
     }
 

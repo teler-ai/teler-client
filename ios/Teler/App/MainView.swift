@@ -74,7 +74,8 @@ struct MainView: View {
         switch route {
         case .chat(let chat, let question):
             ConversationView(
-                chat: chat, client: workspace.client, webURL: app.webURL(for: chat), firstQuestion: question)
+                chat: chat, client: workspace.client, webURL: app.webURL(for: chat), language: app.language,
+                firstQuestion: question)
         case .newChat:
             NewChatView(app: app, workspace: workspace)
         case .ask(let question):

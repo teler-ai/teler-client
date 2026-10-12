@@ -10,9 +10,9 @@ struct ConversationView: View {
     private let webURL: URL?
     private let firstQuestion: String?
 
-    /// `firstQuestion` is sent once when a new, empty chat opens.
-    init(chat: ChatID, client: TelerAPIClient, webURL: URL?, firstQuestion: String? = nil) {
-        _model = State(initialValue: ConversationModel(chat: chat, client: client))
+    /// `firstQuestion` is sent once when a new, empty chat opens. Teler answers in `language`.
+    init(chat: ChatID, client: TelerAPIClient, webURL: URL?, language: String, firstQuestion: String? = nil) {
+        _model = State(initialValue: ConversationModel(chat: chat, client: client, language: language))
         self.client = client
         self.webURL = webURL
         self.firstQuestion = firstQuestion
@@ -31,6 +31,10 @@ struct ConversationView: View {
                 ForEach(model.items) { item in
                     MessageView(item: item, context: context(for: item))
                 }
+                if let flow = model.questionFlow {
+                    QuestionCard(model: model, flow: flow)
+                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                }
                 if let problem = model.streamProblem {
                     Label(problem.message, systemImage: "exclamationmark.triangle")
                         .font(.footnote)
@@ -47,10 +51,15 @@ struct ConversationView: View {
         .safeAreaInset(edge: .bottom) {
             ComposerView(
                 text: $model.draft, canSend: model.canSend && app.connectivity.isOnline,
-                placeholder: model.items.isEmpty ? "Ask about your data" : "Ask a follow-up",
+                placeholder: composerPlaceholder,
                 stop: model.isAnswering ? { Task { await model.cancel() } } : nil
             ) {
-                Task { await model.send() }
+                // While Teler waits for answers, typing answers the current question.
+                if model.questionFlow != nil {
+                    Task { await model.answerInOwnWords() }
+                } else {
+                    Task { await model.send() }
+                }
             }
         }
         .navigationTitle(model.title ?? String(localized: "New chat"))
@@ -80,6 +89,15 @@ struct ConversationView: View {
             }
         }
         .onDisappear { model.stop() }
+        .onChange(of: model.draft) { _, draft in
+            if !draft.isEmpty { model.touchQuestion() }
+        }
+        .animation(.snappy, value: model.questionFlow?.call.toolCallID)
+    }
+
+    private var composerPlaceholder: LocalizedStringKey {
+        if model.questionFlow != nil { return "Or answer in your own words…" }
+        return model.items.isEmpty ? "Ask about your data" : "Ask a follow-up"
     }
 
     private func context(for item: ConversationModel.Item) -> AnswerContext {
@@ -89,7 +107,8 @@ struct ConversationView: View {
             isOffline: !app.connectivity.isOnline, progress: item.isStreaming ? model.progress : nil,
             ask: { question in Task { await model.ask(question) } },
             retry: model.lastQuestion.map { question in { Task { await model.ask(question) } } },
-            editQuestion: model.lastQuestion.map { question in { model.draft = question } })
+            editQuestion: model.lastQuestion.map { question in { model.draft = question } },
+            questionStatuses: model.questionStatuses)
     }
 
     @ViewBuilder private var placeholder: some View {

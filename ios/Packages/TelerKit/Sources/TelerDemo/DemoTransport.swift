@@ -43,9 +43,11 @@ public final class DemoTransport: HTTPTransport, Sendable {
             guard let detail = state.withLock({ $0.chatDetail(path[2]) }) else { return Self.notFound() }
             return Self.json(200, detail)
         case (.post, 4) where path[3] == "message":
-            let messages = Self.body(request)?["messages"]?.arrayValue
-            guard let text = messages?.first?["content"]?.stringValue,
-                let accepted = state.withLock({ $0.startTurn(chat: path[2], question: text) })
+            let body = Self.body(request)
+            guard let text = body?["messages"]?.arrayValue?.first?["content"]?.stringValue,
+                let accepted = state.withLock({
+                    $0.startTurn(chat: path[2], question: text, answers: body?["questionAnswers"])
+                })
             else { return Self.notFound() }
             return Self.json(202, accepted)
         case (.get, 6) where path[3] == "artifact" && path[5] == "data":

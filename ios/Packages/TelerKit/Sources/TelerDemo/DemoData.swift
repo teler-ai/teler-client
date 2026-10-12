@@ -57,6 +57,31 @@ public enum DemoData {
         ])
     }
 
+    static let questionChat = "chat_01jd3a5t9p7n5m3k1h9g7f5d3b"
+    static let approvalChat = "chat_01jd3b1d3f5h7k9m1p3r5t7v9x"
+
+    /// Teler's `askUser` call, shown and waiting: header, question, context, options and why.
+    static func askUser(
+        _ id: String, _ questions: [(String, String, String?, [(String, String)], String)]
+    ) -> JSONValue {
+        .object([
+            "type": .string("tool_call"), "toolName": .string("askUser"), "toolCallId": .string(id),
+            "input": .object([
+                "questions": .array(
+                    questions.map { header, question, context, options, why in
+                        var item: [String: JSONValue] = [
+                            "header": .string(header), "question": .string(question), "why": .string(why),
+                            "options": .array(
+                                options.map { .object(["label": .string($0.0), "description": .string($0.1)]) }),
+                        ]
+                        if let context { item["context"] = .string(context) }
+                        return .object(item)
+                    })
+            ]),
+            "output": .object(["status": .string("shown")]),
+        ])
+    }
+
     static func chats(now: Date = Date()) -> [DemoState.Chat] {
         /// An answer took `seconds` to write, so it was created that long before it completed.
         func message(
@@ -101,6 +126,64 @@ public enum DemoData {
                             chart("revenue-by-region", "Monthly revenue by region", type: "line"),
                             quickActions(["Break it down by channel", "Why did the Nordics dip?", "Forecast Q4"]),
                         ], minutesAgo: 25, seconds: 48),
+                ]),
+            .init(
+                id: questionChat, title: "Q3 revenue for the board",
+                updatedAt: now.addingTimeInterval(-2 * 60),
+                messages: [
+                    message(
+                        "msg_01jd3a6v0q8k2m5t7w9y1b3c4e", "user",
+                        [text("Prepare Q3 revenue for the board deck")], minutesAgo: 3),
+                    message(
+                        "msg_01jd3a7c2r4t6v8x0z2b4d6f8h", "assistant",
+                        [
+                            activity(
+                                "checking-available-data", step: 1,
+                                "Found orders, refunds and the board's Q2 deck figures.", seconds: 9),
+                            text("Before I prepare the figures, two choices change the numbers:"),
+                            askUser(
+                                "call_board_revenue",
+                                [
+                                    (
+                                        "Revenue", "Which revenue should I use for Q3?",
+                                        "Refunds were 4.1% of Q3 orders.",
+                                        [
+                                            ("Net of refunds", "Matches the Q2 board deck."),
+                                            ("Gross", "Before refunds and discounts."),
+                                        ], "the Q2 deck used net revenue, so the quarters compare."
+                                    ),
+                                    (
+                                        "Currency", "Which currency should the deck use?", nil,
+                                        [
+                                            ("EUR", "The company's reporting currency."),
+                                            ("USD", "At each month's average rate."),
+                                            ("Both", "EUR with USD alongside."),
+                                        ], "the board reports in euros."
+                                    ),
+                                ]),
+                        ], minutesAgo: 2, seconds: 20),
+                ]),
+            .init(
+                id: approvalChat, title: "Coffee costs against market prices",
+                updatedAt: now.addingTimeInterval(-40 * 60),
+                messages: [
+                    message(
+                        "msg_01jd3b2e4g6j8k0n2q4s6v8w0y", "user",
+                        [text("Are we paying more for green coffee than the market?")], minutesAgo: 41),
+                    message(
+                        "msg_01jd3b3f5h7k9m1p3r5t7v9x1z", "assistant",
+                        [
+                            activity(
+                                "checking-available-data", step: 1, "Found 214 purchase orders for green coffee in 2026.",
+                                seconds: 7),
+                            text("Your average price this year is €6.10 per kilo. To compare it with the market I need current prices."),
+                            .object([
+                                "type": .string("web_approval"), "approvalId": .string("appr_demo_coffee"),
+                                "toolCallId": .string("call_web_coffee"), "toolName": .string("webSearch"),
+                                "input": .object(["query": .string("European green coffee prices 2026")]),
+                                "expiresAt": .string(timestamp(now.addingTimeInterval(20 * 60))),
+                            ]),
+                        ], minutesAgo: 40, seconds: 14),
                 ]),
             .init(
                 id: "chat_01jcee37e1fsbpkjgmdsqtg64p", title: "Why did churn rise in September?",

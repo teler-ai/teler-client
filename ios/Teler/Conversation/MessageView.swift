@@ -29,12 +29,30 @@ struct AnswerContext {
     var ask: (String) -> Void = { _ in }
     var retry: (() -> Void)?
     var editQuestion: (() -> Void)?
+    /// Where each of Teler's questions stands, by tool call.
+    var questionStatuses: [String: QuestionStatus] = [:]
 }
 
 private struct UserBubble: View {
     let content: [ContentField]
 
     var body: some View {
+        if let answers {
+            // The text Teler reads repeats these answers; the receipt reads better.
+            AnswersReceipt(answers: answers).frame(maxWidth: .infinity, alignment: .trailing)
+        } else {
+            bubble
+        }
+    }
+
+    private var answers: QuestionAnswers? {
+        content.lazy.compactMap { field -> QuestionAnswers? in
+            if case .questionAnswers(let answers) = field { return answers }
+            return nil
+        }.first
+    }
+
+    private var bubble: some View {
         VStack(alignment: .trailing, spacing: 6) {
             let files = content.compactMap { field -> (String?, Bool)? in
                 if case .attachment(let name, let isImage) = field { return (name, isImage) }
@@ -143,6 +161,10 @@ private struct AnswerParts: View {
                 Label("You added: “\(text)”", systemImage: "arrowshape.turn.up.right")
                     .font(.footnote)
                     .foregroundStyle(Palette.mutedForeground)
+            case .question(let call):
+                QuestionRecord(call: call, status: context.questionStatuses[call.toolCallID])
+            case .approval(let request):
+                ApprovalCard(request: request, webURL: context.webURL, isLatest: context.isLatest)
             case .webOnly(let count):
                 WebOnlyNotice(count: count, webURL: context.webURL)
             }
@@ -161,6 +183,8 @@ private struct AnswerParts: View {
         case report(title: String, markdown: String)
         case sources([WebSource])
         case steering(String)
+        case question(AskUserCall)
+        case approval(ApprovalRequest)
         case webOnly(Int)
     }
 
@@ -174,6 +198,8 @@ private struct AnswerParts: View {
             case .report(let title, let markdown): groups.append(.report(title: title, markdown: markdown))
             case .webSources(let sources): groups.append(.sources(sources))
             case .steering(let text, _): groups.append(.steering(text))
+            case .question(let call): groups.append(.question(call))
+            case .approval(let request): groups.append(.approval(request))
             case .unknown:
                 if case .webOnly(let count)? = groups.last {
                     groups[groups.count - 1] = .webOnly(count + 1)

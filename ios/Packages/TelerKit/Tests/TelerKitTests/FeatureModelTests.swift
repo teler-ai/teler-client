@@ -15,7 +15,7 @@ import Testing
         let list = ChatListModel(workspace: Workspace(client: client))
         await list.load()
         #expect(list.phase == .loaded)
-        #expect(list.chats.count == 3)
+        #expect(list.chats.count == 5)
     }
 
     @Test func showsAStoredChatWithOnePlanPerPlanID() async throws {

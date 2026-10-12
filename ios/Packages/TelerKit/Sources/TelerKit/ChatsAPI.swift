@@ -66,8 +66,13 @@ extension TelerAPIClient {
     }
 
     /// Queues a user turn. The answer then streams from `taskEvents`.
+    ///
+    /// `locale` sets the language Teler answers in and the time zone for
+    /// relative dates; without one the server answers in English, in UTC.
+    /// `answers` marks the turn as the answers to Teler's questions.
     public func sendMessage(
-        _ text: String, to chat: ChatID, modelSet: ModelSet = .lite, deepAnalysis: Bool = false
+        _ text: String, to chat: ChatID, modelSet: ModelSet = .lite, deepAnalysis: Bool = false,
+        locale: TurnLocale? = nil, answers: QuestionAnswers? = nil
     ) async throws -> TurnAcceptance {
         struct Message: Encodable {
             let id: String
@@ -78,10 +83,15 @@ extension TelerAPIClient {
             let messages: [Message]
             let modelSet: ModelSet
             let deepAnalysis: Bool
+            let language: String?
+            let timeZone: String?
+            let questionAnswers: QuestionAnswers?
         }
         let message = Message(id: "ios_\(UUID().uuidString.lowercased())", content: text)
         let body = try Self.encode(
-            Body(messages: [message], modelSet: modelSet, deepAnalysis: deepAnalysis))
+            Body(
+                messages: [message], modelSet: modelSet, deepAnalysis: deepAnalysis, language: locale?.language,
+                timeZone: locale?.timeZone, questionAnswers: answers?.clamped))
         let response = try await send(.post, "/api/chat/\(chat.rawValue)/message", body: body)
         guard response.head.statusCode == 202 else { throw TelerAPIError.invalidResponse }
         let data = try await response.collectBody(limit: Self.maximumErrorBody)

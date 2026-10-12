@@ -21,13 +21,26 @@ public final class ConversationModel {
         case failed(Problem)
     }
 
+    public enum AnswerSending: Equatable, Sendable {
+        case sending
+        case failed
+    }
+
     public let chat: ChatID
     private let client: TelerAPIClient
+    private let locale: TurnLocale
     public private(set) var title: String?
     public private(set) var phase = Phase.loading
     public private(set) var isSending = false
     public private(set) var streamProblem: Problem?
     public var draft = ""
+
+    /// Teler's questions waiting for the member, when the latest turn ends with them.
+    public private(set) var questionFlow: QuestionFlow?
+    public private(set) var answerSending: AnswerSending?
+    private var failedAnswers: QuestionAnswers?
+    /// Questions that arrived while the chat was open.
+    private var liveQuestionIDs = Set<String>()
 
     private var messages: [ChatMessage] = []
     private var streaming: Streaming?
@@ -56,10 +69,15 @@ public final class ConversationModel {
         return text.isEmpty ? nil : text
     }
 
-    public init(chat: ChatID, client: TelerAPIClient) {
+    /// `language` is the app's language, which Teler answers in, such as `ca`.
+    public init(chat: ChatID, client: TelerAPIClient, language: String = "en") {
         self.chat = chat
         self.client = client
+        locale = TurnLocale(language: language)
     }
+
+    /// Where each of Teler's questions stands, by tool call.
+    public var questionStatuses: [String: QuestionStatus] { messages.questionStatuses() }
 
     /// Stored messages, with the streaming answer shown in place of its
     /// still-empty stored row.
@@ -96,6 +114,7 @@ public final class ConversationModel {
             title = detail.title
             messages = detail.messages
             phase = .ready
+            syncQuestion()
             if streaming == nil, let active = detail.activeAgentTask {
                 follow(task: active.id, message: active.messageId)
             }
@@ -112,7 +131,7 @@ public final class ConversationModel {
         isSending = true
         defer { isSending = false }
         do {
-            let turn = try await client.sendMessage(text, to: chat)
+            let turn = try await client.sendMessage(text, to: chat, locale: locale)
             draft = ""
             streamProblem = nil
             follow(task: turn.taskId, message: turn.messageId)
@@ -120,6 +139,81 @@ public final class ConversationModel {
         } catch {
             streamProblem = Problem(error)
         }
+    }
+
+    // MARK: Teler's questions
+
+    /// Answers the current question with option `index`, sending every answer after the last question.
+    public func pick(_ index: Int) async {
+        guard var flow = questionFlow, answerSending != .sending else { return }
+        let complete = flow.pick(index)
+        questionFlow = flow
+        if let complete { await send(QuestionAnswers(toolCallId: flow.call.toolCallID, source: .user, answers: complete)) }
+    }
+
+    /// Answers the current question with the draft, in the member's own words.
+    public func answerInOwnWords() async {
+        let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard var flow = questionFlow, !text.isEmpty, answerSending != .sending else { return }
+        let complete = flow.record(QuestionAnswer(flow.question, ownWords: text))
+        questionFlow = flow
+        draft = ""
+        if let complete { await send(QuestionAnswers(toolCallId: flow.call.toolCallID, source: .user, answers: complete)) }
+    }
+
+    /// Sends the answers so far with Teler's picks for the rest.
+    public func acceptPicks() async {
+        guard var flow = questionFlow, answerSending != .sending else { return }
+        flow.touch()
+        questionFlow = flow
+        await send(QuestionAnswers(toolCallId: flow.call.toolCallID, source: .user, answers: flow.withPicks))
+    }
+
+    /// Sends Teler's picks once a live question has gone 30 seconds untouched.
+    public func autoAnswer() async {
+        guard let flow = questionFlow, flow.countsDown, answerSending == nil else { return }
+        let picks = flow.call.questions.map { QuestionAnswer($0, option: 0) }
+        await send(QuestionAnswers(toolCallId: flow.call.toolCallID, source: .auto, answers: picks))
+    }
+
+    public func previousQuestion() {
+        questionFlow?.back()
+    }
+
+    /// Stops the countdown to Teler's picks, such as when the member starts typing.
+    public func touchQuestion() {
+        questionFlow?.touch()
+    }
+
+    public func retryAnswers() async {
+        if let failedAnswers { await send(failedAnswers) }
+    }
+
+    private func send(_ answers: QuestionAnswers) async {
+        answerSending = .sending
+        do {
+            let turn = try await client.sendMessage(answers.text, to: chat, locale: locale, answers: answers)
+            answerSending = nil
+            failedAnswers = nil
+            streamProblem = nil
+            follow(task: turn.taskId, message: turn.messageId)
+            await load()
+        } catch {
+            answerSending = .failed
+            failedAnswers = answers
+        }
+    }
+
+    /// Shows the waiting questions once no turn is running, keeping the member's
+    /// progress while they're the same questions.
+    private func syncQuestion() {
+        guard streaming == nil, let call = messages.pendingQuestion() else {
+            questionFlow = nil
+            return
+        }
+        guard questionFlow?.call.toolCallID != call.toolCallID else { return }
+        questionFlow = QuestionFlow(call: call, isLive: liveQuestionIDs.contains(call.toolCallID))
+        answerSending = nil
     }
 
     /// Asks `question` as the next turn, such as a suggested follow-up.
@@ -149,6 +243,8 @@ public final class ConversationModel {
     }
 
     private func follow(task: TaskID, message: MessageID) {
+        // Nothing waits for an answer while a turn runs.
+        questionFlow = nil
         streamTask?.cancel()
         streaming = Streaming(task: task, message: message, startedAt: Date())
         streamTask = Task { [weak self, client, chat] in
@@ -158,6 +254,9 @@ public final class ConversationModel {
                     current.content = ContentMerge.append(event.fields, to: current.content)
                     if let progress = event.progress { current.progress = progress }
                     self.streaming = current
+                    for case .question(let call) in current.content where call.status == .shown {
+                        self.liveQuestionIDs.insert(call.toolCallID)
+                    }
                 }
             } catch is CancellationError {
                 return
@@ -169,6 +268,7 @@ public final class ConversationModel {
             guard let self, !Task.isCancelled else { return }
             await self.load()
             self.streaming = nil
+            self.syncQuestion()
         }
     }
 }

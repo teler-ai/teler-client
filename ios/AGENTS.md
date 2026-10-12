@@ -58,6 +58,15 @@ Scope: `ios/`. Also follow the repository root `AGENTS.md`.
   parts are fetched from `/api/chat/:id/artifact/:slug/data` and drawn with
   Swift Charts, and parts the web hides (reasoning, receipts, raw code) stay
   hidden. Any other part shows a link to the web.
+- Teler's questions (`askUser` tool calls, kept for every member by the
+  server's activity projection) are answered natively, as on the web
+  (`apps/chat/web/src/ask-user/`): the answer turn's text is what the model
+  reads (`QuestionAnswers.text`) and `questionAnswers` is its receipt. Live
+  questions send Teler's picks after 30 seconds untouched. Permission requests
+  (`web_approval`) are decided on the web for now: resuming the run natively
+  needs the AI SDK's tool-approval continuation.
+- Every turn sends the app's `language` and the member's `timeZone`; without
+  them the server answers in English and reads dates in UTC.
 - Charts follow the web's rules so a chart reads the same on both: series
   colors (`ChartAppearance`, from `packages/ui/src/lib/chart-palettes.ts`),
   when a color column makes series, which older charts aren't drawn
