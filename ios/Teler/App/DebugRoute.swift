@@ -8,6 +8,8 @@ import TelerKit
 ///
 ///     xcrun simctl launch <device> ai.teler.app -TelerDemo YES -TelerRoute chat:<chat id>
 ///     xcrun simctl launch <device> ai.teler.app -TelerDemo YES -TelerRoute "ask:<question>"
+///     xcrun simctl launch <device> ai.teler.app -TelerDemo YES -TelerRoute chart:<chat id>/<slug> \
+///         -TelerChartState pick:7|focus:<series>|table
 ///     xcrun simctl launch <device> ai.teler.app -TelerDemo YES -TelerRoute tab:chats
 ///     xcrun simctl launch <device> ai.teler.app -TelerDemo YES -TelerRoute new
 ///     xcrun simctl launch <device> ai.teler.app -TelerDemo YES -TelerRoute "search:<text>"
@@ -24,6 +26,8 @@ enum DebugRoute: Equatable {
     case screen(String)
     case dashboard(DashboardID)
     case settings
+    /// A chat's chart, opened large.
+    case chart(ChatID, slug: String)
 
     static var atLaunch: DebugRoute? {
         #if DEBUG
@@ -37,6 +41,10 @@ enum DebugRoute: Equatable {
             if value.hasPrefix("dashboard:"), let id = DashboardID(rawValue: String(value.dropFirst(10))) {
                 return .dashboard(id)
             }
+            if value.hasPrefix("chart:") {
+                let parts = value.dropFirst(6).split(separator: "/", maxSplits: 1).map(String.init)
+                if parts.count == 2, let chat = ChatID(rawValue: parts[0]) { return .chart(chat, slug: parts[1]) }
+            }
             switch value {
             case "tab:home": return .tab(.home)
             case "tab:chats": return .tab(.chats)
@@ -48,6 +56,15 @@ enum DebugRoute: Equatable {
             }
         #endif
         return nil
+    }
+
+    /// How a chart opened by `chart:` starts: `pick:<index>`, `focus:<series>` or `table`.
+    static var chartState: String? {
+        #if DEBUG
+            return UserDefaults.standard.string(forKey: "TelerChartState")
+        #else
+            return nil
+        #endif
     }
 
     /// Opens the demo instead of the sign-in screen.

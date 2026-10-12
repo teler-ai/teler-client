@@ -29,6 +29,7 @@ struct MainView: View {
     @State private var paths: [AppTab: [Route]] = [:]
     @State private var routed = false
     @State private var searchText = ""
+    @State private var launchChart: ChartSpec?
 
     init(app: AppModel) {
         self.app = app
@@ -54,6 +55,9 @@ struct MainView: View {
         .searchable(text: $searchText, prompt: "Search or ask")
         .sheet(isPresented: Binding(get: { app.showsSettings }, set: { app.showsSettings = $0 })) {
             SettingsView(app: app, workspace: workspace)
+        }
+        .sheet(isPresented: Binding(get: { launchChart != nil }, set: { if !$0 { launchChart = nil } })) {
+            if let launchChart { ChartDetailView(spec: launchChart, title: "", initialState: DebugRoute.chartState) }
         }
         .task { await openLaunchRoute() }
     }
@@ -113,6 +117,12 @@ struct MainView: View {
             paths[.dashboards] = [.dashboard(dashboard)]
         case .settings:
             app.showsSettings = true
+        case .chart(let chat, let slug):
+            tab = .chats
+            try? await Task.sleep(for: .milliseconds(500))
+            paths[.chats] = [.chat(chat)]
+            try? await Task.sleep(for: .milliseconds(800))
+            launchChart = try? await workspace.client.chartSpec(chat: chat, slug: slug)
         case .screen:
             break
         }

@@ -106,6 +106,7 @@ private struct WidgetView: View {
     let state: DashboardModel.WidgetState?
     let webURL: URL?
     let retry: () -> Void
+    @State private var showsDetail = false
 
     var body: some View {
         switch state {
@@ -130,6 +131,10 @@ private struct WidgetView: View {
                         .foregroundStyle(Palette.warningInk)
                 }
             }
+            .contentShape(.rect(cornerRadius: 20))
+            .onTapGesture { if ChartBody.opensDetail(spec) { showsDetail = true } }
+            .accessibilityAction(named: "Open the chart") { if ChartBody.opensDetail(spec) { showsDetail = true } }
+            .sheet(isPresented: $showsDetail) { ChartDetailView(spec: spec, title: title) }
         case .failed(let problem):
             card {
                 VStack(spacing: 8) {

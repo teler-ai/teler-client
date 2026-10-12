@@ -45,7 +45,8 @@ Scope: `ios/`. Also follow the repository root `AGENTS.md`.
   run `TELERKIT_SMOKE_ORIGIN=http://127.0.0.1:48731 swift test --package-path ios/Packages/TelerKit`.
 - Debug launch arguments for screenshots: `TELER_DEMO=1` opens the demo and
   `TELER_ROUTE` opens a screen: `tab:home`, `tab:chats`, `tab:dashboards`, `tab:search`, `new`,
-  `chat:<id>`, `dashboard:<id>`, `ask:<question>` or `search:<text>`. Sign-in and session states
+  `chat:<id>`, `dashboard:<id>`, `ask:<question>`, `search:<text>` or `chart:<chat id>/<slug>`
+  (`-TelerChartState pick:<index>|focus:<series>|table` sets how the chart opens). Sign-in and session states
   open without a server: `screen:start`, `screen:wrong-password`,
   `screen:twofactor`, `screen:backup`, `screen:again`, `screen:setup` and
   `screen:update`. Use them with `scripts/build.sh --run` or
@@ -57,6 +58,11 @@ Scope: `ios/`. Also follow the repository root `AGENTS.md`.
   parts are fetched from `/api/chat/:id/artifact/:slug/data` and drawn with
   Swift Charts, and parts the web hides (reasoning, receipts, raw code) stay
   hidden. Any other part shows a link to the web.
+- Charts follow the web's rules so a chart reads the same on both: series
+  colors (`ChartAppearance`, from `packages/ui/src/lib/chart-palettes.ts`),
+  when a color column makes series, which older charts aren't drawn
+  (`ChartSpec.limitation`, from `chart-capabilities.ts`) and the CSV export
+  (`chart-export.ts`). Change them together with the web.
 - Dashboards are read-only: `GET /api/dashboard`, `GET /api/dashboard/:id?include=metadata`
   and each widget's `GET /api/dashboard/:id/widget/:wid/data` (the same chart
   format as chat charts). Never call refresh or other dashboard writes from the

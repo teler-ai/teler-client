@@ -23,10 +23,17 @@ enum Palette {
     static let success = Color(light: 0x51A556, dark: 0x54B66E)
     static let warning = Color(light: 0xD78D00, dark: 0xEFA810)
     static let border = Color(light: 0xE1DED7, dark: 0x32261C)
+    /// The style's eight series colors (`--chart-1` to `--chart-8`).
     static let charts = [
         Color(light: 0xB7810F, dark: 0xC08810), Color(light: 0x176938, dark: 0x378450),
         Color(light: 0x3951A0, dark: 0x5F7BCE), Color(light: 0xB14935, dark: 0xC55C46),
-        Color(light: 0x008D85, dark: 0x1AA79F),
+        Color(light: 0x008D85, dark: 0x1AA79F), Color(light: 0x844500, dark: 0xA15F26),
+        Color(light: 0x7A892B, dark: 0x8D9D40), Color(light: 0x873F75, dark: 0xA75C93),
+    ]
+    /// Neutral tones for series without a color of their own (`--chart-rest-1` to `-3`).
+    static let chartsRest = [
+        Color(light: 0xB2ADA5, dark: 0x6F6254), Color(light: 0x938E84, dark: 0x8F8171),
+        Color(light: 0xC8C5BE, dark: 0x574A3E),
     ]
 
     /// Secondary text in rows and placeholders.
