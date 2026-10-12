@@ -69,10 +69,11 @@ extension TelerAPIClient {
     ///
     /// `locale` sets the language Teler answers in and the time zone for
     /// relative dates; without one the server answers in English, in UTC.
-    /// `answers` marks the turn as the answers to Teler's questions.
+    /// `answers` marks the turn as the answers to Teler's questions, and
+    /// `attachments` lets Teler read the files attached to it.
     public func sendMessage(
         _ text: String, to chat: ChatID, modelSet: ModelSet = .lite, deepAnalysis: Bool = false,
-        locale: TurnLocale? = nil, answers: QuestionAnswers? = nil
+        locale: TurnLocale? = nil, answers: QuestionAnswers? = nil, attachments: TurnAttachments? = nil
     ) async throws -> TurnAcceptance {
         struct Message: Encodable {
             let id: String
@@ -86,12 +87,18 @@ extension TelerAPIClient {
             let language: String?
             let timeZone: String?
             let questionAnswers: QuestionAnswers?
+            let scopedFiles: [String]?
+            let scopedTables: [String]?
+            let fileReferences: [FileReference]?
         }
         let message = Message(id: "ios_\(UUID().uuidString.lowercased())", content: text)
         let body = try Self.encode(
             Body(
                 messages: [message], modelSet: modelSet, deepAnalysis: deepAnalysis, language: locale?.language,
-                timeZone: locale?.timeZone, questionAnswers: answers?.clamped))
+                timeZone: locale?.timeZone, questionAnswers: answers?.clamped,
+                scopedFiles: attachments.flatMap { $0.files.isEmpty ? nil : $0.files },
+                scopedTables: attachments.flatMap { $0.tables.isEmpty ? nil : $0.tables },
+                fileReferences: attachments.flatMap { $0.references.isEmpty ? nil : Array($0.references.prefix(50)) }))
         let response = try await send(.post, "/api/chat/\(chat.rawValue)/message", body: body)
         guard response.head.statusCode == 202 else { throw TelerAPIError.invalidResponse }
         let data = try await response.collectBody(limit: Self.maximumErrorBody)

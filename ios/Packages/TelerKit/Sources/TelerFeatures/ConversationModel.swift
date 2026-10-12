@@ -41,6 +41,8 @@ public final class ConversationModel {
     private var failedAnswers: QuestionAnswers?
     /// Questions that arrived while the chat was open.
     private var liveQuestionIDs = Set<String>()
+    /// Files attached to the next question.
+    public let attachments: AttachmentTray
 
     private var messages: [ChatMessage] = []
     private var streaming: Streaming?
@@ -74,6 +76,7 @@ public final class ConversationModel {
         self.chat = chat
         self.client = client
         locale = TurnLocale(language: language)
+        attachments = AttachmentTray(client: client, chat: chat)
     }
 
     /// Where each of Teler's questions stands, by tool call.
@@ -103,8 +106,9 @@ public final class ConversationModel {
         return items
     }
 
+    /// A question can go once it has text and every attached file is ready.
     public var canSend: Bool {
-        !isSending && streaming == nil
+        !isSending && streaming == nil && !attachments.isBusy && !attachments.hasFailures
             && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
@@ -131,8 +135,11 @@ public final class ConversationModel {
         isSending = true
         defer { isSending = false }
         do {
-            let turn = try await client.sendMessage(text, to: chat, locale: locale)
+            let files = attachments.turn
+            let turn = try await client.sendMessage(
+                text, to: chat, locale: locale, attachments: files.isEmpty ? nil : files)
             draft = ""
+            attachments.clear()
             streamProblem = nil
             follow(task: turn.taskId, message: turn.messageId)
             await load()

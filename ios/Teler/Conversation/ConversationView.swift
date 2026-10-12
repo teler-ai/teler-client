@@ -5,17 +5,26 @@ import TelerKit
 struct ConversationView: View {
     @State private var model: ConversationModel
     @State private var askedFirstQuestion = false
+    @State private var attaching = false
     @Environment(AppModel.self) private var app
     private let client: TelerAPIClient
     private let webURL: URL?
     private let firstQuestion: String?
+    private let pendingFiles: [PickedFile]
 
-    /// `firstQuestion` is sent once when a new, empty chat opens. Teler answers in `language`.
-    init(chat: ChatID, client: TelerAPIClient, webURL: URL?, language: String, firstQuestion: String? = nil) {
-        _model = State(initialValue: ConversationModel(chat: chat, client: client, language: language))
+    /// `firstQuestion` is sent once when a new, empty chat opens, after
+    /// `pendingFiles` are uploaded. Teler answers in `language`.
+    init(
+        chat: ChatID, client: TelerAPIClient, webURL: URL?, language: String, firstQuestion: String? = nil,
+        pendingFiles: [PickedFile] = []
+    ) {
+        let model = ConversationModel(chat: chat, client: client, language: language)
+        model.attachments.discard = PickedFiles.discard
+        _model = State(initialValue: model)
         self.client = client
         self.webURL = webURL
         self.firstQuestion = firstQuestion
+        self.pendingFiles = pendingFiles
     }
 
     var body: some View {
@@ -52,7 +61,11 @@ struct ConversationView: View {
             ComposerView(
                 text: $model.draft, canSend: model.canSend && app.connectivity.isOnline,
                 placeholder: composerPlaceholder,
-                stop: model.isAnswering ? { Task { await model.cancel() } } : nil
+                stop: model.isAnswering ? { Task { await model.cancel() } } : nil,
+                chips: model.attachments.items.map(AttachmentChip.init),
+                attach: model.questionFlow == nil ? { attaching = true } : nil,
+                removeChip: { model.attachments.remove($0) },
+                retryChip: { model.attachments.retry($0) }
             ) {
                 // While Teler waits for answers, typing answers the current question.
                 if model.questionFlow != nil {
@@ -81,11 +94,25 @@ struct ConversationView: View {
                 }
             }
         }
+        .sheet(isPresented: $attaching) {
+            AttachSheet { files in files.forEach(model.attachments.add) }
+        }
         .task {
             await model.load()
-            if let firstQuestion, !askedFirstQuestion, model.items.isEmpty {
-                askedFirstQuestion = true
-                await model.ask(firstQuestion)
+            if DebugRoute.attachesSamples, model.attachments.items.isEmpty {
+                for (name, text) in [("orders-2026.csv", "region,revenue\nIberia,410\n"), ("old-report.xls", "x")] {
+                    let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+                    try? Data(text.utf8).write(to: url)
+                    model.attachments.add(PickedFile(url: url, name: name, size: Int64(text.utf8.count), contentType: nil))
+                }
+            }
+            guard !askedFirstQuestion, model.items.isEmpty else { return }
+            askedFirstQuestion = true
+            pendingFiles.forEach(model.attachments.add)
+            await model.attachments.settle()
+            if let firstQuestion {
+                // A file that didn't upload keeps the question for the member to send.
+                if model.attachments.hasFailures { model.draft = firstQuestion } else { await model.ask(firstQuestion) }
             }
         }
         .onDisappear { model.stop() }

@@ -10,6 +10,9 @@ struct NewChatView: View {
     private let question: String?
     @State private var model: NewChatModel
     @State private var started: NewChatModel.Started?
+    /// Files to upload once the chat exists, with the first question.
+    @State private var files: [(id: UUID, file: PickedFile)] = []
+    @State private var attaching = false
 
     /// With `question`, the chat asks it right away.
     init(app: AppModel, workspace: Workspace, asking question: String? = nil) {
@@ -23,7 +26,7 @@ struct NewChatView: View {
         if let started {
             ConversationView(
                 chat: started.chat, client: workspace.client, webURL: app.webURL(for: started.chat),
-                language: app.language, firstQuestion: started.question)
+                language: app.language, firstQuestion: started.question, pendingFiles: files.map(\.file))
         } else {
             prompt
         }
@@ -59,8 +62,15 @@ struct NewChatView: View {
         .scrollDismissesKeyboard(.interactively)
         .background(Palette.background)
         .safeAreaInset(edge: .bottom) {
-            ComposerView(text: $model.draft, canSend: model.canStart) { start() }
-                .disabled(model.isStarting)
+            ComposerView(
+                text: $model.draft, canSend: model.canStart && !hasRefusals, chips: chips,
+                attach: app.isDemo ? nil : { attaching = true },
+                removeChip: { id in files.removeAll { $0.id == id } }
+            ) { start() }
+            .disabled(model.isStarting)
+        }
+        .sheet(isPresented: $attaching) {
+            AttachSheet { picked in files += picked.map { (UUID(), $0) } }
         }
         .navigationTitle("New chat")
         .navigationBarTitleDisplayMode(.inline)
@@ -80,6 +90,21 @@ struct NewChatView: View {
                 await model.loadSuggestions()
             }
         }
+    }
+
+    /// Picked files wait here and upload with the first question; ones Teler
+    /// won't take say why right away.
+    private var chips: [AttachmentChip] {
+        files.map { id, file in
+            let refusal = UploadRules.refusal(name: file.name, size: file.size)
+            return AttachmentChip(
+                id: id, name: file.name, size: file.size, isImage: UploadRules.kind(of: file.name) == .image,
+                status: refusal.map { .failed(AttachmentChip.message(.refused($0)), retryable: false) } ?? .waiting)
+        }
+    }
+
+    private var hasRefusals: Bool {
+        files.contains { UploadRules.refusal(name: $0.file.name, size: $0.file.size) != nil }
     }
 
     private func start(asking question: String? = nil) {

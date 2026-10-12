@@ -71,6 +71,15 @@ enum DebugRoute: Equatable {
         #endif
     }
 
+    /// Sample files attached to the chat a route opens: `-TelerAttach YES`.
+    static var attachesSamples: Bool {
+        #if DEBUG
+            return UserDefaults.standard.bool(forKey: "TelerAttach")
+        #else
+            return false
+        #endif
+    }
+
     /// Opens the demo instead of the sign-in screen.
     static var startsInDemo: Bool {
         #if DEBUG

@@ -25,6 +25,7 @@ public final class DemoTransport: HTTPTransport, Sendable {
             return dashboard(path)
         }
         if let response = needsYou(request.method, path, body: Self.body(request)) { return response }
+        if let response = uploads(request.method, path, body: Self.body(request)) { return response }
         guard path.count >= 2, path[0] == "api", path[1] == "chat" else { return Self.notFound() }
         switch (request.method, path.count) {
         case (.get, 2):
@@ -47,7 +48,9 @@ public final class DemoTransport: HTTPTransport, Sendable {
             let body = Self.body(request)
             guard let text = body?["messages"]?.arrayValue?.first?["content"]?.stringValue,
                 let accepted = state.withLock({
-                    $0.startTurn(chat: path[2], question: text, answers: body?["questionAnswers"])
+                    $0.startTurn(
+                        chat: path[2], question: text, answers: body?["questionAnswers"],
+                        references: body?["fileReferences"]?.arrayValue ?? [])
                 })
             else { return Self.notFound() }
             return Self.json(202, accepted)
@@ -88,6 +91,67 @@ public final class DemoTransport: HTTPTransport, Sendable {
             return Self.json(200, .object(["id": .string(path[3])]))
         default:
             return nil
+        }
+    }
+
+    /// Uploads into a chat's folder: parts, then a short processing step,
+    /// then a document, a table for data files.
+    private func uploads(_ method: HTTPMethod, _ path: [String], body: JSONValue?) -> HTTPStreamingResponse? {
+        guard path.count >= 2, path[0] == "api", path[1] == "uploads" || path[1] == "documents" else { return nil }
+        switch (method, path.count) {
+        case (.post, 2) where path[1] == "uploads":
+            guard let name = body?["filename"]?.stringValue, let size = body?["sizeBytes"]?.doubleValue,
+                let folder = body?["destinationPath"]?.stringValue
+            else { return Self.json(400, .object(["error": .string("Invalid upload")])) }
+            let job = DemoData.newID("fpjob")
+            state.withLock { $0.uploads[job] = (name, String(folder.split(separator: "/").last ?? ""), 0) }
+            let partSize = 8 * 1024 * 1024
+            return Self.json(
+                201,
+                .object([
+                    "jobId": .string(job), "partSizeBytes": .number(Double(partSize)),
+                    "partCount": .number(Double(max(1, Int((size / Double(partSize)).rounded(.up))))),
+                ]))
+        case (.put, 5) where path[3] == "parts":
+            return Self.json(204, .null)
+        case (.post, 4) where path[3] == "heartbeat":
+            return Self.json(200, .object([:]))
+        case (.post, 4) where path[3] == "complete":
+            return Self.json(201, .object(["jobId": .string(path[2]), "status": .string("queued")]))
+        case (.delete, 3) where path[1] == "uploads":
+            state.withLock { _ = $0.uploads.removeValue(forKey: path[2]) }
+            return Self.json(200, .object([:]))
+        case (.get, 3) where path[1] == "uploads":
+            guard let reads = state.withLock({ state -> Int? in
+                guard state.uploads[path[2]] != nil else { return nil }
+                state.uploads[path[2]]?.reads += 1
+                return state.uploads[path[2]]?.reads
+            }) else { return Self.notFound() }
+            let done = reads > 1
+            return Self.json(
+                200,
+                .object([
+                    "jobId": .string(path[2]), "status": .string(done ? "completed" : "processing"),
+                    "processing": .object(["phase": .string("parsing"), "percentage": .number(40)]),
+                    "outputs": .array(
+                        done ? [.object(["status": .string("completed"), "documentId": .string("doc_" + path[2].dropFirst(6))])] : []),
+                ]))
+        case (.get, 3) where path[1] == "documents":
+            let job = "fpjob_" + path[2].dropFirst(4)
+            guard let upload = state.withLock({ $0.uploads[job] }) else { return Self.notFound() }
+            let isData = UploadRules.kind(of: upload.name) == .data
+            let stem = upload.name.lowercased().map { $0.isLetter || $0.isNumber ? $0 : "_" }
+            return Self.json(
+                200,
+                .object([
+                    "id": .string(path[2]), "name": .string(upload.name), "scope": .string("personal"),
+                    "path": .string("chats/\(upload.chat)/\(upload.name)"),
+                    "type": .string(UploadRules.kind(of: upload.name) == .image ? "image" : "file"),
+                    "table": isData
+                        ? .object(["ingestStatus": .string("ready"), "sourceRef": .string("personal." + String(stem))]) : .null,
+                ]))
+        default:
+            return Self.notFound()
         }
     }
 

@@ -37,6 +37,8 @@ struct DemoState: Sendable {
     /// Needs you items marked seen, and whether the access request was answered.
     var seenFindings = Set<String>()
     var accessDecided = false
+    /// Uploads by job: the file's name and how many times its status was read.
+    var uploads: [String: (name: String, chat: String, reads: Int)] = [:]
 
     /// All chats, or with `matching` only those whose title contains it, like the server's search.
     func chatPage(matching text: String? = nil) -> JSONValue {
@@ -85,10 +87,13 @@ struct DemoState: Sendable {
     }
 
     /// `answers` is the receipt for answers to Teler's questions, stored with the question.
-    mutating func startTurn(chat id: String, question: String, answers: JSONValue? = nil) -> JSONValue? {
+    mutating func startTurn(
+        chat id: String, question: String, answers: JSONValue? = nil, references: [JSONValue] = []
+    ) -> JSONValue? {
         guard let index = chats.firstIndex(where: { $0.id == id }) else { return nil }
         let now = Date()
         var content: [JSONValue] = [.object(["type": .string("text"), "text": .string(question)])]
+        content += references
         if case .object(var receipt)? = answers {
             receipt["type"] = .string("question_answers")
             receipt["schemaVersion"] = .number(1)

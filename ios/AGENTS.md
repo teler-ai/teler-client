@@ -71,6 +71,13 @@ Scope: `ios/`. Also follow the repository root `AGENTS.md`.
   access requests to answer (`GET /api/access/activity`, items from
   `/api/access/requests/:id/review`, `POST .../decide` with the fixed decline
   reasons). Giving access asks for Face ID or the passcode first.
+- Attachments upload like the web's (`apps/chat/web/src/lib/api/file-upload.ts`):
+  `POST /api/uploads` into `/personal/chats/<chat>`, 8 MiB parts with
+  retries, a heartbeat every 20 s, `complete`, then `GET /api/uploads/:job`
+  every 3 s until the documents are ready; the turn sends ready tables as
+  `scopedTables`, other files as `scopedFiles`, and `fileReferences` for the
+  chips. Files picked for a new chat wait until the first question creates it.
+  `-TelerAttach YES` attaches sample files to the chat a route opens.
 - Every turn sends the app's `language` and the member's `timeZone`; without
   them the server answers in English and reads dates in UTC.
 - Charts follow the web's rules so a chart reads the same on both: series
