@@ -15,9 +15,13 @@ public struct AnswerLayout: Sendable, Equatable {
         public let findings: [String]
         /// How long the step's work ran, when Teler reported it.
         public let seconds: Int?
+        /// Teler is trying the step another way.
+        public var isRetrying = false
     }
 
     public let steps: [Step]
+    /// Steps the plan dropped when it changed, kept to show the earlier plan.
+    public let replacedSteps: [Step]
     /// The answer's parts, without the work behind it.
     public let answer: [ContentField]
     public let nextQuestions: [QuickAction]
@@ -42,6 +46,9 @@ public struct AnswerLayout: Sendable, Equatable {
             }
         }
         steps = plan.map { Self.steps(plan: $0, activities: activities) } ?? Self.steps(activities: activities)
+        replacedSteps = (plan?.steps ?? []).filter { $0.status == .superseded }.map { step in
+            Step(id: step.id, label: step.label, kind: step.activity, status: step.status, findings: [], seconds: nil)
+        }
         nextQuestions = questions
         self.error = error
 
@@ -86,7 +93,8 @@ public struct AnswerLayout: Sendable, Equatable {
             let work = found[step.id] ?? []
             return Step(
                 id: step.id, label: step.label, kind: step.activity, status: step.status,
-                findings: findings(work), seconds: seconds(work))
+                findings: findings(work), seconds: seconds(work),
+                isRetrying: step.status == .inProgress && work.last?.status == "retrying")
         }
     }
 
@@ -105,7 +113,7 @@ public struct AnswerLayout: Sendable, Equatable {
             return Step(
                 id: "work_\(index)", label: nil, kind: group.kind,
                 status: running ? .inProgress : .completed, findings: findings(group.work),
-                seconds: seconds(group.work))
+                seconds: seconds(group.work), isRetrying: group.work.last?.status == "retrying")
         }
     }
 

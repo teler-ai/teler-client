@@ -403,15 +403,30 @@ public enum DemoData {
 
     /// The streamed answer to any new question in demo mode.
     static func liveAnswer(to question: String) -> ScriptBuilder {
-        let steps = ["Check the available data", "Explore the data", "Prepare the answer"]
-        let activities = ["checking-available-data", "exploring-data", "preparing-answer"]
+        // The plan changes once, as real plans do: exploring by region gives
+        // way to exploring by channel after the first step.
         func revision(_ number: Int, done completed: Int) -> JSONValue {
-            plan(
+            let steps: [(String, String)] =
+                number == 1
+                ? [
+                    ("Check the available data", "checking-available-data"),
+                    ("Explore the data by region", "exploring-data"),
+                    ("Prepare the answer", "preparing-answer"),
+                ]
+                : [
+                    ("Check the available data", "checking-available-data"),
+                    ("Explore the data by region", "exploring-data"),
+                    ("Explore the data by channel", "exploring-data"),
+                    ("Prepare the answer", "preparing-answer"),
+                ]
+            let live = number == 1 ? [0, 1, 2] : [0, 2, 3]
+            return plan(
                 "plan_live", revision: number,
-                (0..<3).map { index in
+                steps.enumerated().map { index, step in
+                    guard let position = live.firstIndex(of: index) else { return (step.0, step.1, "superseded") }
                     let status =
-                        index < completed ? "completed" : index == completed ? "in_progress" : "pending"
-                    return (steps[index], activities[index], status)
+                        position < completed ? "completed" : position == completed ? "in_progress" : "pending"
+                    return (step.0, step.1, status)
                 })
         }
         var script = ScriptBuilder()
@@ -419,7 +434,7 @@ public enum DemoData {
         script.heartbeat()
         script.add(activity("checking-available-data", step: 1, "Found the sample sales tables.", seconds: 3))
         script.add(revision(2, done: 1))
-        script.add(activity("exploring-data", step: 2, "Looked at the sample data for your question.", seconds: 9))
+        script.add(activity("exploring-data", step: 3, "Looked at the sample data for your question.", seconds: 9))
         script.add(revision(3, done: 2))
         let quoted = question.count > 120 ? String(question.prefix(119)) + "…" : question
         let answer =

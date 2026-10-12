@@ -109,6 +109,24 @@ enum DebugRoute: Equatable {
         return .milliseconds(60)
     }
 
+    /// Answer streams the demo drops before one connects: `-TelerDemoDrop <count>`.
+    static var demoDroppedStreams: Int {
+        #if DEBUG
+            return UserDefaults.standard.integer(forKey: "TelerDemoDrop")
+        #else
+            return 0
+        #endif
+    }
+
+    /// Seconds before a running answer says it's taking longer: `-TelerLongRunning <seconds>`.
+    static var longRunning: TimeInterval {
+        #if DEBUG
+            let seconds = UserDefaults.standard.integer(forKey: "TelerLongRunning")
+            if seconds > 0 { return TimeInterval(seconds) }
+        #endif
+        return 120
+    }
+
     /// Another Teler origin, such as a local stack.
     static var origin: TelerOrigin? {
         #if DEBUG

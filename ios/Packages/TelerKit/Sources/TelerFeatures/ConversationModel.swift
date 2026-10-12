@@ -55,7 +55,26 @@ public final class ConversationModel {
         let startedAt: Date
         var content: [ContentField] = []
         var progress: TaskProgress?
+        /// When the last part arrived, to say how old the progress is while reconnecting.
+        var lastEventAt: Date?
     }
+
+    /// Whether the running answer's stream is connected. When it drops for good,
+    /// the turn keeps running on the server and the app reconnects.
+    public enum Connection: Equatable, Sendable {
+        case live
+        /// Reconnecting at this time, or sooner with Retry now.
+        case reconnecting(at: Date)
+    }
+
+    public private(set) var connection = Connection.live
+    /// When the running answer last changed.
+    public var lastEventAt: Date? { streaming?.lastEventAt }
+    /// The stream's own quick retries, before the chat shows it's reconnecting.
+    var streamPolicy = ReconnectPolicy.standard
+    /// How long to wait between reconnecting attempts, the last repeating.
+    var reconnectDelays: [Duration] = [.seconds(5), .seconds(10), .seconds(20), .seconds(30)]
+    private var retryRequested = false
 
     /// How far the running step is, when Teler reports it, such as "4 of 5 regions".
     public var progress: TaskProgress? { streaming?.progress }
@@ -249,33 +268,78 @@ public final class ConversationModel {
         streaming = nil
     }
 
+    /// Reconnects now instead of waiting, such as when the network is back.
+    public func retryNow() {
+        if case .reconnecting = connection { retryRequested = true }
+    }
+
     private func follow(task: TaskID, message: MessageID) {
         // Nothing waits for an answer while a turn runs.
         questionFlow = nil
         streamTask?.cancel()
+        connection = .live
         streaming = Streaming(task: task, message: message, startedAt: Date())
         streamTask = Task { [weak self, client, chat] in
-            do {
-                for try await event in client.taskEvents(chat: chat, task: task) {
-                    guard let self, var current = self.streaming else { return }
-                    current.content = ContentMerge.append(event.fields, to: current.content)
-                    if let progress = event.progress { current.progress = progress }
-                    self.streaming = current
-                    for case .question(let call) in current.content where call.status == .shown {
-                        self.liveQuestionIDs.insert(call.toolCallID)
+            var attempt = 0
+            while true {
+                // After a reconnect the server sends the whole answer again;
+                // the last one seen stays until it does.
+                var replaces = attempt > 0
+                do {
+                    guard let policy = self?.streamPolicy else { return }
+                    for try await event in client.taskEvents(chat: chat, task: task, policy: policy) {
+                        guard let self, var current = self.streaming else { return }
+                        if replaces {
+                            current.content = []
+                            replaces = false
+                        }
+                        current.content = ContentMerge.append(event.fields, to: current.content)
+                        if let progress = event.progress { current.progress = progress }
+                        current.lastEventAt = Date()
+                        self.streaming = current
+                        self.connection = .live
+                        attempt = 0
+                        for case .question(let call) in current.content where call.status == .shown {
+                            self.liveQuestionIDs.insert(call.toolCallID)
+                        }
                     }
+                    break
+                } catch is CancellationError {
+                    return
+                } catch TaskStreamError.connectionLost, TelerAPIError.network {
+                    guard let self else { return }
+                    attempt += 1
+                    guard await self.waitToReconnect(attempt: attempt) else { return }
+                } catch {
+                    self?.streamProblem = Problem(error)
+                    break
                 }
-            } catch is CancellationError {
-                return
-            } catch {
-                self?.streamProblem = Problem(error)
             }
             // Like the web app, reload once the turn ends to show the stored,
             // complete answer.
             guard let self, !Task.isCancelled else { return }
+            self.connection = .live
             await self.load()
             self.streaming = nil
             self.syncQuestion()
         }
+    }
+
+    /// Waits before reconnecting, longer each time, or until Retry now.
+    /// False when the chat stopped following meanwhile.
+    private func waitToReconnect(attempt: Int) async -> Bool {
+        let delay = reconnectDelays.isEmpty ? .zero : reconnectDelays[min(attempt, reconnectDelays.count) - 1]
+        let seconds = Double(delay.components.seconds) + Double(delay.components.attoseconds) / 1e18
+        let deadline = Date().addingTimeInterval(seconds)
+        connection = .reconnecting(at: deadline)
+        retryRequested = false
+        while Date() < deadline, !retryRequested {
+            do {
+                try await Task.sleep(for: .milliseconds(250))
+            } catch {
+                return false
+            }
+        }
+        return !Task.isCancelled
     }
 }

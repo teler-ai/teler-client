@@ -10,10 +10,14 @@ public final class DemoTransport: HTTPTransport, Sendable {
 
     private let state: Mutex<DemoState>
     private let chunkDelay: Duration
+    /// Streams that fail before connecting, to show a dropped connection.
+    private let drops: Mutex<Int>
 
-    public init(chunkDelay: Duration = .milliseconds(60)) {
+    /// `droppedStreams` answer streams fail as if the network dropped, before one connects.
+    public init(chunkDelay: Duration = .milliseconds(60), droppedStreams: Int = 0) {
         self.state = Mutex(DemoState())
         self.chunkDelay = chunkDelay
+        self.drops = Mutex(droppedStreams)
     }
 
     public func send(_ request: HTTPRequest) async throws -> HTTPStreamingResponse {
@@ -60,6 +64,13 @@ public final class DemoTransport: HTTPTransport, Sendable {
         case (.post, 6) where path[3] == "task" && path[5] == "cancel":
             return Self.json(200, .object(["cancelled": .bool(false)]))
         case (.get, 6) where path[3] == "task" && path[5] == "stream":
+            if drops.withLock({ remaining in
+                guard remaining > 0 else { return false }
+                remaining -= 1
+                return true
+            }) {
+                throw URLError(.networkConnectionLost)
+            }
             let task = path[4]
             guard let events = state.withLock({ $0.script(task: task) }) else { return Self.notFound() }
             // Like the server, a reconnect resumes after the parts already sent.

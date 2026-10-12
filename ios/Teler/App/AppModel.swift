@@ -24,7 +24,8 @@ final class AppModel {
             store: KeychainSessionStore(origin: origin),
             demoClient: TelerAPIClient(
                 origin: DemoTransport.origin, identity: .app,
-                transport: DemoTransport(chunkDelay: DebugRoute.demoChunkDelay)))
+                transport: DemoTransport(
+                    chunkDelay: DebugRoute.demoChunkDelay, droppedStreams: DebugRoute.demoDroppedStreams)))
     }
 
     var client: TelerAPIClient { session.activeClient }

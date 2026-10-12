@@ -56,7 +56,7 @@ import Testing
             Issue.record("Unexpected answer \(answer.content)")
             return
         }
-        #expect(plan.steps.allSatisfy { $0.status == .completed })
+        #expect(plan.steps.allSatisfy { $0.status == .completed || $0.status == .superseded })
         #expect(text.contains("Which region grew fastest?"))
         #expect(model.canSend == false)
         model.draft = "Next"

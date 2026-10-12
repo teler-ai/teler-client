@@ -108,6 +108,10 @@ struct ConversationView: View {
         .onChange(of: model.draft) { _, draft in
             if !draft.isEmpty { model.touchQuestion() }
         }
+        .onChange(of: app.connectivity.isOnline) { _, online in
+            // Back online: reconnect the running answer now rather than at its next try.
+            if online { model.retryNow() }
+        }
         .animation(.snappy, value: model.questionFlow?.call.toolCallID)
     }
 
@@ -130,6 +134,11 @@ struct ConversationView: View {
         }
     }
 
+    private var reconnectAt: Date? {
+        if case .reconnecting(let at) = model.connection { return at }
+        return nil
+    }
+
     private var composerPlaceholder: LocalizedStringKey {
         if model.questionFlow != nil { return "Or answer in your own words…" }
         return model.items.isEmpty ? "Ask about your data" : "Ask a follow-up"
@@ -143,7 +152,8 @@ struct ConversationView: View {
             ask: { question in Task { await model.ask(question) } },
             retry: model.lastQuestion.map { question in { Task { await model.ask(question) } } },
             editQuestion: model.lastQuestion.map { question in { model.draft = question } },
-            questionStatuses: model.questionStatuses, canAsk: !app.isSample)
+            questionStatuses: model.questionStatuses, canAsk: !app.isSample, reconnectAt: reconnectAt,
+            lastEventAt: model.lastEventAt, retryStream: { model.retryNow() })
     }
 
     @ViewBuilder private var placeholder: some View {

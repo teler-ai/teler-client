@@ -41,7 +41,7 @@ import Testing
             return
         }
         #expect(plan.revision == 4)
-        #expect(plan.steps.allSatisfy { $0.status == .completed })
+        #expect(plan.steps.allSatisfy { $0.status == .completed || $0.status == .superseded })
         guard case .text(let answer) = content.last else {
             Issue.record("Expected a text answer")
             return

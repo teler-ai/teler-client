@@ -33,6 +33,10 @@ struct AnswerContext {
     var questionStatuses: [String: QuestionStatus] = [:]
     /// False in the read-only sample: nothing asks Teler anything.
     var canAsk = true
+    /// While the running answer's stream is down: when it reconnects.
+    var reconnectAt: Date?
+    var lastEventAt: Date?
+    var retryStream: (() -> Void)?
 }
 
 private struct UserBubble: View {
@@ -102,13 +106,19 @@ private struct AnswerView: View {
                 WorkCard(
                     steps: layout.steps, isStreaming: item.isStreaming, isWriting: layout.isWriting,
                     isStopped: stopped && !layout.isWriting, startedAt: item.createdAt,
-                    finishedAt: item.completedAt, progress: context.progress, isOffline: context.isOffline)
+                    finishedAt: item.completedAt, progress: context.progress, isOffline: context.isOffline,
+                    replaced: layout.replacedSteps, reconnectAt: item.isStreaming ? context.reconnectAt : nil,
+                    lastEventAt: context.lastEventAt, retry: context.retryStream)
             } else if item.isStreaming && !layout.isWriting {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
-                    Text("Teler is starting…")
-                        .font(.subheadline)
-                        .foregroundStyle(Palette.mutedForeground)
+                if let reconnectAt = context.reconnectAt {
+                    ReconnectingLine(at: reconnectAt, retry: context.retryStream)
+                } else {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text("Teler is starting…")
+                            .font(.subheadline)
+                            .foregroundStyle(Palette.mutedForeground)
+                    }
                 }
             }
             AnswerParts(parts: layout.answer, context: context, isStreaming: item.isStreaming)
