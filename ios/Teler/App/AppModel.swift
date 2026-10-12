@@ -38,6 +38,11 @@ final class AppModel {
         try? session.client.origin.url(path: path)
     }
 
+    /// A page in the web app for the account; the sample has none.
+    func accountWebURL(path: String, query: [URLQueryItem] = []) -> URL? {
+        isDemo ? nil : try? session.client.origin.url(path: path, query: query)
+    }
+
     /// The same chat in the web app, for parts the app cannot show yet.
     func webURL(for chat: ChatID) -> URL? {
         isDemo ? nil : webURL(path: "/chat/\(chat.rawValue)")

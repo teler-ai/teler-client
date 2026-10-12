@@ -18,6 +18,8 @@ enum Route: Hashable {
     /// A new chat asking `question` right away.
     case ask(String)
     case dashboard(DashboardID)
+    /// An Agent finding from Needs you.
+    case finding(AgentFinding)
 }
 
 /// The app for an account or the sample: Today, Chats and search, each tab
@@ -25,6 +27,7 @@ enum Route: Hashable {
 struct MainView: View {
     let app: AppModel
     @State private var workspace: Workspace
+    @State private var needsYou: NeedsYouModel
     @State private var tab = AppTab.home
     @State private var paths: [AppTab: [Route]] = [:]
     @State private var routed = false
@@ -33,13 +36,19 @@ struct MainView: View {
 
     init(app: AppModel) {
         self.app = app
-        _workspace = State(initialValue: Workspace(client: app.client))
+        let workspace = Workspace(client: app.client)
+        _workspace = State(initialValue: workspace)
+        var user: String?
+        if case .signedIn(let signedIn?) = app.session.state { user = signedIn.id }
+        _needsYou = State(initialValue: NeedsYouModel(workspace: workspace, user: user))
     }
 
     var body: some View {
         TabView(selection: $tab) {
             Tab("Home", systemImage: "house", value: AppTab.home) {
-                stack(.home) { HomeView(app: app, workspace: workspace, open: open, showChats: { tab = .chats }) }
+                stack(.home) {
+                    HomeView(app: app, workspace: workspace, needsYou: needsYou, open: open, showChats: { tab = .chats })
+                }
             }
             Tab("Chats", systemImage: "bubble.left", value: AppTab.chats) {
                 stack(.chats) { ChatListView(app: app, workspace: workspace, open: open) }
@@ -82,6 +91,8 @@ struct MainView: View {
             NewChatView(app: app, workspace: workspace, asking: question)
         case .dashboard(let dashboard):
             DashboardView(app: app, workspace: workspace, dashboard: dashboard, open: open)
+        case .finding(let finding):
+            FindingDetailView(app: app, finding: finding, model: needsYou, open: open)
         }
     }
 
@@ -118,6 +129,11 @@ struct MainView: View {
             paths[.dashboards] = [.dashboard(dashboard)]
         case .settings:
             app.showsSettings = true
+        case .needsYou:
+            await needsYou.load()
+            if let first = needsYou.items.first, case .finding(let finding) = first {
+                paths[.home] = [.finding(finding)]
+            }
         case .chart(let chat, let slug):
             tab = .chats
             try? await Task.sleep(for: .milliseconds(500))

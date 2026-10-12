@@ -10,6 +10,7 @@ import TelerKit
 ///     xcrun simctl launch <device> ai.teler.app -TelerDemo YES -TelerRoute "ask:<question>"
 ///     xcrun simctl launch <device> ai.teler.app -TelerDemo YES -TelerRoute chart:<chat id>/<slug> \
 ///         -TelerChartState pick:7|focus:<series>|table
+///     xcrun simctl launch <device> ai.teler.app -TelerDemo YES -TelerRoute needs
 ///     xcrun simctl launch <device> ai.teler.app -TelerDemo YES -TelerRoute tab:chats
 ///     xcrun simctl launch <device> ai.teler.app -TelerDemo YES -TelerRoute new
 ///     xcrun simctl launch <device> ai.teler.app -TelerDemo YES -TelerRoute "search:<text>"
@@ -28,6 +29,8 @@ enum DebugRoute: Equatable {
     case settings
     /// A chat's chart, opened large.
     case chart(ChatID, slug: String)
+    /// The first Agent finding in Needs you.
+    case needsYou
 
     static var atLaunch: DebugRoute? {
         #if DEBUG
@@ -52,6 +55,7 @@ enum DebugRoute: Equatable {
             case "tab:search": return .tab(.search)
             case "new": return .newChat
             case "settings": return .settings
+            case "needs": return .needsYou
             default: break
             }
         #endif

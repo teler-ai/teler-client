@@ -24,6 +24,7 @@ public final class DemoTransport: HTTPTransport, Sendable {
         if request.method == .get, path.count >= 2, path[0] == "api", path[1] == "dashboard" {
             return dashboard(path)
         }
+        if let response = needsYou(request.method, path, body: Self.body(request)) { return response }
         guard path.count >= 2, path[0] == "api", path[1] == "chat" else { return Self.notFound() }
         switch (request.method, path.count) {
         case (.get, 2):
@@ -63,6 +64,30 @@ public final class DemoTransport: HTTPTransport, Sendable {
             return stream(task: task, events.filter { $0.cursor > resumeAfter || $0.isTerminal })
         default:
             return Self.notFound()
+        }
+    }
+
+    /// Home's Needs you: Agent findings, marking them seen, and access requests.
+    private func needsYou(_ method: HTTPMethod, _ path: [String], body: JSONValue?) -> HTTPStreamingResponse? {
+        switch (method, path) {
+        case (.get, ["api", "home", "flags"]):
+            return Self.json(200, DemoNeedsYou.findings(seen: state.withLock { $0.seenFindings }))
+        case (.post, let path) where path.count == 5 && path[1] == "home" && path[4] == "seen":
+            state.withLock { _ = $0.seenFindings.insert(path[3]) }
+            return Self.json(200, .object(["runId": .string(path[3])]))
+        case (.post, let path) where path.count == 4 && path[1] == "alerts" && path[3] == "seen":
+            state.withLock { _ = $0.seenFindings.insert(path[2]) }
+            return Self.json(200, .object(["alertId": .string(path[2])]))
+        case (.get, ["api", "access", "activity"]):
+            return Self.json(200, DemoNeedsYou.accessActivity(decided: state.withLock { $0.accessDecided }))
+        case (.get, let path) where path.count == 5 && path[1] == "access" && path[4] == "review":
+            return path[3] == DemoNeedsYou.accessRequest ? Self.json(200, DemoNeedsYou.reviewItems) : Self.notFound()
+        case (.post, let path) where path.count == 5 && path[1] == "access" && path[4] == "decide":
+            guard path[3] == DemoNeedsYou.accessRequest, body?["decision"] != nil else { return Self.notFound() }
+            state.withLock { $0.accessDecided = true }
+            return Self.json(200, .object(["id": .string(path[3])]))
+        default:
+            return nil
         }
     }
 

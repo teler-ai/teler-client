@@ -45,7 +45,7 @@ Scope: `ios/`. Also follow the repository root `AGENTS.md`.
   run `TELERKIT_SMOKE_ORIGIN=http://127.0.0.1:48731 swift test --package-path ios/Packages/TelerKit`.
 - Debug launch arguments for screenshots: `TELER_DEMO=1` opens the demo and
   `TELER_ROUTE` opens a screen: `tab:home`, `tab:chats`, `tab:dashboards`, `tab:search`, `new`,
-  `chat:<id>`, `dashboard:<id>`, `ask:<question>`, `search:<text>` or `chart:<chat id>/<slug>`
+  `chat:<id>`, `dashboard:<id>`, `ask:<question>`, `search:<text>`, `needs` or `chart:<chat id>/<slug>`
   (`-TelerChartState pick:<index>|focus:<series>|table` sets how the chart opens). Sign-in and session states
   open without a server: `screen:start`, `screen:wrong-password`,
   `screen:twofactor`, `screen:backup`, `screen:again`, `screen:setup` and
@@ -65,6 +65,12 @@ Scope: `ios/`. Also follow the repository root `AGENTS.md`.
   questions send Teler's picks after 30 seconds untouched. Permission requests
   (`web_approval`) are decided on the web for now: resuming the run natively
   needs the AI SDK's tool-approval continuation.
+- Home's Needs you mirrors the web's (`apps/chat/web/src/home/home-needs.ts`):
+  Agent alerts and flags (`GET /api/home/flags?alerts=1`, Seen through
+  `POST /api/alerts/:id/seen` and `POST /api/home/flags/:runId/seen`) and
+  access requests to answer (`GET /api/access/activity`, items from
+  `/api/access/requests/:id/review`, `POST .../decide` with the fixed decline
+  reasons). Giving access asks for Face ID or the passcode first.
 - Every turn sends the app's `language` and the member's `timeZone`; without
   them the server answers in English and reads dates in UTC.
 - Charts follow the web's rules so a chart reads the same on both: series

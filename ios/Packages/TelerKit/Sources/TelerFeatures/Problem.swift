@@ -2,7 +2,7 @@ import TelerKit
 
 /// What went wrong, in terms the app can explain. The app localizes the
 /// message; nothing here carries server or network text.
-public enum Problem: Sendable, Equatable {
+public enum Problem: Error, Sendable, Equatable {
     case offline
     case updateRequired
     case signedOut
@@ -24,6 +24,7 @@ public enum Problem: Sendable, Equatable {
 
     public init(_ error: Error) {
         switch error {
+        case let problem as Problem: self = problem
         case TelerAPIError.network: self = .offline
         case TelerAPIError.updateRequired: self = .updateRequired
         case TelerAPIError.http(let status, let code, _):

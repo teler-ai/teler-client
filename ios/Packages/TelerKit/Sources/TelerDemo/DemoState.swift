@@ -34,6 +34,9 @@ struct DemoState: Sendable {
 
     private var chats: [Chat] = DemoData.chats()
     private var turns: [String: Turn] = [:]
+    /// Needs you items marked seen, and whether the access request was answered.
+    var seenFindings = Set<String>()
+    var accessDecided = false
 
     /// All chats, or with `matching` only those whose title contains it, like the server's search.
     func chatPage(matching text: String? = nil) -> JSONValue {
