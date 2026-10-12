@@ -63,6 +63,11 @@ struct ChatListView: View {
 
     private var list: some View {
         List {
+            if !app.connectivity.isOnline, !app.isDemo {
+                Banner(systemImage: "wifi.slash", text: app.offlineNotice(.chats))
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
+            }
             ForEach(ChatSection.group(model.chats)) { section in
                 Section {
                     ForEach(section.chats) { chat in

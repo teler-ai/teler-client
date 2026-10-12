@@ -91,12 +91,17 @@ public final class SessionModel {
         state = .demo
     }
 
+    /// Deletes what the app keeps on the device for the account, such as its
+    /// offline copy, when the member signs out or deletes the account.
+    public var clearsLocalData: () -> Void = {}
+
     /// True once an account deletion is confirmed: every session ends, so
     /// requests failing as signed out are expected rather than a reason to sign in again.
     public var isDeletingAccount = false
 
     /// Leaves a deleted account: nothing is left to sign out of on the server.
     public func finishDeletedAccount() async {
+        clearsLocalData()
         await jar.clear()
         sessionExpired = false
         isDeletingAccount = false
@@ -109,6 +114,7 @@ public final class SessionModel {
         case .signedIn, .setupRequired: try? await client.signOut()
         default: break
         }
+        clearsLocalData()
         await jar.clear()
         sessionExpired = false
         state = .signedOut

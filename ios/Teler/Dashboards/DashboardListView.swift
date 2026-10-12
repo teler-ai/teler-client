@@ -66,6 +66,9 @@ struct DashboardListView: View {
         case .loaded:
             ScrollView {
                 LazyVStack(spacing: 12) {
+                    if !app.connectivity.isOnline, !app.isDemo {
+                        Banner(systemImage: "wifi.slash", text: app.offlineNotice(.dashboards))
+                    }
                     ForEach(model.dashboards) { dashboard in
                         Button {
                             open(.dashboard(dashboard.id))

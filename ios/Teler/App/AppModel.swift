@@ -17,15 +17,37 @@ final class AppModel {
         workspaceGeneration += 1
     }
 
+    /// Today, Chats and Dashboards as last seen, for when there's no connection.
+    let offlineCopy = OfflineCopyTransport(
+        URLSessionTransport(),
+        directory: FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("offline-copy", isDirectory: true))
+
     init() {
         let origin = DebugRoute.origin ?? (try! TelerOrigin("https://app.teler.ai"))
         session = SessionModel(
-            origin: origin, identity: .app, transport: URLSessionTransport(),
+            origin: origin, identity: .app, transport: offlineCopy,
             store: KeychainSessionStore(origin: origin),
             demoClient: TelerAPIClient(
                 origin: DemoTransport.origin, identity: .app,
                 transport: DemoTransport(
                     chunkDelay: DebugRoute.demoChunkDelay, droppedStreams: DebugRoute.demoDroppedStreams)))
+        session.clearsLocalData = { [offlineCopy] in offlineCopy.clear() }
+    }
+
+    /// "You're offline", with when the saved copy is from.
+    func offlineNotice(_ what: OfflineNotice) -> String {
+        guard let saved = offlineCopy.savedAt else { return String(localized: "You're offline.") }
+        let time = saved.formatted(date: .omitted, time: .shortened)
+        return switch what {
+        case .today: String(localized: "You're offline. This is Today as of \(time).")
+        case .chats: String(localized: "You're offline. These are your chats as of \(time).")
+        case .dashboards: String(localized: "You're offline. These are your dashboards as of \(time).")
+        }
+    }
+
+    enum OfflineNotice {
+        case today, chats, dashboards
     }
 
     var client: TelerAPIClient { session.activeClient }

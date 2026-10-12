@@ -108,7 +108,11 @@ struct HomeView: View {
                     Text(Date.now.formatted(.dateTime.weekday(.wide).day().month(.wide)))
                         .font(.subheadline)
                         .foregroundStyle(Palette.mutedForeground)
-                    greeting
+                    if !app.connectivity.isOnline, !app.isDemo {
+                        Banner(systemImage: "wifi.slash", text: app.offlineNotice(.today))
+                    } else {
+                        greeting
+                    }
                 }
             }
             if let title {

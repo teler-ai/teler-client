@@ -98,6 +98,11 @@ Scope: `ios/`. Also follow the repository root `AGENTS.md`.
   system alert stands in for typing "DELETE MY ACCOUNT". Debug screens:
   `screen:delete-blocked`, `screen:delete-confirm`, `screen:deleting` and
   `screen:deleted`.
+- `OfflineCopyTransport` keeps the last successful answer to the reads Today,
+  Chats and Dashboards show (lists, chats and their chart data, Needs you,
+  dashboards and widgets) in the caches folder, and answers with that copy
+  when there's no network; Today, Chats and Dashboards then say "You're
+  offline" with the copy's time. Signing out and deleting the account clear it.
 - Every turn sends the app's `language` and the member's `timeZone`; without
   them the server answers in English and reads dates in UTC.
 - Charts follow the web's rules so a chart reads the same on both: series
