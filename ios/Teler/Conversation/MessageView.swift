@@ -121,7 +121,9 @@ private struct AnswerView: View {
                     }
                 }
             }
-            AnswerParts(parts: layout.answer, context: context, isStreaming: item.isStreaming)
+            AnswerParts(
+                parts: layout.answer, context: context, isStreaming: item.isStreaming,
+                date: item.completedAt ?? item.createdAt)
             if let error = layout.error, !item.isStreaming {
                 ErrorCard(error: error, context: context)
             }
@@ -138,20 +140,26 @@ private struct AnswerParts: View {
     let parts: [ContentField]
     let context: AnswerContext
     let isStreaming: Bool
+    /// When the answer was written, for the report's byline.
+    var date: Date?
 
     var body: some View {
         let charts = parts.compactMap { field -> ChartReference? in
             if case .chart(let chart) = field { return chart }
             return nil
         }
+        // A chart the text or a report places shows there, not again on its own.
         let placed = Set(parts.flatMap { field -> [String] in
-            if case .text(let text) = field { return Self.placedSlugs(text) }
-            return []
+            switch field {
+            case .text(let text): ArtifactMarkers.slugs(in: text)
+            case .report(_, let markdown): ArtifactMarkers.slugs(in: markdown)
+            default: []
+            }
         })
         ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
             switch group {
             case .text(let text):
-                ForEach(Array(Self.split(text).enumerated()), id: \.offset) { _, piece in
+                ForEach(Array(ArtifactMarkers.split(text).enumerated()), id: \.offset) { _, piece in
                     switch piece {
                     case .markdown(let markdown):
                         MarkdownView(markdown)
@@ -166,7 +174,10 @@ private struct AnswerParts: View {
             case .chart:
                 EmptyView()
             case .report(let title, let markdown):
-                ReportCard(title: title, markdown: markdown)
+                ReportCard(
+                    report: ReportReader.Report(
+                        title: title, markdown: markdown, date: date, charts: charts, chat: context.chat,
+                        client: context.client, webURL: context.webURL))
             case .sources(let sources):
                 SourcesView(sources: sources)
             case .steering(let text):
@@ -224,49 +235,17 @@ private struct AnswerParts: View {
         return groups
     }
 
-    private enum Piece {
-        case markdown(String)
-        case chart(String)
-    }
-
-    /// Text with `[[artifact:slug]]` lines, which place a chart there.
-    private static func split(_ text: String) -> [Piece] {
-        var pieces: [Piece] = []
-        var current: [String] = []
-        for line in text.components(separatedBy: "\n") {
-            if let slug = slug(line) {
-                if !current.isEmpty { pieces.append(.markdown(current.joined(separator: "\n"))) }
-                current = []
-                pieces.append(.chart(slug))
-            } else {
-                current.append(line)
-            }
-        }
-        let rest = current.joined(separator: "\n")
-        if !rest.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { pieces.append(.markdown(rest)) }
-        return pieces
-    }
-
-    private static func placedSlugs(_ text: String) -> [String] {
-        text.components(separatedBy: "\n").compactMap(slug)
-    }
-
-    private static func slug(_ line: String) -> String? {
-        let line = line.trimmingCharacters(in: .whitespaces)
-        guard line.hasPrefix("[[artifact:"), line.hasSuffix("]]") else { return nil }
-        let slug = line.dropFirst("[[artifact:".count).dropLast(2)
-        return slug.isEmpty ? nil : String(slug)
-    }
 }
 
 /// A report: its title and first words, opening the reader.
 private struct ReportCard: View {
-    let title: String
-    let markdown: String
+    let report: ReportReader.Report
+    private var title: String { report.title }
+    private var markdown: String { report.markdown }
 
     var body: some View {
         NavigationLink {
-            ReportReader(title: title, markdown: markdown)
+            ReportReader(report: report)
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: "doc.richtext")
@@ -301,61 +280,6 @@ private struct ReportCard: View {
 }
 
 /// A report to read on its own page.
-struct ReportReader: View {
-    let title: String
-    let markdown: String
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(title.isEmpty ? String(localized: "Report") : title)
-                        .displayFont(28, relativeTo: .title1)
-                        .foregroundStyle(Palette.foreground)
-                    Text(Self.meta(markdown))
-                        .font(.subheadline)
-                        .foregroundStyle(Palette.mutedForeground)
-                }
-                MarkdownView(markdown)
-            }
-            .padding(16)
-        }
-        .background(Palette.background)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar(.hidden, for: .tabBar)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(item: "\(title)\n\n\(markdown)") {
-                    Label("Share", systemImage: "square.and.arrow.up")
-                }
-            }
-        }
-    }
-
-    /// "Report · 6 sections · 6 min read", at about 220 words a minute.
-    static func meta(_ markdown: String) -> String {
-        let sections = MarkdownBlock.parse(markdown).filter {
-            if case .heading = $0 { true } else { false }
-        }.count
-        let words = markdown.split(whereSeparator: \.isWhitespace).count
-        let minutes = max(1, Int((Double(words) / 220).rounded()))
-        var parts = [String(localized: "Report")]
-        if sections > 1 { parts.append(String(localized: "\(sections) sections")) }
-        parts.append(String(localized: "\(minutes) min read"))
-        return parts.joined(separator: " · ")
-    }
-
-    /// The first paragraph's words, without markdown.
-    static func summary(_ markdown: String) -> String {
-        for block in MarkdownBlock.parse(markdown) {
-            if case .paragraph(let text) = block {
-                return String(MarkdownText.attributed(text).characters).replacingOccurrences(of: "\n", with: " ")
-            }
-        }
-        return ""
-    }
-}
-
 /// The web pages an answer drew on, behind one chip.
 private struct SourcesView: View {
     let sources: [WebSource]

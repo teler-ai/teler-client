@@ -91,6 +91,15 @@ enum DebugRoute: Equatable {
         #endif
     }
 
+    /// The first report a chat shows opens in the reader: `-TelerOpenReport YES`.
+    static var opensReport: Bool {
+        #if DEBUG
+            return UserDefaults.standard.bool(forKey: "TelerOpenReport")
+        #else
+            return false
+        #endif
+    }
+
     /// Opens the demo instead of the sign-in screen.
     static var startsInDemo: Bool {
         #if DEBUG

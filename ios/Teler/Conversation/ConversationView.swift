@@ -6,6 +6,8 @@ struct ConversationView: View {
     @State private var model: ConversationModel
     @State private var askedFirstQuestion = false
     @State private var attaching = false
+    /// In debug builds, `-TelerOpenReport YES` opens the chat's first report.
+    @State private var debugReport: ReportReader.Report?
     @Environment(AppModel.self) private var app
     private let client: TelerAPIClient
     private let webURL: URL?
@@ -83,6 +85,11 @@ struct ConversationView: View {
                 }
             }
         }
+        .navigationDestination(
+            isPresented: Binding(get: { debugReport != nil }, set: { if !$0 { debugReport = nil } })
+        ) {
+            if let debugReport { ReportReader(report: debugReport) }
+        }
         .sheet(isPresented: $attaching) {
             AttachSheet { files in files.forEach(model.attachments.add) }
         }
@@ -95,6 +102,7 @@ struct ConversationView: View {
                     model.attachments.add(PickedFile(url: url, name: name, size: Int64(text.utf8.count), contentType: nil))
                 }
             }
+            if DebugRoute.opensReport, debugReport == nil { debugReport = firstReport }
             guard !askedFirstQuestion, model.items.isEmpty else { return }
             askedFirstQuestion = true
             pendingFiles.forEach(model.attachments.add)
@@ -132,6 +140,22 @@ struct ConversationView: View {
                 Task { await model.send() }
             }
         }
+    }
+
+    /// The chat's first report, for screenshots of the reader.
+    private var firstReport: ReportReader.Report? {
+        for item in model.items {
+            let charts = item.content.compactMap { field -> ChartReference? in
+                if case .chart(let chart) = field { return chart }
+                return nil
+            }
+            for case .report(let title, let markdown) in item.content {
+                return ReportReader.Report(
+                    title: title, markdown: markdown, date: item.completedAt ?? item.createdAt, charts: charts,
+                    chat: model.chat, client: client, webURL: webURL)
+            }
+        }
+        return nil
     }
 
     private var reconnectAt: Date? {

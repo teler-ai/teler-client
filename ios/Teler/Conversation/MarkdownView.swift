@@ -14,14 +14,15 @@ struct MarkdownView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
-                BlockView(block: block)
+                MarkdownBlockView(block: block)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
-private struct BlockView: View {
+/// One markdown block, natively.
+struct MarkdownBlockView: View {
     let block: MarkdownBlock
 
     var body: some View {

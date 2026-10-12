@@ -82,6 +82,42 @@ public enum DemoData {
         ])
     }
 
+    /// A report with sections, a table, a list and a chart in place.
+    static let churnReport = """
+        Churn rose from **2.1%** to **2.9%** in September, the highest month this year. New monthly subscribers drove most of it.
+
+        ## 1. Where churn rose
+
+        Monthly plans in their first 60 days churned at **6.4%**, up from 3.9% in August. Annual plans held at 0.8%.
+
+        | Plan | August | September | Change |
+        |:---|---:|---:|---:|
+        | Monthly, first 60 days | 3.9% | 6.4% | +2.5 pt |
+        | Monthly, later | 1.7% | 1.9% | +0.2 pt |
+        | Annual | 0.8% | 0.8% | 0.0 pt |
+
+        ## 2. What changed
+
+        - Onboarding completion fell from 71% to 58% after the 2 September release.
+        - Median support response time doubled to 9 hours in the second half of the month.
+        - Prices and plans didn't change.
+
+        ## 3. Revenue at stake
+
+        Revenue still grew in every region but the Nordics, so the churn hasn't shown in totals yet.
+
+        [[artifact:revenue-by-region]]
+
+        ## 4. What to watch in October
+
+        1. Onboarding completion for September's sign-ups.
+        2. Support response times once the two new agents start.
+
+        ## Appendix: how we worked it out
+
+        Churn is cancellations divided by subscribers at the start of each month, from the subscriptions table, excluding refunds and test accounts.
+        """
+
     static func chats(now: Date = Date()) -> [DemoState.Chat] {
         /// An answer took `seconds` to write, so it was created that long before it completed.
         func message(
@@ -197,7 +233,12 @@ public enum DemoData {
                         [
                             text(
                                 "Churn rose from 2.1% to 2.9% in September. Most of the increase came from **monthly plans in their first 60 days**:\n\n1. Onboarding completion dropped after the 2 September release.\n2. Support response times doubled in the second half of the month.\n\nAnnual plans were stable."
-                            )
+                            ),
+                            .object([
+                                "type": .string("report"), "title": .string("September churn review"),
+                                "markdown": .string(churnReport),
+                            ]),
+                            chart("revenue-by-region", "Monthly revenue by region", type: "line"),
                         ], minutesAgo: 180),
                 ]),
             .init(

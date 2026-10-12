@@ -55,6 +55,8 @@ Scope: `ios/`. Also follow the repository root `AGENTS.md`.
   composer, no Ask Teler, no next questions and no Needs you actions, with
   "Sample data · Sign in" on the top-level screens. `-TelerDemoAsk YES` lets
   the demo answer new questions again, for screenshots of Teler at work.
+- `-TelerOpenReport YES` opens the first report in the chat a route opens,
+  in the reader (contents sheet, charts in place, More with the web link).
 - `-TelerDemoDrop <count>` drops that many demo answer streams before one
   connects (over five shows the chat reconnecting), and
   `-TelerLongRunning <seconds>` shortens when a running answer says it's
