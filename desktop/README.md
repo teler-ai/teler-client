@@ -133,7 +133,8 @@ starts and stops the sync daemon. `scripts/verify-package.ts` then fails the
 build if a packaged app contains anything besides `dist/` and the sidecar (for
 example a workspace's `node_modules`) or, on macOS, if the app or its sidecar
 carries an invalid signature: macOS kills a sidecar whose signature is damaged.
-Bun 1.3.12 compiled such executables; build with 1.3.14 or later.
+Bun's own signature on a compiled executable does not verify, so electron-builder
+replaces it; Bun 1.3.12 wrote one that cannot be replaced, so build with 1.3.14.
 
 ## Releases
 

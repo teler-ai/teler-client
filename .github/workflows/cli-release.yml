@@ -140,12 +140,15 @@ jobs:
           read -r -a targets <<< "$TARGETS"
           bun scripts/compile.ts "${targets[@]}"
 
-      # Bun signs the macOS executables ad hoc; macOS kills one whose signature is damaged.
-      - name: Verify the macOS signatures
+      # Bun's own signatures do not verify: it hashes the last page wrongly on
+      # arm64 (oven-sh/bun#32159) and keeps the Bun runtime's signature on x64.
+      # Ad-hoc signatures let Apple silicon run the executables.
+      - name: Sign the macOS executables
         if: matrix.platform == 'mac'
         working-directory: cli/release
         run: |
           for binary in teler-mac-*; do
+            codesign --force --sign - "$binary"
             codesign --verify --strict --verbose=2 "$binary"
           done
 
