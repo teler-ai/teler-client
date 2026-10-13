@@ -3,7 +3,8 @@ name: Publish Teler Desktop release
 # Builds Teler Desktop installers for macOS, Windows and Linux and publishes
 # them as a GitHub release. macOS and Windows builds need their native
 # toolchains, so they run on GitHub-hosted runners. Builds are unsigned unless
-# the optional DESKTOP_* signing secrets exist (see desktop/README.md).
+# the DESKTOP_* signing secrets exist (see desktop/README.md); stable releases
+# must be signed and notarized for macOS, because Gatekeeper blocks anything else.
 on:
   workflow_dispatch:
     inputs:
@@ -38,6 +39,8 @@ jobs:
       tag: ${{ steps.plan.outputs.tag }}
       title: ${{ steps.plan.outputs.title }}
       prerelease: ${{ steps.plan.outputs.prerelease }}
+      mac_notarized: ${{ steps.signing.outputs.mac_notarized }}
+      win_signed: ${{ steps.signing.outputs.win_signed }}
     steps:
       - name: Check out the exact main revision
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -90,6 +93,61 @@ jobs:
             echo "tag=${tag}"
             echo "title=${title}"
             echo "prerelease=${prerelease}"
+          } >> "$GITHUB_OUTPUT"
+
+      # Reads only whether each secret exists, before anything is built.
+      - name: Check the signing secrets
+        id: signing
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          MAC_CSC_LINK: ${{ secrets.DESKTOP_MAC_CSC_LINK != '' }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.DESKTOP_MAC_CSC_KEY_PASSWORD != '' }}
+          APPLE_API_KEY: ${{ secrets.DESKTOP_APPLE_API_KEY != '' }}
+          APPLE_API_KEY_ID: ${{ secrets.DESKTOP_APPLE_API_KEY_ID != '' }}
+          APPLE_API_ISSUER: ${{ secrets.DESKTOP_APPLE_API_ISSUER != '' }}
+          APPLE_ID: ${{ secrets.DESKTOP_APPLE_ID != '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.DESKTOP_APPLE_APP_SPECIFIC_PASSWORD != '' }}
+          APPLE_TEAM_ID: ${{ secrets.DESKTOP_APPLE_TEAM_ID != '' }}
+          WIN_CSC_LINK: ${{ secrets.DESKTOP_WIN_CSC_LINK != '' }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.DESKTOP_WIN_CSC_KEY_PASSWORD != '' }}
+        run: |
+          set -euo pipefail
+          # A credential is complete or absent; a partial one is a mistake, not "unsigned".
+          complete() {
+            local description="$1" present=0 name
+            shift
+            for name in "$@"; do
+              if [[ "${!name}" == true ]]; then present=$((present + 1)); fi
+            done
+            if (( present > 0 && present < $# )); then
+              echo "::error::only some of the ${description} secrets exist; set all of them or none (desktop/README.md)"
+              exit 1
+            fi
+            (( present == $# ))
+          }
+          mac_certificate=false api_key=false apple_id=false win_signed=false
+          if complete 'Developer ID certificate' MAC_CSC_LINK MAC_CSC_KEY_PASSWORD; then mac_certificate=true; fi
+          if complete 'App Store Connect API key' APPLE_API_KEY APPLE_API_KEY_ID APPLE_API_ISSUER; then api_key=true; fi
+          if complete 'Apple ID' APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; then apple_id=true; fi
+          if complete 'Windows certificate' WIN_CSC_LINK WIN_CSC_KEY_PASSWORD; then win_signed=true; fi
+          if [[ "$api_key" == true && "$apple_id" == true ]]; then
+            echo '::error::set the App Store Connect API key or the Apple ID notarization secrets, not both'
+            exit 1
+          fi
+          notarization=false
+          if [[ "$api_key" == true || "$apple_id" == true ]]; then notarization=true; fi
+          # Gatekeeper blocks a signed app Apple has not notarized, and only a signed app can be notarized.
+          if [[ "$mac_certificate" != "$notarization" ]]; then
+            echo '::error::macOS builds need both the Developer ID certificate and notarization secrets (desktop/README.md)'
+            exit 1
+          fi
+          if [[ "$CHANNEL" == stable && "$mac_certificate" != true ]]; then
+            echo '::error::stable releases must be signed and notarized for macOS; add the signing secrets (desktop/README.md)'
+            exit 1
+          fi
+          {
+            echo "mac_notarized=${mac_certificate}"
+            echo "win_signed=${win_signed}"
           } >> "$GITHUB_OUTPUT"
 
   build:
@@ -154,12 +212,16 @@ jobs:
           VERSION: ${{ needs.plan.outputs.version }}
           PLATFORM: ${{ matrix.platform }}
           TARGETS: ${{ matrix.targets }}
-          # Optional signing. Without these secrets the builds stay unsigned
-          # (ad-hoc signed on macOS so Apple silicon can launch them).
+          MAC_NOTARIZED: ${{ needs.plan.outputs.mac_notarized }}
+          # Optional signing, checked by the plan job. Without these secrets the
+          # builds stay unsigned (ad-hoc signed on macOS so Apple silicon can launch them).
           CSC_LINK: ${{ matrix.platform == 'mac' && secrets.DESKTOP_MAC_CSC_LINK || '' }}
           CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.DESKTOP_MAC_CSC_KEY_PASSWORD || '' }}
           WIN_CSC_LINK: ${{ matrix.platform == 'win' && secrets.DESKTOP_WIN_CSC_LINK || '' }}
           WIN_CSC_KEY_PASSWORD: ${{ matrix.platform == 'win' && secrets.DESKTOP_WIN_CSC_KEY_PASSWORD || '' }}
+          APPLE_API_KEY_CONTENT: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_API_KEY || '' }}
+          APPLE_API_KEY_ID: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_API_KEY_ID || '' }}
+          APPLE_API_ISSUER: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_API_ISSUER || '' }}
           APPLE_ID: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_ID || '' }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_APP_SPECIFIC_PASSWORD || '' }}
           APPLE_TEAM_ID: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_TEAM_ID || '' }}
@@ -167,26 +229,35 @@ jobs:
           set -euo pipefail
           # An empty CSC_LINK would be read as a certificate path: drop unset secrets.
           for name in CSC_LINK CSC_KEY_PASSWORD WIN_CSC_LINK WIN_CSC_KEY_PASSWORD \
+            APPLE_API_KEY_CONTENT APPLE_API_KEY_ID APPLE_API_ISSUER \
             APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
             if [[ -z "${!name:-}" ]]; then unset "$name"; fi
           done
           read -r -a target_args <<< "$TARGETS"
           args=("${target_args[@]}" --publish never "-c.extraMetadata.version=${VERSION}")
           if [[ "$PLATFORM" == mac ]]; then
-            if [[ -z "${CSC_LINK:-}" ]]; then
+            if [[ "$MAC_NOTARIZED" == true ]]; then
+              # electron-builder signs the app and its sidecar with the Developer
+              # ID and hardened runtime, then notarizes and staples the app.
+              if [[ -n "${APPLE_API_KEY_CONTENT:-}" ]]; then
+                # notarytool reads the App Store Connect key from a .p8 file.
+                export APPLE_API_KEY="${RUNNER_TEMP}/apple-api-key.p8"
+                printf '%s\n' "$APPLE_API_KEY_CONTENT" > "$APPLE_API_KEY"
+                unset APPLE_API_KEY_CONTENT
+              fi
+              args+=("-c.mac.notarize=true")
+            else
               # Ad-hoc signing: hardened runtime is only for notarized builds,
               # and with an ad-hoc identity it blocks Electron's frameworks.
               export CSC_IDENTITY_AUTO_DISCOVERY=false
-              args+=("-c.mac.identity=-" "-c.mac.hardenedRuntime=false")
-            elif [[ -n "${APPLE_ID:-}" && -n "${APPLE_TEAM_ID:-}" ]]; then
-              args+=("-c.mac.notarize=true")
+              args+=("-c.mac.identity=-" "-c.mac.hardenedRuntime=false" "-c.mac.notarize=false")
             fi
           fi
           node node_modules/electron-builder/cli.js "${args[@]}"
 
-      - name: Verify package contents
+      - name: Verify package contents and signatures
         working-directory: desktop
-        run: bun scripts/verify-package.ts
+        run: bun scripts/verify-package.ts ${{ matrix.platform == 'mac' && needs.plan.outputs.mac_notarized == 'true' && '--notarized' || '' }}
 
       - name: Upload installers
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -227,6 +298,8 @@ jobs:
           TITLE: ${{ needs.plan.outputs.title }}
           VERSION: ${{ needs.plan.outputs.version }}
           PRERELEASE: ${{ needs.plan.outputs.prerelease }}
+          MAC_NOTARIZED: ${{ needs.plan.outputs.mac_notarized }}
+          WIN_SIGNED: ${{ needs.plan.outputs.win_signed }}
         run: |
           set -euo pipefail
           notes="${RUNNER_TEMP}/desktop-release-notes.md"
@@ -237,10 +310,21 @@ jobs:
           - Windows: the \`.exe\` installer (x64).
           - Linux: \`.AppImage\` or \`.deb\` (x64).
 
-          Verify downloads with \`SHA256SUMS.txt\`. Unsigned builds need a one-time approval:
-          on macOS, open Teler once, then choose Open Anyway in System Settings → Privacy &
-          Security; on Windows, choose More info → Run anyway. See \`desktop/README.md\`.
+          Verify downloads with \`SHA256SUMS.txt\`.
           EOF
+          if [[ "$MAC_NOTARIZED" != true ]]; then
+            cat >> "$notes" <<EOF
+
+          This macOS build is not notarized. Open Teler once, then choose Open Anyway in
+          System Settings → Privacy & Security. See \`desktop/README.md\`.
+          EOF
+          fi
+          if [[ "$WIN_SIGNED" != true ]]; then
+            cat >> "$notes" <<EOF
+
+          This Windows build is unsigned: choose More info → Run anyway when SmartScreen warns.
+          EOF
+          fi
           args=(
             "$TAG"
             --repo "$GITHUB_REPOSITORY"

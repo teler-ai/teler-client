@@ -150,13 +150,35 @@ overwrites a release.
 
 ### Signing
 
-Builds are unsigned unless these optional repository secrets exist:
+macOS opens a downloaded app without a warning only when it is signed with a
+Developer ID and notarized by Apple. A `stable` release therefore needs the
+macOS signing secrets below; without them the workflow stops before building.
+A `nightly` release without them is unsigned.
 
-| Secret                                                                             | Purpose                                              |
-| ---------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `DESKTOP_MAC_CSC_LINK`, `DESKTOP_MAC_CSC_KEY_PASSWORD`                             | Developer ID Application certificate (base64 `.p12`) |
-| `DESKTOP_APPLE_ID`, `DESKTOP_APPLE_APP_SPECIFIC_PASSWORD`, `DESKTOP_APPLE_TEAM_ID` | Notarization                                         |
-| `DESKTOP_WIN_CSC_LINK`, `DESKTOP_WIN_CSC_KEY_PASSWORD`                             | Windows Authenticode certificate                     |
+| Secret                                                                             | Purpose                                                                                         |
+| ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `DESKTOP_MAC_CSC_LINK`, `DESKTOP_MAC_CSC_KEY_PASSWORD`                             | Developer ID Application certificate with its private key (base64 `.p12`) and its password      |
+| `DESKTOP_APPLE_API_KEY`, `DESKTOP_APPLE_API_KEY_ID`, `DESKTOP_APPLE_API_ISSUER`    | Notarization with an App Store Connect API key: the `.p8` file's contents, key ID and issuer ID |
+| `DESKTOP_APPLE_ID`, `DESKTOP_APPLE_APP_SPECIFIC_PASSWORD`, `DESKTOP_APPLE_TEAM_ID` | Notarization with an Apple ID, instead of an API key                                            |
+| `DESKTOP_WIN_CSC_LINK`, `DESKTOP_WIN_CSC_KEY_PASSWORD`                             | Windows Authenticode certificate                                                                |
+
+Each credential is all or nothing, and macOS needs the certificate together with
+one notarization credential; the workflow stops on anything else. With an Apple
+Developer Program membership:
+
+1. As the Account Holder, create a **Developer ID Application** certificate in
+   Certificates, Identifiers & Profiles. In Keychain Access, export it with its
+   private key as a password-protected `.p12`; store `base64 -i <file>.p12` as
+   `DESKTOP_MAC_CSC_LINK` and the password as `DESKTOP_MAC_CSC_KEY_PASSWORD`.
+2. In App Store Connect → Users and Access → Integrations, create a team API key
+   with the Developer role. Store the downloaded `.p8` file's contents as
+   `DESKTOP_APPLE_API_KEY`, and its key ID and the issuer ID as
+   `DESKTOP_APPLE_API_KEY_ID` and `DESKTOP_APPLE_API_ISSUER`.
+
+electron-builder then signs the app and the sync sidecar with the hardened
+runtime and `build/entitlements.mac.plist`, notarizes the app and staples the
+ticket to it. `scripts/verify-package.ts --notarized` checks the signatures, the
+stapled ticket and Gatekeeper's verdict before anything is published.
 
 Unsigned macOS builds are ad-hoc signed so Apple silicon can run them. On the
 first launch macOS refuses to open them: choose **Open Anyway** in System
