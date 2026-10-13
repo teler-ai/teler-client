@@ -2,14 +2,20 @@
 /**
  * Checks every packaged app under `release/`: the archive may contain only
  * the bundled `dist/` and `package.json` (never a workspace's node_modules),
- * and the compiled `teler` sidecar and the app icon must sit next to it.
+ * and the compiled `teler` sidecar and the app icon must sit next to it. On
+ * macOS the app and the sidecar must also carry valid signatures; with
+ * `--notarized`, those of a notarized Developer ID release (scripts/mac-signature.ts).
+ *
+ *   bun scripts/verify-package.ts [--notarized]
  */
 import { existsSync } from 'node:fs'
 import { readdir } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { listPackage } from '@electron/asar'
+import { macSignatureProblems } from './mac-signature'
 
 const release = join(import.meta.dir, '..', 'release')
+const notarized = process.argv.includes('--notarized')
 
 async function findArchives(directory: string): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true })
@@ -39,6 +45,10 @@ function problemsFor(archive: string): string[] {
   if (!existsSync(join(sidecar, 'teler')) && !existsSync(join(sidecar, 'teler.exe')))
     problems.push('missing the teler sidecar')
   if (!existsSync(join(dirname(archive), 'icon.png'))) problems.push('missing the app icon')
+  // Teler.app/Contents/Resources/app.asar
+  const app = dirname(dirname(dirname(archive)))
+  if (app.endsWith('.app')) problems.push(...macSignatureProblems(app, notarized))
+  else if (notarized) problems.push('only a macOS app can be notarized')
   return problems
 }
 

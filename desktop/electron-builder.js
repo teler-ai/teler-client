@@ -1,5 +1,6 @@
 // @ts-check
 import { readdirSync, readFileSync } from 'node:fs'
+import { env } from 'node:process'
 import { URL } from 'node:url'
 
 /**
@@ -40,6 +41,15 @@ const localizedComments = Object.fromEntries(
 )
 
 /**
+ * A Developer ID certificate, from the release workflow (CSC_LINK) or a local
+ * keychain (CSC_NAME). Without one, macOS builds are signed ad hoc: the app and
+ * its sidecar keep valid signatures and Apple silicon runs them. The hardened
+ * runtime and notarization need the Developer ID; with an ad-hoc identity the
+ * runtime blocks Electron's frameworks.
+ */
+const developerId = Boolean(env.CSC_LINK || env.CSC_NAME)
+
+/**
  * Packaging for Teler Desktop. Builds are unsigned unless the release workflow
  * supplies signing credentials; see README.md.
  *
@@ -74,11 +84,12 @@ export default {
   mac: {
     category: 'public.app-category.productivity',
     target: ['dmg', 'zip'],
-    hardenedRuntime: true,
+    ...(developerId ? {} : { identity: '-' }),
+    hardenedRuntime: developerId,
+    notarize: developerId,
     entitlements: 'build/entitlements.mac.plist',
+    // The sync sidecar gets these too: notarization needs it signed like the app.
     entitlementsInherit: 'build/entitlements.mac.plist',
-    // `bun build --compile` already signs the sync sidecar, in a layout codesign cannot re-sign.
-    signIgnore: ['/Contents/Resources/sidecar/'],
     extendInfo: {
       NSMicrophoneUsageDescription: english['system.microphoneUsage'],
     },

@@ -26,7 +26,7 @@ The rest of this guide is for members of the organization.
 
 ## Development
 
-You need [Bun](https://bun.sh) 1.3.12 or later.
+You need [Bun](https://bun.sh) 1.3.14 or later.
 
 ```sh
 bun install

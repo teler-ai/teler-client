@@ -5,7 +5,8 @@
  * folder (which opens and hashes files like a sync) and runs the managed
  * daemon until a stop request. Release builds run it on each OS.
  *
- *   bun scripts/smoke-sidecar.ts
+ *   bun scripts/smoke-sidecar.ts                # .sidecar/ for this machine
+ *   bun scripts/smoke-sidecar.ts /path/to/teler # another copy, such as a packaged one
  */
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -21,7 +22,7 @@ function check(condition: boolean, failure: string): void {
   if (!condition) throw new Error(`Sidecar smoke test failed: ${failure}`)
 }
 
-const sidecar = { command: sidecarBinary(hostSidecarTarget()), args: [] }
+const sidecar = { command: process.argv[2] ?? sidecarBinary(hostSidecarTarget()), args: [] }
 const root = await mkdtemp(join(tmpdir(), 'teler-sidecar-smoke-'))
 let daemon: DaemonHandle | null = null
 try {

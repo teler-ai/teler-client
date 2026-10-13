@@ -19,7 +19,7 @@ CLI, and Teler Desktop's **Check for Updates…** downloads the new installer.
 
 ## Getting started
 
-To work on the clients you need [Bun](https://bun.sh) 1.3.12 or later.
+To work on the clients you need [Bun](https://bun.sh) 1.3.14 or later.
 
 ```sh
 bun install
