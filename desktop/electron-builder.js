@@ -76,9 +76,8 @@ export default {
     target: ['dmg', 'zip'],
     hardenedRuntime: true,
     entitlements: 'build/entitlements.mac.plist',
+    // The sync sidecar gets these too: notarization needs it signed like the app.
     entitlementsInherit: 'build/entitlements.mac.plist',
-    // `bun build --compile` already signs the sync sidecar, in a layout codesign cannot re-sign.
-    signIgnore: ['/Contents/Resources/sidecar/'],
     extendInfo: {
       NSMicrophoneUsageDescription: english['system.microphoneUsage'],
     },

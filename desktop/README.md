@@ -131,7 +131,9 @@ written to `desktop/release/`. Before packaging, `scripts/smoke-sidecar.ts`
 runs this machine's compiled sidecar without a server: it previews a folder and
 starts and stops the sync daemon. `scripts/verify-package.ts` then fails the
 build if a packaged app contains anything besides `dist/` and the sidecar (for
-example a workspace's `node_modules`).
+example a workspace's `node_modules`) or, on macOS, if the app or its sidecar
+carries an invalid signature: macOS kills a sidecar whose signature is damaged.
+Bun 1.3.12 compiled such executables; build with 1.3.14 or later.
 
 ## Releases
 
