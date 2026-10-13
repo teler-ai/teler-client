@@ -126,8 +126,9 @@ bun run --filter desktop dist   # bundles, compiles the sidecar and packages for
 ```
 
 `scripts/sidecar.ts` accepts targets (`mac-arm64`, `mac-x64`, `linux-x64`,
-`linux-arm64`, `win-x64`). macOS installers must be built on macOS. Outputs are
-written to `desktop/release/`. Before packaging, `scripts/smoke-sidecar.ts`
+`linux-arm64`, `win-x64`). macOS installers must be built on macOS; they are
+signed ad hoc unless `CSC_NAME` names a Developer ID Application certificate in
+your keychain (see [Signing](#signing)). Outputs are written to `desktop/release/`. Before packaging, `scripts/smoke-sidecar.ts`
 runs this machine's compiled sidecar without a server: it previews a folder and
 starts and stops the sync daemon. `scripts/verify-package.ts` then fails the
 build if a packaged app contains anything besides `dist/` and the sidecar (for

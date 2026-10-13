@@ -114,23 +114,22 @@ jobs:
         working-directory: desktop
         run: bun scripts/sidecar.ts mac-arm64 mac-x64
 
-      # Signed as a release without signing secrets, but without the installers.
-      # electron-builder skips signing on pull requests unless asked; this signs ad hoc.
+      # Signed ad hoc as a release without signing secrets, but without the
+      # installers. electron-builder skips signing on pull requests unless asked.
       - name: Package the apps
         working-directory: desktop
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           CSC_FOR_PULL_REQUEST: 'true'
-        run: >-
-          node node_modules/electron-builder/cli.js --mac dir --arm64 --x64 --publish never
-          -c.mac.identity=- -c.mac.hardenedRuntime=false -c.mac.notarize=false
+        run: node node_modules/electron-builder/cli.js --mac dir --arm64 --x64 --publish never
 
       - name: Verify the apps and their signatures
         working-directory: desktop
         run: bun scripts/verify-package.ts
 
       # A notarized release signs the sidecar with the hardened runtime and the
-      # app's entitlements; it must still run under them.
+      # app's entitlements. GitHub's macOS runners have SIP disabled and do not
+      # enforce the runtime, so this checks that such a signature works, not
+      # that the entitlements suffice; check a notarized build on a Mac for that.
       - name: Run the packaged sidecar under the hardened runtime
         working-directory: desktop
         run: |
@@ -139,22 +138,3 @@ jobs:
           cp release/mac-arm64/Teler.app/Contents/Resources/sidecar/teler "$sidecar"
           codesign --force --sign - --options runtime --entitlements build/entitlements.mac.plist "$sidecar"
           bun scripts/smoke-sidecar.ts "$sidecar"
-
-      # TEMPORARY, removed before review: does this runner enforce what the job checks?
-      - name: "[temporary] Probe the runner's code-signing enforcement"
-        continue-on-error: true
-        working-directory: desktop
-        run: |
-          sw_vers || true
-          csrutil status || true
-          spctl --status || true
-          probe="${RUNNER_TEMP}/teler-no-entitlements"
-          cp release/mac-arm64/Teler.app/Contents/Resources/sidecar/teler "$probe"
-          codesign --force --sign - --options runtime "$probe"
-          codesign --display --verbose=2 "$probe" 2>&1 | grep CodeDirectory || true
-          if bun scripts/smoke-sidecar.ts "$probe"; then echo 'PROBE runtime-no-entitlements: RUNS'; else echo 'PROBE runtime-no-entitlements: FAILS'; fi
-          mkdir -p "${HOME}/teler-probe"
-          curl -fsSL -o "${HOME}/teler-probe/teler" https://github.com/teler-ai/teler-client/releases/download/cli-v0.1.0/teler-mac-arm64
-          chmod +x "${HOME}/teler-probe/teler"
-          codesign --verify --strict "${HOME}/teler-probe/teler" || echo 'PROBE 0.1.0 signature: INVALID'
-          if "${HOME}/teler-probe/teler" --version; then echo 'PROBE corrupt-signature binary: RUNS'; else echo "PROBE corrupt-signature binary: FAILS ($?)"; fi
