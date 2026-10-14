@@ -150,11 +150,16 @@ overwrites a release.
 
 Builds are unsigned unless these optional repository secrets exist:
 
-| Secret                                                                             | Purpose                                              |
-| ---------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `DESKTOP_MAC_CSC_LINK`, `DESKTOP_MAC_CSC_KEY_PASSWORD`                             | Developer ID Application certificate (base64 `.p12`) |
-| `DESKTOP_APPLE_ID`, `DESKTOP_APPLE_APP_SPECIFIC_PASSWORD`, `DESKTOP_APPLE_TEAM_ID` | Notarization                                         |
-| `DESKTOP_WIN_CSC_LINK`, `DESKTOP_WIN_CSC_KEY_PASSWORD`                             | Windows Authenticode certificate                     |
+| Secret                                                                                | Purpose                                                                                                                    |
+| ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `DESKTOP_MAC_CSC_LINK`, `DESKTOP_MAC_CSC_KEY_PASSWORD`                                | Developer ID Application certificate (base64 `.p12`)                                                                       |
+| `DESKTOP_APPLE_API_KEY_P8`, `DESKTOP_APPLE_API_KEY_ID`, `DESKTOP_APPLE_API_ISSUER_ID` | Notarization with the team's App Store Connect API key (the `.p8` file's text, its key ID and the issuer ID)               |
+| `DESKTOP_APPLE_ID`, `DESKTOP_APPLE_APP_SPECIFIC_PASSWORD`, `DESKTOP_APPLE_TEAM_ID`    | Notarization with an Apple ID, only while the key's secrets are missing; removed once a release has notarized with the key |
+| `DESKTOP_WIN_CSC_LINK`, `DESKTOP_WIN_CSC_KEY_PASSWORD`                                | Windows Authenticode certificate                                                                                           |
+
+A signed macOS build is always notarized: with the certificate but neither way
+to notarize, the release fails rather than publish an app Gatekeeper refuses.
+The packaging step's log says which one notarized it.
 
 Unsigned macOS builds are ad-hoc signed so Apple silicon can run them. On the
 first launch macOS refuses to open them: choose **Open Anyway** in System
