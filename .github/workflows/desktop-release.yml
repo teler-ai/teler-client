@@ -180,19 +180,13 @@ jobs:
           NOTARIZATION_KEY: ${{ runner.temp }}/notarization/AuthKey.p8
           APPLE_API_KEY_ID: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_API_KEY_ID || '' }}
           APPLE_API_ISSUER: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_API_ISSUER_ID || '' }}
-          # The Apple ID notarizes only while the key is missing, until a release has
-          # notarized with the key; then it goes.
-          APPLE_ID: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_ID || '' }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_APP_SPECIFIC_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_TEAM_ID || '' }}
         run: |
           set -euo pipefail
           # An empty CSC_LINK would be read as a certificate path: drop unset secrets.
           for name in CSC_LINK CSC_KEY_PASSWORD WIN_CSC_LINK WIN_CSC_KEY_PASSWORD \
-            APPLE_API_KEY_ID APPLE_API_ISSUER APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            APPLE_API_KEY_ID APPLE_API_ISSUER; do
             if [[ -z "${!name:-}" ]]; then unset "$name"; fi
           done
-          notarization=(APPLE_API_KEY_ID APPLE_API_ISSUER APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID)
           read -r -a target_args <<< "$TARGETS"
           args=("${target_args[@]}" --publish never "-c.extraMetadata.version=${VERSION}")
           if [[ "$PLATFORM" == mac ]]; then
@@ -200,17 +194,13 @@ jobs:
               # Ad-hoc signing: hardened runtime is only for notarized builds,
               # and with an ad-hoc identity it blocks Electron's frameworks.
               export CSC_IDENTITY_AUTO_DISCOVERY=false
-              unset "${notarization[@]}"
+              unset APPLE_API_KEY_ID APPLE_API_ISSUER
               args+=("-c.mac.identity=-" "-c.mac.hardenedRuntime=false")
             elif [[ -s "$NOTARIZATION_KEY" && -n "${APPLE_API_KEY_ID:-}" && -n "${APPLE_API_ISSUER:-}" ]]; then
-              # electron-builder would take an Apple ID first, so only the key is passed.
+              # electron-builder would take an Apple ID first, so none may be set.
               unset APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
               export APPLE_API_KEY="$NOTARIZATION_KEY"
               echo "Notarizing with the App Store Connect API key"
-              args+=("-c.mac.notarize=true")
-            elif [[ -n "${APPLE_ID:-}" && -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" && -n "${APPLE_TEAM_ID:-}" ]]; then
-              unset APPLE_API_KEY_ID APPLE_API_ISSUER
-              echo "Notarizing with the Apple ID"
               args+=("-c.mac.notarize=true")
             else
               # Gatekeeper refuses a downloaded app that's signed but not notarized.
