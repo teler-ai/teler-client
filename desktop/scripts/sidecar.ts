@@ -10,6 +10,7 @@
 import { mkdir, rm } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { developmentCliEntry } from '../src/main/sidecar'
+import { macSidecarSignatureCommands } from './mac-sidecar-signature'
 import {
   SIDECAR_TARGETS,
   appDir,
@@ -48,5 +49,12 @@ for (const target of parseTargets(process.argv.slice(2))) {
     { stdout: 'inherit', stderr: 'inherit' }
   )
   if (result.exitCode !== 0) throw new Error(`Compiling the ${target} sidecar failed`)
+  // codesign only exists on a Mac; the macOS release jobs run on macOS runners.
+  if (target.startsWith('mac-') && process.platform === 'darwin') {
+    for (const command of macSidecarSignatureCommands(outfile)) {
+      const signed = Bun.spawnSync(command, { stdout: 'inherit', stderr: 'inherit' })
+      if (signed.exitCode !== 0) throw new Error(`Re-signing the ${target} sidecar failed`)
+    }
+  }
   console.info(`Compiled ${outfile}`)
 }

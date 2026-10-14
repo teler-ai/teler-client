@@ -77,8 +77,9 @@ export default {
     hardenedRuntime: true,
     entitlements: 'build/entitlements.mac.plist',
     entitlementsInherit: 'build/entitlements.mac.plist',
-    // `bun build --compile` already signs the sync sidecar, in a layout codesign cannot re-sign.
-    signIgnore: ['/Contents/Resources/sidecar/'],
+    // The sync sidecar is signed like the rest of the app: scripts/sidecar.ts
+    // first replaces the signature slot `bun build --compile` leaves, which
+    // codesign cannot re-sign and notarization rejects.
     extendInfo: {
       NSMicrophoneUsageDescription: english['system.microphoneUsage'],
     },
