@@ -3,8 +3,7 @@ name: Publish Teler Desktop release
 # Builds Teler Desktop installers for macOS, Windows and Linux and publishes
 # them as a GitHub release. macOS and Windows builds need their native
 # toolchains, so they run on GitHub-hosted runners. Builds are unsigned unless
-# the optional signing secrets exist in the desktop-release environment, which
-# only main can use (see desktop/README.md).
+# the optional DESKTOP_* signing secrets exist (see desktop/README.md).
 on:
   workflow_dispatch:
     inputs:
@@ -98,7 +97,6 @@ jobs:
     needs: plan
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
-    environment: desktop-release
     strategy:
       # Every platform finishes, so one run shows every problem; publishing still needs all.
       fail-fast: false
@@ -149,6 +147,21 @@ jobs:
         working-directory: desktop
         run: bun scripts/smoke-sidecar.ts
 
+      # The notarization key as a file outside the checkout and build output, for
+      # the packaging step alone; the step after it always removes it.
+      - name: Write the notarization key
+        if: matrix.platform == 'mac'
+        shell: bash
+        env:
+          KEY_P8: ${{ secrets.DESKTOP_APPLE_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$KEY_P8" ]]; then
+            umask 077
+            mkdir -p "$RUNNER_TEMP/notarization"
+            printf '%s\n' "$KEY_P8" > "$RUNNER_TEMP/notarization/AuthKey.p8"
+          fi
+
       - name: Package installers
         working-directory: desktop
         shell: bash
@@ -162,18 +175,24 @@ jobs:
           CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.DESKTOP_MAC_CSC_KEY_PASSWORD || '' }}
           WIN_CSC_LINK: ${{ matrix.platform == 'win' && secrets.DESKTOP_WIN_CSC_LINK || '' }}
           WIN_CSC_KEY_PASSWORD: ${{ matrix.platform == 'win' && secrets.DESKTOP_WIN_CSC_KEY_PASSWORD || '' }}
-          # Notarization with the team's App Store Connect API key. electron-builder
-          # reads the key from a file named by APPLE_API_KEY, written below.
-          APPLE_API_KEY_TEXT: ${{ matrix.platform == 'mac' && secrets.APPLE_API_KEY || '' }}
-          APPLE_API_KEY_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_API_KEY_ID || '' }}
-          APPLE_API_ISSUER: ${{ matrix.platform == 'mac' && secrets.APPLE_API_ISSUER || '' }}
+          # Notarization with the team's App Store Connect API key, whose file the
+          # step above wrote; electron-builder reads its path from APPLE_API_KEY.
+          NOTARIZATION_KEY: ${{ runner.temp }}/notarization/AuthKey.p8
+          APPLE_API_KEY_ID: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_API_KEY_ID || '' }}
+          APPLE_API_ISSUER: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_API_ISSUER_ID || '' }}
+          # The Apple ID notarizes only while the key is missing, until a release has
+          # notarized with the key; then it goes.
+          APPLE_ID: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_TEAM_ID || '' }}
         run: |
           set -euo pipefail
           # An empty CSC_LINK would be read as a certificate path: drop unset secrets.
           for name in CSC_LINK CSC_KEY_PASSWORD WIN_CSC_LINK WIN_CSC_KEY_PASSWORD \
-            APPLE_API_KEY_TEXT APPLE_API_KEY_ID APPLE_API_ISSUER; do
+            APPLE_API_KEY_ID APPLE_API_ISSUER APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
             if [[ -z "${!name:-}" ]]; then unset "$name"; fi
           done
+          notarization=(APPLE_API_KEY_ID APPLE_API_ISSUER APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID)
           read -r -a target_args <<< "$TARGETS"
           args=("${target_args[@]}" --publish never "-c.extraMetadata.version=${VERSION}")
           if [[ "$PLATFORM" == mac ]]; then
@@ -181,23 +200,30 @@ jobs:
               # Ad-hoc signing: hardened runtime is only for notarized builds,
               # and with an ad-hoc identity it blocks Electron's frameworks.
               export CSC_IDENTITY_AUTO_DISCOVERY=false
-              unset APPLE_API_KEY_TEXT APPLE_API_KEY_ID APPLE_API_ISSUER
+              unset "${notarization[@]}"
               args+=("-c.mac.identity=-" "-c.mac.hardenedRuntime=false")
-            elif [[ -n "${APPLE_API_KEY_TEXT:-}" && -n "${APPLE_API_KEY_ID:-}" && -n "${APPLE_API_ISSUER:-}" ]]; then
-              # The key lives in a private folder outside the workspace for this step alone.
-              key_dir="$(mktemp -d)"
-              trap 'rm -rf "$key_dir"' EXIT
-              (umask 077 && printf '%s\n' "$APPLE_API_KEY_TEXT" > "$key_dir/AuthKey.p8")
-              unset APPLE_API_KEY_TEXT
-              export APPLE_API_KEY="$key_dir/AuthKey.p8"
+            elif [[ -s "$NOTARIZATION_KEY" && -n "${APPLE_API_KEY_ID:-}" && -n "${APPLE_API_ISSUER:-}" ]]; then
+              # electron-builder would take an Apple ID first, so only the key is passed.
+              unset APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
+              export APPLE_API_KEY="$NOTARIZATION_KEY"
+              echo "Notarizing with the App Store Connect API key"
+              args+=("-c.mac.notarize=true")
+            elif [[ -n "${APPLE_ID:-}" && -n "${APPLE_APP_SPECIFIC_PASSWORD:-}" && -n "${APPLE_TEAM_ID:-}" ]]; then
+              unset APPLE_API_KEY_ID APPLE_API_ISSUER
+              echo "Notarizing with the Apple ID"
               args+=("-c.mac.notarize=true")
             else
               # Gatekeeper refuses a downloaded app that's signed but not notarized.
-              echo '::error::a signed macOS build needs notarization: set APPLE_API_KEY, APPLE_API_KEY_ID and APPLE_API_ISSUER'
+              echo '::error::a signed macOS build needs notarization: set DESKTOP_APPLE_API_KEY_P8, DESKTOP_APPLE_API_KEY_ID and DESKTOP_APPLE_API_ISSUER_ID'
               exit 1
             fi
           fi
           node node_modules/electron-builder/cli.js "${args[@]}"
+
+      - name: Remove the notarization key
+        if: always() && matrix.platform == 'mac'
+        shell: bash
+        run: rm -rf "$RUNNER_TEMP/notarization"
 
       - name: Verify package contents
         working-directory: desktop
