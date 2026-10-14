@@ -3,7 +3,8 @@ name: Publish Teler Desktop release
 # Builds Teler Desktop installers for macOS, Windows and Linux and publishes
 # them as a GitHub release. macOS and Windows builds need their native
 # toolchains, so they run on GitHub-hosted runners. Builds are unsigned unless
-# the optional DESKTOP_* signing secrets exist (see desktop/README.md).
+# the optional signing secrets exist in the desktop-release environment, which
+# only main can use (see desktop/README.md).
 on:
   workflow_dispatch:
     inputs:
@@ -97,6 +98,7 @@ jobs:
     needs: plan
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
+    environment: desktop-release
     strategy:
       # Every platform finishes, so one run shows every problem; publishing still needs all.
       fail-fast: false
@@ -160,14 +162,16 @@ jobs:
           CSC_KEY_PASSWORD: ${{ matrix.platform == 'mac' && secrets.DESKTOP_MAC_CSC_KEY_PASSWORD || '' }}
           WIN_CSC_LINK: ${{ matrix.platform == 'win' && secrets.DESKTOP_WIN_CSC_LINK || '' }}
           WIN_CSC_KEY_PASSWORD: ${{ matrix.platform == 'win' && secrets.DESKTOP_WIN_CSC_KEY_PASSWORD || '' }}
-          APPLE_ID: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_ID || '' }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_APP_SPECIFIC_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ matrix.platform == 'mac' && secrets.DESKTOP_APPLE_TEAM_ID || '' }}
+          # Notarization with the team's App Store Connect API key. electron-builder
+          # reads the key from a file named by APPLE_API_KEY, written below.
+          APPLE_API_KEY_TEXT: ${{ matrix.platform == 'mac' && secrets.APPLE_API_KEY || '' }}
+          APPLE_API_KEY_ID: ${{ matrix.platform == 'mac' && secrets.APPLE_API_KEY_ID || '' }}
+          APPLE_API_ISSUER: ${{ matrix.platform == 'mac' && secrets.APPLE_API_ISSUER || '' }}
         run: |
           set -euo pipefail
           # An empty CSC_LINK would be read as a certificate path: drop unset secrets.
           for name in CSC_LINK CSC_KEY_PASSWORD WIN_CSC_LINK WIN_CSC_KEY_PASSWORD \
-            APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            APPLE_API_KEY_TEXT APPLE_API_KEY_ID APPLE_API_ISSUER; do
             if [[ -z "${!name:-}" ]]; then unset "$name"; fi
           done
           read -r -a target_args <<< "$TARGETS"
@@ -177,9 +181,20 @@ jobs:
               # Ad-hoc signing: hardened runtime is only for notarized builds,
               # and with an ad-hoc identity it blocks Electron's frameworks.
               export CSC_IDENTITY_AUTO_DISCOVERY=false
+              unset APPLE_API_KEY_TEXT APPLE_API_KEY_ID APPLE_API_ISSUER
               args+=("-c.mac.identity=-" "-c.mac.hardenedRuntime=false")
-            elif [[ -n "${APPLE_ID:-}" && -n "${APPLE_TEAM_ID:-}" ]]; then
+            elif [[ -n "${APPLE_API_KEY_TEXT:-}" && -n "${APPLE_API_KEY_ID:-}" && -n "${APPLE_API_ISSUER:-}" ]]; then
+              # The key lives in a private folder outside the workspace for this step alone.
+              key_dir="$(mktemp -d)"
+              trap 'rm -rf "$key_dir"' EXIT
+              (umask 077 && printf '%s\n' "$APPLE_API_KEY_TEXT" > "$key_dir/AuthKey.p8")
+              unset APPLE_API_KEY_TEXT
+              export APPLE_API_KEY="$key_dir/AuthKey.p8"
               args+=("-c.mac.notarize=true")
+            else
+              # Gatekeeper refuses a downloaded app that's signed but not notarized.
+              echo '::error::a signed macOS build needs notarization: set APPLE_API_KEY, APPLE_API_KEY_ID and APPLE_API_ISSUER'
+              exit 1
             fi
           fi
           node node_modules/electron-builder/cli.js "${args[@]}"

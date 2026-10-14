@@ -148,13 +148,17 @@ overwrites a release.
 
 ### Signing
 
-Builds are unsigned unless these optional repository secrets exist:
+Builds are unsigned unless these optional secrets exist in the
+`desktop-release` environment, whose deployment branches allow `main` alone:
 
-| Secret                                                                             | Purpose                                              |
-| ---------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| `DESKTOP_MAC_CSC_LINK`, `DESKTOP_MAC_CSC_KEY_PASSWORD`                             | Developer ID Application certificate (base64 `.p12`) |
-| `DESKTOP_APPLE_ID`, `DESKTOP_APPLE_APP_SPECIFIC_PASSWORD`, `DESKTOP_APPLE_TEAM_ID` | Notarization                                         |
-| `DESKTOP_WIN_CSC_LINK`, `DESKTOP_WIN_CSC_KEY_PASSWORD`                             | Windows Authenticode certificate                     |
+| Secret                                                  | Purpose                                                                                                                   |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `DESKTOP_MAC_CSC_LINK`, `DESKTOP_MAC_CSC_KEY_PASSWORD`  | Developer ID Application certificate (base64 `.p12`)                                                                      |
+| `APPLE_API_KEY`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER` | Notarization: an App Store Connect Team key with the Developer role (the `.p8` file's text, its key ID and the issuer ID) |
+| `DESKTOP_WIN_CSC_LINK`, `DESKTOP_WIN_CSC_KEY_PASSWORD`  | Windows Authenticode certificate                                                                                          |
+
+A signed macOS build is always notarized: with the certificate but without the
+key, the release fails rather than publish an app Gatekeeper refuses.
 
 Unsigned macOS builds are ad-hoc signed so Apple silicon can run them. On the
 first launch macOS refuses to open them: choose **Open Anyway** in System
