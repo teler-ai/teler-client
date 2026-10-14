@@ -12,3 +12,8 @@ export function macSidecarSignatureCommands(binary: string): string[][] {
     ['codesign', '--force', '--sign', '-', binary],
   ]
 }
+
+/** codesign only exists on a Mac; the macOS release jobs run on macOS runners. */
+export function resignsMacSidecar(target: string, platform: NodeJS.Platform): boolean {
+  return target.startsWith('mac-') && platform === 'darwin'
+}

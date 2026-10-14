@@ -2,7 +2,8 @@
 /**
  * Checks every packaged app under `release/`: the archive may contain only
  * the bundled `dist/` and `package.json` (never a workspace's node_modules),
- * and the compiled `teler` sidecar and the app icon must sit next to it.
+ * and the compiled `teler` sidecar and the app icon must sit next to it. On a
+ * Mac the whole app, sidecar included, must also pass `codesign --verify`.
  */
 import { existsSync } from 'node:fs'
 import { readdir } from 'node:fs/promises'
@@ -23,6 +24,18 @@ async function findArchives(directory: string): Promise<string[]> {
   return found
 }
 
+/** `codesign --verify` of the packaged .app: every nested binary needs a valid signature. */
+function signatureProblems(archive: string): string[] {
+  if (process.platform !== 'darwin') return []
+  const app = dirname(dirname(dirname(archive)))
+  if (!app.endsWith('.app')) return []
+  const result = Bun.spawnSync(['codesign', '--verify', '--deep', '--strict', app], {
+    stderr: 'pipe',
+  })
+  if (result.exitCode === 0) return []
+  return [`invalid code signature: ${result.stderr.toString().trim().split('\n')[0]}`]
+}
+
 function problemsFor(archive: string): string[] {
   const problems: string[] = []
   // @electron/asar joins entries with the platform separator (`\` on Windows).
@@ -39,6 +52,7 @@ function problemsFor(archive: string): string[] {
   if (!existsSync(join(sidecar, 'teler')) && !existsSync(join(sidecar, 'teler.exe')))
     problems.push('missing the teler sidecar')
   if (!existsSync(join(dirname(archive), 'icon.png'))) problems.push('missing the app icon')
+  problems.push(...signatureProblems(archive))
   return problems
 }
 
