@@ -68,7 +68,10 @@ Usage:
   teler post react|unreact|hide|unhide|visibility|export <post-id> [options]
   teler dashboard shares|share|unshare|public-links|create-public-link|revoke-public-link <id> [options]
   teler dashboard activity|create-post <id> [options]
-  teler dashboard templates|from-template|template-progress [options]
+  teler dashboard templates [--project <id>] [--org <id>] [--json]
+  teler dashboard from-template --file <json-file> [--org <id>] [--json]
+  teler dashboard template-progress --chat <chat-id> [--org <id>] [--json]
+  Template creation queues jobs; poll progress, then add completed artifacts with add-widget.
   Resource writes accept --file <json-file>; deletions/revocations require --yes.
   PDF export requires --file <html-request.json> --output <file.pdf>.
   teler dashboard create --name <name> [--org <id>] [--refresh-interval <interval>] [--json]

@@ -174,6 +174,24 @@ Create also accepts `--description`, `--project`, and
 `--visibility private|organization`. Omitted `--org` uses the active organization.
 Supported refresh intervals are `1m`, `5m`, `15m`, `30m`, `1h`, `4h`, and `1d`;
 Teler checks that the organization's plan allows the interval.
+
+Template creation is asynchronous:
+
+```sh
+teler dashboard templates --org <org-id> --json
+teler dashboard from-template --file template.json --org <org-id> --json
+teler dashboard template-progress --chat <returned-chat-id> --org <org-id> --json
+```
+
+`template.json` contains `templateId` from the template list and optionally
+`projectId`. The creation receipt contains `dashboard`, `chatId`, and `pending`
+jobs with their planned positions; it does not mean the widgets are ready.
+Poll `template-progress` until each job settles. For each completed job with an
+`artifactId`, use `dashboard add-widget` with the returned dashboard ID, artifact
+ID, and corresponding pending job's position. Inspect failed or timed-out jobs
+before proceeding; a failure placeholder artifact is not a successful result.
+The CLI does not automatically wait for jobs or pin their artifacts.
+
 List/get JSON includes `refreshInterval` and `lastRefreshedAt`. Get also includes
 each widget's `refreshState`: `status`, `lastAttemptAt`, `lastSuccessAt`, and a
 static `errorReason` category. A refresh paused because the dashboard owner has no

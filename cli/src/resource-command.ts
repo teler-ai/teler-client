@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { takeFlag } from './command-args'
 import type { TelerApiClient } from './api'
 import type { Output } from './chats'
-import { UsageError } from './errors'
+import { CommandError, UsageError } from './errors'
 import {
   getDashboard,
   getPost,
@@ -15,6 +15,21 @@ import {
   resourceIdSchema,
   emitResource,
 } from './read-resources'
+
+const postDraftErrorCodeSchema = z.enum([
+  'CANCELLED',
+  'GENERATION_FAILED',
+  'INSUFFICIENT_CREDITS',
+  'POST_NOT_FOUND',
+  'ARTIFACT_NOT_IN_CHAT',
+])
+const POST_DRAFT_ERROR_MESSAGES = {
+  CANCELLED: 'Post draft generation was cancelled',
+  GENERATION_FAILED: 'Post draft generation failed',
+  INSUFFICIENT_CREDITS: 'Not enough credits to generate a post draft',
+  POST_NOT_FOUND: 'Post not found',
+  ARTIFACT_NOT_IN_CHAT: 'A selected artifact is not available in this post’s chat',
+}
 
 function takeOption(args: string[], name: string): string | undefined {
   const index = args.indexOf(name)
@@ -166,12 +181,19 @@ export async function runResourceCommand(
       for await (const event of readSse(response.body)) {
         if (event.kind !== 'data') continue
         if (event.value && typeof event.value === 'object' && 'type' in event.value) {
-          if (event.value.type === 'error') throw new Error('Post draft generation failed')
+          if (event.value.type === 'error') {
+            const code =
+              postDraftErrorCodeSchema.safeParse(
+                'code' in event.value ? event.value.code : undefined
+              ).data ?? 'GENERATION_FAILED'
+            throw new CommandError(code, POST_DRAFT_ERROR_MESSAGES[code])
+          }
           if (event.value.type === 'complete') completed = true
         }
         emitResource(output, event.value)
       }
-      if (!completed) throw new Error('Post draft generation did not complete')
+      if (!completed)
+        throw new CommandError('GENERATION_FAILED', 'Post draft generation did not complete')
       return true
     }
     emitResource(output, response.status === 204 ? { deleted: true } : await response.json())
