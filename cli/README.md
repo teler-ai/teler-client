@@ -63,6 +63,9 @@ accumulated deltas with this snapshot; do not append it. The successful terminal
 `task.update` follows reconciliation. The same rule applies to
 `approval respond --wait --json`. Standalone `task watch` requires a server that
 includes the message ID in terminal events to recover the final snapshot.
+Reconciliation uses `GET /api/chat/<chat-id>?messageId=<message-id>`; recovering
+older tasks beyond the chat's latest message page requires a server supporting
+this exact-message filter.
 `--metadata-only` omits content and never fetches the final message.
 
 Human output appends missing text and identifies any final answer that replaces

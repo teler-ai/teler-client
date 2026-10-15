@@ -32,7 +32,8 @@ export async function reconcileTaskResult(
   streamedText: string,
   signal?: AbortSignal
 ): Promise<boolean> {
-  const detail = await client.json(`/api/chat/${chatId}`, detailSchema, { signal })
+  const query = new URLSearchParams({ messageId })
+  const detail = await client.json(`/api/chat/${chatId}?${query}`, detailSchema, { signal })
   const message = detail.messages.find(
     (candidate) => candidate.id === messageId && candidate.role === 'assistant'
   )
