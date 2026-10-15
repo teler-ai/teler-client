@@ -10,8 +10,10 @@ has standalone executables that include the Bun runtime: `teler-mac-arm64`,
 `teler-mac-x64`, `teler-linux-x64`, `teler-linux-arm64` and `teler-win-x64.exe`.
 Download the one for your computer, check it against `SHA256SUMS.txt`, rename it
 to `teler` (`teler.exe` on Windows), make it executable and put it on your `PATH`.
-On macOS, a file downloaded with a browser is quarantined; run
-`xattr -d com.apple.quarantine teler` before the first start.
+From 0.1.1, the macOS executables are signed with Teler's Developer ID and
+notarized by Apple, so macOS opens them without a warning. With 0.1.0, a file
+downloaded with a browser is quarantined; run `xattr -d com.apple.quarantine teler`
+before the first start.
 
 ```sh
 teler --version

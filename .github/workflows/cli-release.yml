@@ -131,6 +131,41 @@ jobs:
         run: |
           bun -e 'const f = "cli/package.json"; const p = await Bun.file(f).json(); p.version = process.env.VERSION; await Bun.write(f, JSON.stringify(p, null, 2) + "\n")'
 
+      # Every macOS release is signed with Teler's Developer ID and notarized, so
+      # Gatekeeper accepts the executables. The certificate is the one Teler
+      # Desktop uses; it lives only in a temporary keychain on this runner.
+      - name: Import the Developer ID certificate
+        if: matrix.platform == 'mac'
+        shell: bash
+        env:
+          CSC_LINK: ${{ secrets.DESKTOP_MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.DESKTOP_MAC_CSC_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${CSC_LINK:-}" || -z "${CSC_KEY_PASSWORD:-}" ]]; then
+            echo '::error::macOS executables must be signed: set DESKTOP_MAC_CSC_LINK and DESKTOP_MAC_CSC_KEY_PASSWORD'
+            exit 1
+          fi
+          keychain="${RUNNER_TEMP}/teler-signing.keychain-db"
+          keychain_password="$(openssl rand -hex 24)"
+          certificate="${RUNNER_TEMP}/teler-signing.p12"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          printf '%s' "$CSC_LINK" | base64 --decode > "$certificate"
+          security import "$certificate" -k "$keychain" -P "$CSC_KEY_PASSWORD" -T /usr/bin/codesign >/dev/null
+          rm -f "$certificate"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain" >/dev/null
+          read -r -a existing <<< "$(security list-keychains -d user | tr -d '"' | tr '\n' ' ')"
+          security list-keychains -d user -s "$keychain" "${existing[@]}"
+          identity="$(security find-identity -v -p codesigning "$keychain" | awk -F'"' '/Developer ID Application/ { print $2; exit }')"
+          if [[ -z "$identity" ]]; then
+            echo '::error::DESKTOP_MAC_CSC_LINK holds no Developer ID Application identity'
+            exit 1
+          fi
+          echo "TELER_MAC_SIGN_IDENTITY=${identity}" >> "$GITHUB_ENV"
+          echo "SIGNING_KEYCHAIN=${keychain}" >> "$GITHUB_ENV"
+
       - name: Compile the teler executables
         shell: bash
         working-directory: cli
@@ -154,6 +189,63 @@ jobs:
             exit 1
           fi
           "./${SMOKE}" --help > /dev/null
+
+      # A standalone executable cannot carry a stapled ticket; Gatekeeper looks the
+      # notarization up online the first time it checks the file.
+      - name: Notarize the macOS executables
+        if: matrix.platform == 'mac'
+        shell: bash
+        working-directory: cli/release
+        env:
+          KEY_P8: ${{ secrets.DESKTOP_APPLE_API_KEY_P8 }}
+          KEY_ID: ${{ secrets.DESKTOP_APPLE_API_KEY_ID }}
+          ISSUER: ${{ secrets.DESKTOP_APPLE_API_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${KEY_P8:-}" || -z "${KEY_ID:-}" || -z "${ISSUER:-}" ]]; then
+            echo '::error::notarization needs DESKTOP_APPLE_API_KEY_P8, DESKTOP_APPLE_API_KEY_ID and DESKTOP_APPLE_API_ISSUER_ID'
+            exit 1
+          fi
+          work="${RUNNER_TEMP}/notarization"
+          mkdir -p "$work/teler"
+          trap 'rm -rf "$work"' EXIT
+          printf '%s\n' "$KEY_P8" > "$work/AuthKey.p8"
+          cp teler-mac-* "$work/teler/"
+          ditto -c -k --keepParent "$work/teler" "$work/teler-mac.zip"
+          xcrun notarytool submit "$work/teler-mac.zip" --key "$work/AuthKey.p8" \
+            --key-id "$KEY_ID" --issuer "$ISSUER" --wait --timeout 30m \
+            --output-format json > "$work/result.json"
+          status="$(jq -r .status "$work/result.json")"
+          echo "Notarization: ${status}"
+          if [[ "$status" != Accepted ]]; then
+            xcrun notarytool log "$(jq -r .id "$work/result.json")" --key "$work/AuthKey.p8" \
+              --key-id "$KEY_ID" --issuer "$ISSUER" || true
+            exit 1
+          fi
+
+      - name: Verify the macOS signatures
+        if: matrix.platform == 'mac'
+        shell: bash
+        working-directory: cli/release
+        run: |
+          set -euo pipefail
+          for binary in teler-mac-*; do
+            codesign --verify --strict --verbose=2 "$binary"
+            details="$(codesign -dvv "$binary" 2>&1)"
+            for expected in 'Authority=Developer ID Application' 'Timestamp=' 'flags=0x10000(runtime)'; do
+              if [[ "$details" != *"$expected"* ]]; then
+                echo "::error::${binary} lacks ${expected}"
+                exit 1
+              fi
+            done
+          done
+          ./teler-mac-arm64 --version
+
+      - name: Remove the signing keychain
+        if: always() && matrix.platform == 'mac'
+        shell: bash
+        run: |
+          if [[ -n "${SIGNING_KEYCHAIN:-}" ]]; then security delete-keychain "$SIGNING_KEYCHAIN" || true; fi
 
       - name: Upload executables
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -231,7 +323,8 @@ jobs:
           teler CLI ${VERSION}, built from \`${GITHUB_SHA}\`. Each executable includes the
           Bun runtime; no other installation is needed.
 
-          - macOS: \`teler-mac-arm64\` (Apple silicon) or \`teler-mac-x64\` (Intel).
+          - macOS: \`teler-mac-arm64\` (Apple silicon) or \`teler-mac-x64\` (Intel), signed with
+            Teler's Developer ID and notarized by Apple.
           - Linux: \`teler-linux-x64\` or \`teler-linux-arm64\`.
           - Windows: \`teler-win-x64.exe\`.
 
