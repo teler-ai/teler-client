@@ -45,6 +45,43 @@ behind Cloudflare Access, set `TELER_ACCESS_TOKEN` to an Access token (for
 example `cloudflared access token -app=$TELER_URL`); the CLI sends it as
 `cf-access-token`, only to that origin.
 
+## Chat results and uploads
+
+```sh
+teler send --chat <chat-id> --wait --json "Analyze sales"
+teler task watch <chat-id> <task-id> --timeout 180 --json
+teler upload ./sales.csv --org <org-id> --wait --timeout 120 --json
+teler upload status <job-id> --wait --json
+```
+
+Chat waiting commands emit NDJSON. `task.update` events contain streaming deltas.
+On completion, `task.result` contains the authoritative assistant message as
+`{ chatId, taskId, messageId, content }`, including approval cards. Replace the
+accumulated deltas with this snapshot; do not append it. The successful terminal
+`task.update` follows reconciliation. The same rule applies to
+`approval respond --wait --json`. Standalone `task watch` requires a server that
+includes the message ID in terminal events to recover the final snapshot.
+`--metadata-only` omits content and never fetches the final message.
+
+Human output appends missing text and identifies any final answer that replaces
+the streamed version. Pending approvals include a command to respond.
+
+An upload emits `{ jobId, status }` as soon as byte transfer is accepted. With
+`--wait --json`, the final status is a second NDJSON record. If waiting times out,
+keep the first receipt and resume with `upload status`; the accepted upload
+continues on the server.
+
+## Personal Knowledge
+
+Every `memory` command accepts `--org <org-id>` to select the organization.
+Omission uses the login session's active organization. Explicit selection requires
+a server supporting the `organizationId` query on memory endpoints.
+
+`skill create` creates personal skills (`--scope personal`). Organization skills
+require a reviewed copy: create a personal skill, then submit it for review from
+Knowledge in the Teler app. Existing organization skills remain available to
+the read and update commands according to the member's permissions.
+
 ## Data analysis from an agent
 
 Discover the command input contracts offline, then use exact project and table references:

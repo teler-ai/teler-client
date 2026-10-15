@@ -115,28 +115,31 @@ async function runSkill(client: TelerApiClient, output: Output, command: Resourc
 }
 
 async function runMemory(client: TelerApiClient, output: Output, command: ResourceCommand) {
+  const query = command.organizationId
+    ? `?organizationId=${encodeURIComponent(command.organizationId)}`
+    : ''
   if (command.action === 'list' || command.action === 'get') {
-    const result = await client.json('/api/memory', memoryListSchema)
+    const result = await client.json(`/api/memory${query}`, memoryListSchema)
     if (command.action === 'list') return emitList(output, 'memory', result.memories)
     const memory = result.memories.find((entry) => entry.id === command.id)
     if (!memory) throw new ApiError('Memory not found', 404)
     return emitValue(output, memory)
   }
   if (command.action === 'create') {
-    const created = await client.json('/api/memory', memoryResponseSchema, {
+    const created = await client.json(`/api/memory${query}`, memoryResponseSchema, {
       method: 'POST',
       body: body(command),
     })
     return emitValue(output, created.memory)
   }
   if (command.action === 'update') {
-    const updated = await client.json(`/api/memory/${command.id}`, memoryResponseSchema, {
+    const updated = await client.json(`/api/memory/${command.id}${query}`, memoryResponseSchema, {
       method: 'PATCH',
       body: body(command),
     })
     return emitValue(output, updated.memory)
   }
-  await client.request(`/api/memory/${command.id}`, { method: 'DELETE' })
+  await client.request(`/api/memory/${command.id}${query}`, { method: 'DELETE' })
   emitDeleted(output, 'memory', command.id ?? '')
 }
 

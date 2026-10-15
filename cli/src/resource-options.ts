@@ -9,20 +9,20 @@ Resource commands:
   teler skill  list [--org <id>] [--json]
   teler skill  get <id> [--json]
   teler skill  create --name <slug> --label <label> --description <text>
-               --content-file <path> [--trigger <text>]... [--scope personal|organization]
+               --content-file <path> [--trigger <text>]... [--scope personal]
                [--org <id>] [--json]
   teler skill  update <id> [--label <label>] [--description <text>]
                [--content-file <path>] [--trigger <text>]... [--clear-triggers] [--json]
   teler skill  delete <id> --yes [--json]
-  teler memory list [--json]
-  teler memory get <id> [--json]
-  teler memory delete <id> --yes [--json]
+  teler memory list [--org <id>] [--json]
+  teler memory get <id> [--org <id>] [--json]
+  teler memory delete <id> --yes [--org <id>] [--json]
   teler memory create --name <slug> --label <label> --description <text>
                --content-file <path> --type preference|domain|feedback|reference
-               [--trigger <text>]... [--json]
+               [--trigger <text>]... [--org <id>] [--json]
   teler memory update <id> [--label <label>] [--description <text>]
                [--content-file <path>] [--trigger <text>]... [--clear-triggers]
-               [--active|--inactive] [--json]
+               [--active|--inactive] [--org <id>] [--json]
   teler agent  list [--org <id>] [--json]
   teler agent  get <id> [--json]
   teler agent  create --name <slug> --label <label> --content-file <path>
@@ -153,6 +153,12 @@ async function createBody(kind: ResourceKind, args: string[]): Promise<Record<st
     ])
   }
 
+  if (kind === 'skill' && body.scope === 'organization') {
+    throw new UsageError(
+      'Organization skills require a reviewed copy. Create a personal skill, then submit it for review from Knowledge in the Teler app.'
+    )
+  }
+
   if (kind === 'agent') {
     const modelSet = oneOf(takeOption(args, '--model-set'), '--model-set', ['lite', 'pro'])
     const output = oneOf(takeOption(args, '--output'), '--output', ['none', 'private_post'])
@@ -218,7 +224,7 @@ export async function parseResourceCommand(
   }
   const action = rawAction as ResourceAction
   const args = [...rawArgs]
-  const organizationId = kind === 'memory' ? undefined : takeOption(args, '--org')
+  const organizationId = takeOption(args, '--org')
   const usage = `teler ${kind} ${action}`
 
   if (action === 'list') {

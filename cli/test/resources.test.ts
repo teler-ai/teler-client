@@ -34,9 +34,9 @@ describe('resource CRUD commands', () => {
     let output = ''
     expect(await main(['--help'], { writeOut: (text) => (output += text) })).toBe(0)
     expect(output).toContain('teler skill  create --name <slug>')
-    expect(output).toContain('teler memory list [--json]')
-    expect(output).toContain('teler memory get <id> [--json]')
-    expect(output).toContain('teler memory delete <id> --yes [--json]')
+    expect(output).toContain('teler memory list [--org <id>] [--json]')
+    expect(output).toContain('teler memory get <id> [--org <id>] [--json]')
+    expect(output).toContain('teler memory delete <id> --yes [--org <id>] [--json]')
     expect(output).toContain('--type preference|domain|feedback|reference')
     expect(output).toContain('--quick-action|--no-quick-action')
     expect(output).toContain('teler agent  delete <id> --yes')

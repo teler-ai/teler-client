@@ -130,19 +130,20 @@ export async function uploadLocalFile(
       if (reconciled) {
         completed = true
         stopHeartbeat()
+        emitAccepted(output, reconciled.jobId, reconciled.status)
         if (options.wait && !TERMINAL.has(reconciled.status)) {
           emitStatus(
             output,
             await waitForUpload(client, start.jobId, options.signal, options.pollIntervalMs)
           )
         } else if (options.wait) emitStatus(output, reconciled)
-        else emitAccepted(output, reconciled.jobId, reconciled.status)
         return
       }
     }
     const accepted = await completeUpload(client, start.jobId, options.signal)
     completed = true
     stopHeartbeat()
+    emitAccepted(output, accepted.jobId, accepted.status)
     if (options.wait && !TERMINAL.has(accepted.status)) {
       emitStatus(
         output,
@@ -150,8 +151,6 @@ export async function uploadLocalFile(
       )
     } else if (options.wait) {
       emitStatus(output, await getUploadStatus(client, start.jobId, options.signal))
-    } else {
-      emitAccepted(output, accepted.jobId, accepted.status)
     }
   } finally {
     stopHeartbeat()
