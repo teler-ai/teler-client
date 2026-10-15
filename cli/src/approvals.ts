@@ -153,6 +153,8 @@ export async function respondToApproval(
     )
   }
   if (options.wait) {
-    await watchTask(client, output, options.chatId, accepted.taskId, options.signal)
+    await watchTask(client, output, options.chatId, accepted.taskId, options.signal, {
+      messageId: accepted.messageId,
+    })
   }
 }
