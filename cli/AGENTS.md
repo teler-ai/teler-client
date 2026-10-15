@@ -37,6 +37,10 @@ only with the versioned HTTP API selected by `TELER_URL`; production
   repository after verifying `SHA256SUMS.txt`; the daily startup check stays off
   for `--json`, CI, Teler Desktop's sidecar and `TELER_NO_UPDATE_CHECK`.
 - Release executables: `bun scripts/compile.ts [target...]`; published by
-  `.github/workflows/cli-release.yml` (manual, `main` only).
+  `.github/workflows/cli-release.yml` (manual, `main` only). On a Mac, macOS
+  executables are re-signed (`scripts/mac-signature.ts`): ad hoc locally; in
+  releases with Teler's Developer ID (`DESKTOP_MAC_CSC_LINK`), the hardened
+  runtime and `build/entitlements.mac.plist`, then notarized with the App Store
+  Connect API key (`DESKTOP_APPLE_API_*`). A release without them fails.
 - Typecheck: `bun run --filter @teler-ai/cli typecheck`
 - Test: `bun run --filter @teler-ai/cli test`
