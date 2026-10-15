@@ -149,7 +149,10 @@ jobs:
           keychain="${RUNNER_TEMP}/teler-signing.keychain-db"
           keychain_password="$(openssl rand -hex 24)"
           certificate="${RUNNER_TEMP}/teler-signing.p12"
+          trap 'rm -f "$certificate"' EXIT
           security create-keychain -p "$keychain_password" "$keychain"
+          # Exported at once, so the cleanup step deletes it even if a later command fails.
+          echo "SIGNING_KEYCHAIN=${keychain}" >> "$GITHUB_ENV"
           security set-keychain-settings -lut 3600 "$keychain"
           security unlock-keychain -p "$keychain_password" "$keychain"
           printf '%s' "$CSC_LINK" | base64 --decode > "$certificate"
@@ -164,7 +167,6 @@ jobs:
             exit 1
           fi
           echo "TELER_MAC_SIGN_IDENTITY=${identity}" >> "$GITHUB_ENV"
-          echo "SIGNING_KEYCHAIN=${keychain}" >> "$GITHUB_ENV"
 
       - name: Compile the teler executables
         shell: bash
@@ -214,11 +216,13 @@ jobs:
           ditto -c -k --keepParent "$work/teler" "$work/teler-mac.zip"
           xcrun notarytool submit "$work/teler-mac.zip" --key "$work/AuthKey.p8" \
             --key-id "$KEY_ID" --issuer "$ISSUER" --wait --timeout 30m \
-            --output-format json > "$work/result.json"
-          status="$(jq -r .status "$work/result.json")"
+            --output-format json > "$work/result.json" || true
+          # A rejection exits non-zero: read the status here so Apple's log is printed.
+          status="$(jq -r '.status // "unknown"' "$work/result.json" 2>/dev/null || echo unknown)"
           echo "Notarization: ${status}"
           if [[ "$status" != Accepted ]]; then
-            xcrun notarytool log "$(jq -r .id "$work/result.json")" --key "$work/AuthKey.p8" \
+            id="$(jq -r '.id // empty' "$work/result.json" 2>/dev/null || true)"
+            [[ -n "$id" ]] && xcrun notarytool log "$id" --key "$work/AuthKey.p8" \
               --key-id "$KEY_ID" --issuer "$ISSUER" || true
             exit 1
           fi
