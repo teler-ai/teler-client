@@ -138,7 +138,18 @@ describe('inbox notification copy', () => {
     ).toBe('The schedule of Monday report stopped')
     expect(
       composeNotification('inbox', [inbox({ type: 'access_requested', body: null })], t)
-    ).toMatchObject({ title: 'Someone asked you for access', body: 'Weekly pace' })
+    ).toMatchObject({ title: 'Someone asked you for access', body: '' })
+  })
+
+  it("never shows the server's neutral title as the text of a notice it words itself", () => {
+    // Teler stores a type-like title (`agent_completed`) and leaves the wording to each client.
+    expect(
+      composeNotification(
+        'inbox',
+        [inbox({ type: 'agent_completed', title: 'agent_completed', body: null })],
+        t
+      )
+    ).toMatchObject({ title: 'Weekly pace finished', body: '' })
   })
 
   it('keeps an unknown type as the server wrote it', () => {

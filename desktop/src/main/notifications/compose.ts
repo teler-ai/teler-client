@@ -209,15 +209,9 @@ function composeInbox(items: InboxEvent[], t: Translate): ComposedNotification {
   }
   const [only] = items
   if (only && items.length === 1) {
-    const title = inboxTitle(only, t)
-    return {
-      kind: 'inbox',
-      title,
-      // A sentence built from the type keeps the server's title as the detail; otherwise the
-      // body is all there is to add.
-      body: title === only.title ? (only.body ?? '') : (only.body ?? only.title),
-      target,
-    }
+    // Teler stores a neutral, type-like title and leaves the wording to each client, so only
+    // the body is ever added as detail; a sentence built from the type already names its subject.
+    return { kind: 'inbox', title: inboxTitle(only, t), body: only.body ?? '', target }
   }
   const titles = [...new Set(items.map((item) => inboxTitle(item, t)))]
   const [first = '', second = ''] = titles
