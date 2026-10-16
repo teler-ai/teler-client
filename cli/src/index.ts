@@ -4,7 +4,15 @@ import { authStatus, login, loginWithDeviceFile, logout } from './auth'
 import { respondToApproval } from './approvals'
 import { TelerApiClient, type FetchLike } from './api'
 import { resolveChatId, resolveTaskId } from './chat-id'
-import { listArtifacts, listChats, sendMessage, showChat, watchTask } from './chats'
+import {
+  listArtifacts,
+  listChats,
+  markSeenQuietly,
+  sendMessage,
+  showChat,
+  watchTask,
+} from './chats'
+import { runAttentionCommand } from './attention-command'
 import { assertNoFlags, takeFlag, takeOption, withTimeout } from './command-args'
 import {
   createConfiguredCredentialStore,
@@ -136,6 +144,7 @@ export async function main(argv: readonly string[], deps: MainDeps = {}): Promis
 
     const client = new TelerApiClient(baseUrl, token, fetchImpl)
     const output = { json, metadataOnly, write: writeOut }
+    if (await runAttentionCommand(group, action, args, client, output)) return 0
     if (await runAnalysisCommand(group, action, args, client, output)) return 0
     if (await runArtifactCommand(group, action, args, client, output)) return 0
     if (await runDataCommand(group, action, args, client, output)) return 0
@@ -193,15 +202,11 @@ export async function main(argv: readonly string[], deps: MainDeps = {}): Promis
       if (args.length !== 2) {
         throw new UsageError('Usage: teler task watch <chat-id-or-url> <task-id>')
       }
-      await withTimeout(timeout, async (signal) =>
-        watchTask(
-          client,
-          output,
-          resolveChatId(args[0] ?? ''),
-          resolveTaskId(args[1] ?? ''),
-          signal
-        )
-      )
+      const watchedChatId = resolveChatId(args[0] ?? '')
+      await withTimeout(timeout, async (signal) => {
+        await watchTask(client, output, watchedChatId, resolveTaskId(args[1] ?? ''), signal)
+        await markSeenQuietly(client, output, watchedChatId, signal)
+      })
       return 0
     }
     if (group === 'approval' && action === 'respond') {

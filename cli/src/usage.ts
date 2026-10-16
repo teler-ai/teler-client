@@ -32,7 +32,11 @@ Usage:
   teler auth logout
   teler agent-access show [--org <id>] [--json]
   teler agent-access set --preset ask [--org <id>] [--json]
+  teler status [--org <id>] [--json]
+  teler watch [--org <id>] [--interval <seconds>] [--timeout <seconds>] [--json]
+  teler notifications [--org <id>] [--all] [--limit <count>] [--json]
   teler chat list [--limit <count>] [--json]
+  teler chat seen <chat-id-or-url> [--json]
   teler chat show <chat-id-or-url> [--json]
   teler chat artifacts <chat-id-or-url> [--json]
   teler sync <folder> --to <remote-path> [--org <id>] [--once] [--dry-run] [--json]
@@ -89,6 +93,7 @@ Usage:
   teler skill  list|get|create|update|delete [options] [--json]
   teler memory list|get|create|update|delete [options] [--json]
   teler agent  list|get|create|update|delete [options] [--json]
+  teler agent  runs [--org <id>] [--agent <id>] [--active] [--limit <count>] [--json]
   teler send (--chat <chat-id-or-url> | --new) [--org <id>] [--model-set lite|pro]
              [--title <title>] [--deep] [--wait] [--timeout <seconds>] [--json]
              [--metadata-only] "message"
