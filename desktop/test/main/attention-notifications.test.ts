@@ -200,6 +200,7 @@ describe('attention notifications', () => {
         runningAgents: 0,
         waitingChats: 0,
         unreadNotifications: 0,
+        runningChat: null,
         waitingChat: null,
       },
     ])
@@ -297,6 +298,7 @@ describe('attention notifications', () => {
       runningAgents: 0,
       waitingChats: 1,
       unreadNotifications: 3,
+      runningChat: { id: CHAT, organizationId: 'org_a' },
       waitingChat: { id: CHAT, organizationId: 'org_a' },
     })
     await vi.advanceTimersByTimeAsync(5_000)

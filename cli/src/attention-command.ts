@@ -5,7 +5,7 @@ import { markChatSeen } from './chats'
 import { resolveChatId } from './chat-id'
 import { assertNoFlags, parseLimit, takeFlag, takeOption } from './command-args'
 import { emitJson, resolveOrganizationId } from './command-output'
-import { CommandError, UsageError } from './errors'
+import { UsageError } from './errors'
 import { readAttention, watchAttention, writeAttention } from './attention'
 
 const STATUS_USAGE = 'Usage: teler status [--org <id>] [--json]'
@@ -176,16 +176,3 @@ export async function runAttentionCommand(
   }
   return false
 }
-
-/** `teler agent runs` must not reach the Agent resource commands. */
-export function isAttentionCommand(group: string | undefined, action: string | undefined) {
-  return (
-    group === 'status' ||
-    group === 'watch' ||
-    group === 'notifications' ||
-    (group === 'chat' && action === 'seen') ||
-    (group === 'agent' && action === 'runs')
-  )
-}
-
-export { CommandError }

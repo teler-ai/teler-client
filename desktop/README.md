@@ -69,8 +69,8 @@ icon shows the sync state and keeps sync running after the window closes.
   that need you, access requests) (`src/main/notifications/`). Each kind is
   grouped: one notification once that kind has been quiet for a few seconds
   (at most a minute), replacing the previous one; waiting (retrying) files
-  never notify. Nothing shows for what you have open in a focused Teler
-  window (that chat, or Synced folders); everything else does. Notifications
+  never notify. Nothing shows for what the focused main window has open (that
+  chat, or Synced folders); everything else does. Notifications
   use the OS sound, so Do Not Disturb applies; on macOS each kind has its own
   system sound. A click opens the source (the file, the data page, the chat,
   the alert, the notice's page or Synced folders), switching Teler to its
@@ -84,15 +84,16 @@ icon shows the sync state and keeps sync running after the window closes.
   one notification when an alert opens and one when it is back to normal.
   Synced folders has a switch per kind and one for the sound. A notification
   the system refuses to show is logged.
-- **Tray.** Besides folder sync, the tray shows what runs and waits for you:
-  chats and Agents running, and chats finished or notices unread that you have
-  not seen; each line opens where it is, and the tooltip carries the counts.
-  The icon marks a sync problem first, then something waiting for you, then
-  something running (a ring on macOS, a coloured dot elsewhere). On macOS and
-  Linux the Dock or launcher badge shows how much waits for you.
 - **Tray.** The first line is the sync state and opens Synced folders (or
   connects); the second is the account and the organization open in Teler, and
-  opens Teler. Then **Sync a folder…**, pause or resume, open at login and quit.
+  opens Teler. Then what runs and waits for you, when anything does: chats
+  running (opens the most recent one), Agents running (opens the Agents page)
+  and waiting for you — chats finished that you have not opened plus unread
+  notifications (opens the most recent unseen chat, else Teler). Then **Sync a
+  folder…**, pause or resume, open at login and quit. The tooltip carries the
+  counts. The icon marks a sync problem first, then something waiting for you,
+  then something running (a ring on macOS, a coloured dot elsewhere). On macOS
+  and Linux the Dock or launcher badge shows how much waits for you.
 
 ## Development
 

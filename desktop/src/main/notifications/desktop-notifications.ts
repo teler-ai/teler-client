@@ -76,6 +76,8 @@ export class DesktopNotifications {
   /** Consecutive attention reads; replaced after a sign-out so the next read is a baseline. */
   private tracker = new AttentionTracker()
   private active = false
+  /** Whether the tray currently has counts, so signed-out polls do not republish nothing. */
+  private hasActivity = false
   private readonly shown = new Map<NotificationKind, Notification>()
   private readonly batcher = new NotificationBatcher(QUIET_MS, MAX_WAIT_MS, (kind, items) =>
     this.deliver(kind, items)
@@ -205,6 +207,13 @@ export class DesktopNotifications {
     this.shown.set(kind, notification)
   }
 
+  private clearActivity(): void {
+    this.active = false
+    if (!this.hasActivity) return
+    this.hasActivity = false
+    this.deps.onActivity(null)
+  }
+
   private scheduleAttention(delay: number): void {
     if (this.stopped) return
     if (this.attentionTimer) clearTimeout(this.attentionTimer)
@@ -230,6 +239,7 @@ export class DesktopNotifications {
         for (const notice of inbox) this.enqueue('inbox', notice)
         const activity = activityOf(parsed.data)
         this.active = activity.runningChats + activity.runningAgents > 0
+        this.hasActivity = true
         this.deps.onActivity(activity)
       } else if (
         response.status === 401 ||
@@ -238,8 +248,10 @@ export class DesktopNotifications {
       ) {
         // Signed out: whoever signs in next starts from a new baseline.
         this.tracker = new AttentionTracker()
-        this.active = false
-        this.deps.onActivity(null)
+        this.clearActivity()
+      } else if (response.status === 404) {
+        // A Teler without this read: the tray shows no counts rather than stale ones.
+        this.clearActivity()
       }
     } catch {
       // Offline: try again at the next poll.

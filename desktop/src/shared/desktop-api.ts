@@ -99,6 +99,8 @@ export interface DesktopActivity {
   /** Chats whose finished turn the person has not opened yet. */
   waitingChats: number
   unreadNotifications: number
+  /** The most recently started running chat, to open from the tray. */
+  runningChat: { id: string; organizationId: string | null } | null
   /** The most recently finished unseen chat, to open from the tray. */
   waitingChat: { id: string; organizationId: string | null } | null
 }

@@ -4,6 +4,7 @@ import { pendingFileCount } from './sync-state'
 
 export type TrayAction =
   | 'open-teler'
+  | 'open-running'
   | 'open-agents'
   | 'open-waiting'
   | 'open-settings'
@@ -71,7 +72,7 @@ export function trayTooltip(state: TrayState, t: Translate): string {
   return `Teler — ${parts.join(' · ')}`
 }
 
-/** What runs and what waits, each line opening where it is; nothing when nothing does. */
+/** What runs and what waits: the chat lines open their most recent chat, Agents the Agents page. */
 function activityItems(state: TrayState, t: Translate): TrayMenuItem[] {
   const { activity } = state
   if (!activity) return []
@@ -79,7 +80,7 @@ function activityItems(state: TrayState, t: Translate): TrayMenuItem[] {
   if (activity.runningChats > 0)
     items.push({
       type: 'action',
-      action: 'open-teler',
+      action: 'open-running',
       label: t('tray.running.chats', { count: activity.runningChats }),
     })
   if (activity.runningAgents > 0)

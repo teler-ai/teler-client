@@ -28,6 +28,9 @@ only with the versioned HTTP API selected by `TELER_URL`; production
   `show` emits policy metadata; `set` changes only the authenticated member's
   preset through the normal revision-checked API and preserves chat overrides.
 - Files: `teler files list|read|search|write|mkdir|move|copy`
+- Attention: `teler status`, `teler watch` (events as NDJSON with `--json`), `teler chat seen`,
+  `teler agent runs`, `teler notifications`; all read the public attention and inbox routes.
+  `@teler-ai/cli/attention` exports the schema, the reader, the tracker and the watch loop.
 - Uploads: `teler upload <file>`, `teler upload list`, `teler upload status <job-id>`
 - Library entry (`@teler-ai/cli`): the API client, device sign-in, credential
   store, sending chat messages, watching tasks and uploads, for programs that drive Teler like the CLI does. The

@@ -69,12 +69,11 @@ export const attentionNotificationSchema = z
     body: z.string().nullable(),
     agentLabel: z.string().nullable(),
     createdAt: z.string(),
-    /** A path on the Teler origin a click opens; null when the notice has no page of its own. */
-    targetPath: z
-      .string()
-      .max(2048)
-      .refine((path) => path.startsWith('/') && !path.startsWith('//') && !path.includes('\\'))
-      .nullable(),
+    /**
+     * A path on the Teler origin a click opens; null when the notice has no page of its own.
+     * Validated where it is used (`safeTargetPath`), so an odd path drops itself, not the read.
+     */
+    targetPath: z.string().nullable(),
   })
   .passthrough()
 
@@ -98,6 +97,13 @@ export const attentionSchema = z
     notifications: z.array(attentionNotificationSchema),
   })
   .passthrough()
+
+/** The path if it is one on the Teler origin, else null: never a URL or a protocol-relative one. */
+export function safeTargetPath(path: string | null): string | null {
+  if (path === null || path.length > 2048) return null
+  if (!path.startsWith('/') || path.startsWith('//') || path.includes('\\')) return null
+  return path
+}
 
 export type Attention = z.infer<typeof attentionSchema>
 export type RunningChat = z.infer<typeof runningChatSchema>

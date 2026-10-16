@@ -296,8 +296,9 @@ export class DesktopApp {
     const { controller } = this.services
     if (action === 'open-teler') this.windows.showTeler()
     else if (action === 'open-agents') this.windows.showTeler('/agents')
-    else if (action === 'open-waiting') {
-      const chat = this.activity?.waitingChat
+    else if (action === 'open-running' || action === 'open-waiting') {
+      const chat =
+        action === 'open-running' ? this.activity?.runningChat : this.activity?.waitingChat
       void this.notifications.openTarget(
         chat
           ? { type: 'teler', path: `/chat/${chat.id}`, organizationId: chat.organizationId }

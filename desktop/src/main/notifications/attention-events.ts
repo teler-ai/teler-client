@@ -1,6 +1,7 @@
 import {
   AttentionTracker,
   attentionSchema,
+  safeTargetPath,
   type Attention,
   type AttentionEvent,
 } from '@teler-ai/cli/attention'
@@ -17,6 +18,7 @@ const INBOX_SKIPPED_TYPES = new Set(['handoff_completed', 'agent_alert'])
 
 /** What the tray shows of one attention read. */
 export function activityOf(attention: Attention): DesktopActivity {
+  const [runningChat] = attention.running.chats
   const [waitingChat] = attention.waiting.chats
   return {
     runningChats: attention.running.chats.length,
@@ -26,6 +28,9 @@ export function activityOf(attention: Attention): DesktopActivity {
       (total, item) => total + item.count,
       0
     ),
+    runningChat: runningChat
+      ? { id: runningChat.id, organizationId: runningChat.organizationId }
+      : null,
     waitingChat: waitingChat
       ? { id: waitingChat.id, organizationId: waitingChat.organizationId }
       : null,
@@ -56,7 +61,7 @@ export function toNotificationEvents(events: AttentionEvent[]): {
         title: event.data.title,
         body: event.data.body,
         agentLabel: event.data.agentLabel,
-        targetPath: event.data.targetPath,
+        targetPath: safeTargetPath(event.data.targetPath),
       })
   }
   return { chats, inbox }

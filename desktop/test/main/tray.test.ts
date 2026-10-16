@@ -55,6 +55,7 @@ const activity = (overrides: Partial<NonNullable<TrayState['activity']>> = {}) =
   runningAgents: 0,
   waitingChats: 0,
   unreadNotifications: 0,
+  runningChat: null,
   waitingChat: null,
   ...overrides,
 })
@@ -174,7 +175,7 @@ describe('tray menu', () => {
     )
     expect(items.slice(2, 6)).toEqual([
       { type: 'separator' },
-      { type: 'action', action: 'open-teler', label: 'Chats running: 1' },
+      { type: 'action', action: 'open-running', label: 'Chats running: 1' },
       { type: 'action', action: 'open-agents', label: 'Agents running: 2' },
       { type: 'action', action: 'open-waiting', label: 'Waiting for you: 4' },
     ])
