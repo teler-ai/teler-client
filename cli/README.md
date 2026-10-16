@@ -93,6 +93,8 @@ teler notifications --org <org-id> [--all]  # the unread notifications of one or
 15 s (5 s while something runs) and passes the previous cursor as `since`, so a turn that starts
 and ends between two reads is still reported; nothing is reported twice. `send --wait` and
 `task watch` mark the chat seen once they have printed its result, except with `--metadata-only`.
+A turn that stopped to ask for your approval shows the state `awaiting_approval` instead of
+`completed` (`awaitingApproval: true` in JSON) until you answer it or the approval expires.
 A server without this read answers 404: update it first.
 
 ## Personal Knowledge
