@@ -1,5 +1,6 @@
-import { app, BaseWindow, Menu, nativeTheme, session, shell } from 'electron'
+import { app, Menu, nativeTheme, session, shell } from 'electron'
 import type {
+  DesktopActivity,
   DesktopPreferences,
   DesktopState,
   FolderRequest,
@@ -24,7 +25,7 @@ import { serveSettingsRenderer } from './settings-window'
 import { resolveSidecar } from './sidecar'
 import { TrayController } from './tray'
 import { createDesktopUpdates } from './updates/electron-updates'
-import type { TrayAction } from './tray-menu'
+import { waitingCount, type TrayAction } from './tray-menu'
 import { appIconPath, bundlePath, WindowManager } from './window-manager'
 import { WindowAccount } from './window-account'
 import { isSessionCookie } from './window-session'
@@ -56,6 +57,8 @@ export class DesktopApp {
   /** Electron installs a default menu at startup, so track the language ours was built in. */
   private menuLanguage: SupportedLanguage | null = null
   private quitting = false
+  /** What runs and waits for the person, from the notifications' attention read. */
+  private activity: DesktopActivity | null = null
   private poll: NodeJS.Timeout | null = null
   private sessionCheck: NodeJS.Timeout | null = null
   private folderRequest: FolderRequest | null = null
@@ -106,9 +109,14 @@ export class DesktopApp {
       settings: () => this.services.settings.value.notifications,
       translate: () => this.t,
       language: () => this.preferences.language,
-      isForeground: () => BaseWindow.getFocusedWindow() !== null,
+      onScreen: (target) => this.windows.isShowing(target),
       showTeler: (path) => this.windows.showTeler(path),
       openSettings: () => this.windows.openSettings(),
+      onActivity: (activity) => {
+        this.activity = activity
+        this.publish()
+      },
+      warn: (message) => console.warn(message),
     })
   }
 
@@ -214,6 +222,7 @@ export class DesktopApp {
       organizations: this.account.organizations,
       activeOrganizationId: this.account.activeOrganizationId,
       notifications: this.services.settings.value.notifications,
+      activity: this.activity,
     }
   }
 
@@ -237,6 +246,7 @@ export class DesktopApp {
     this.sessionCheck = setTimeout(() => {
       void this.services.session.check().catch(() => undefined)
       void this.account.refresh().catch(() => undefined)
+      this.notifications.refresh()
     }, SESSION_CHECK_DELAY_MS)
   }
 
@@ -244,6 +254,9 @@ export class DesktopApp {
     const state = this.state()
     this.tray?.update({ ...state, update: this.updates.available }, this.t)
     this.windows.sendState(state)
+    // The Dock (macOS) and launcher (Linux) badge: what waits for the person.
+    if (process.platform !== 'win32' && app.isReady())
+      app.setBadgeCount(waitingCount(state.activity))
   }
 
   private async loadPreferences(): Promise<void> {
@@ -282,7 +295,15 @@ export class DesktopApp {
   private handleTrayAction(action: TrayAction): void {
     const { controller } = this.services
     if (action === 'open-teler') this.windows.showTeler()
-    else if (action === 'open-settings') this.windows.openSettings()
+    else if (action === 'open-agents') this.windows.showTeler('/agents')
+    else if (action === 'open-waiting') {
+      const chat = this.activity?.waitingChat
+      void this.notifications.openTarget(
+        chat
+          ? { type: 'teler', path: `/chat/${chat.id}`, organizationId: chat.organizationId }
+          : { type: 'teler', path: '/', organizationId: null }
+      )
+    } else if (action === 'open-settings') this.windows.openSettings()
     else if (action === 'sync-folder') this.requestFolder({})
     else if (action === 'pause-sync') void controller.setSyncPaused(true)
     else if (action === 'resume-sync') void controller.setSyncPaused(false)

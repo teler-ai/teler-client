@@ -63,22 +63,33 @@ icon shows the sync state and keeps sync running after the window closes.
   **Retry now**. When Teler rate-limits uploads, nothing starts until the server
   allows it again (a large folder uploads in steps), and the page says when.
 - **Notifications.** Desktop notifications for files ready in Teler (new or
-  updated), a folder's first full sync, files that need attention and a chat
-  whose turn finished, and an Agent alert that opens or goes back to normal
-  (`src/main/notifications/`). Each kind is grouped: one
-  notification once that kind has been quiet for a few seconds (at most a
-  minute), replacing the previous one; waiting (retrying) files never notify.
-  Nothing shows or plays while a Teler window is in front. Notifications use
-  the OS sound, so Do Not Disturb applies; on macOS each kind has its own
-  system sound. A click opens the source (the file, the data page, the chat, the alert or
-  Synced folders), switching Teler to its organization first. Chats are
-  watched from the main process with the window session: every few seconds
-  while one runs or after a message is sent from the window, otherwise once a
-  minute. Agent alerts come from `GET /api/alerts/feed` (every organization),
-  read once a minute from a cursor kept in memory: each start takes a fresh
-  baseline, so alerts that already existed are never announced; one
-  notification when an alert opens and one when it is back to normal.
-  Synced folders has a switch per kind and one for the sound.
+  updated), a folder's first full sync, files that need attention, a chat
+  whose turn finished, an Agent alert that opens or goes back to normal, and
+  Teler's own notifications (what its bell shows: Agent results, schedules
+  that need you, access requests) (`src/main/notifications/`). Each kind is
+  grouped: one notification once that kind has been quiet for a few seconds
+  (at most a minute), replacing the previous one; waiting (retrying) files
+  never notify. Nothing shows for what you have open in a focused Teler
+  window (that chat, or Synced folders); everything else does. Notifications
+  use the OS sound, so Do Not Disturb applies; on macOS each kind has its own
+  system sound. A click opens the source (the file, the data page, the chat,
+  the alert, the notice's page or Synced folders), switching Teler to its
+  organization first. Chats and notices come from one read of
+  `GET /api/attention` with the window session: every 5 s while something
+  runs or after a message is sent from the window, otherwise every 20 s, each
+  read naming the previous cursor so a turn that starts and ends in between is
+  still announced and nothing is announced twice; each start takes a fresh
+  baseline. Agent alerts come from `GET /api/alerts/feed` (every organization),
+  read once a minute from a cursor kept in memory, likewise from a baseline:
+  one notification when an alert opens and one when it is back to normal.
+  Synced folders has a switch per kind and one for the sound. A notification
+  the system refuses to show is logged.
+- **Tray.** Besides folder sync, the tray shows what runs and waits for you:
+  chats and Agents running, and chats finished or notices unread that you have
+  not seen; each line opens where it is, and the tooltip carries the counts.
+  The icon marks a sync problem first, then something waiting for you, then
+  something running (a ring on macOS, a coloured dot elsewhere). On macOS and
+  Linux the Dock or launcher badge shows how much waits for you.
 - **Tray.** The first line is the sync state and opens Synced folders (or
   connects); the second is the account and the organization open in Teler, and
   opens Teler. Then **Sync a folder…**, pause or resume, open at login and quit.

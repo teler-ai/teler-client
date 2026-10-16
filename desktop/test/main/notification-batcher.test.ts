@@ -116,7 +116,14 @@ describe('notification batching', () => {
   function batcher() {
     const delivered: Array<{ kind: string; count: number }> = []
     const value = new NotificationBatcher(
-      { files: 10_000, folders: 2_000, problems: 10_000, chats: 2_000, alerts: 2_000 },
+      {
+        files: 10_000,
+        folders: 2_000,
+        problems: 10_000,
+        chats: 2_000,
+        alerts: 2_000,
+        inbox: 2_000,
+      },
       60_000,
       (kind, items) => delivered.push({ kind, count: items.length })
     )

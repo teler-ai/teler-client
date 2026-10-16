@@ -8,6 +8,7 @@ import type {
   FileReadyEvent,
   FolderAttentionEvent,
   FolderSyncedEvent,
+  InboxEvent,
   NotificationEvent,
   NotificationKind,
   NotificationTarget,
@@ -163,6 +164,74 @@ function composeAlerts(
   }
 }
 
+/** The sentence of one notice in Teler, by its type; the server's title is the subject. */
+function inboxTitle(item: InboxEvent, t: Translate): string {
+  const agent = item.agentLabel ?? t('notification.inbox.agent')
+  switch (item.type) {
+    case 'agent_completed':
+      return t('notification.inbox.agentCompleted', { agent })
+    case 'agent_failed':
+      return t('notification.inbox.agentFailed', { agent })
+    case 'schedule_needs_approval':
+    case 'schedule_held':
+    case 'schedule_needs_run':
+    case 'dashboard_needs_approval':
+      return t('notification.inbox.needsApproval', { title: item.title })
+    case 'schedule_run_failed':
+      return t('notification.inbox.scheduleRunFailed', { title: item.title })
+    case 'schedule_stopped':
+    case 'schedule_input_stopped':
+      return t('notification.inbox.scheduleStopped', { title: item.title })
+    case 'schedule_spend_expiring':
+      return t('notification.inbox.scheduleSpendExpiring', { title: item.title })
+    case 'access_requested':
+      return t('notification.inbox.accessRequested')
+    case 'access_request_decided':
+      return t('notification.inbox.accessDecided')
+    case 'project_role_requested':
+      return t('notification.inbox.roleRequested')
+    case 'project_role_granted':
+      return t('notification.inbox.roleGranted')
+    case 'connector_made_private':
+      return t('notification.inbox.connectorPrivate')
+    default:
+      return item.title
+  }
+}
+
+function composeInbox(items: InboxEvent[], t: Translate): ComposedNotification {
+  // The latest notice is the one to open.
+  const latest = items[items.length - 1]
+  const target: NotificationTarget = {
+    type: 'teler',
+    path: latest?.targetPath ?? '/',
+    organizationId: latest?.organizationId ?? null,
+  }
+  const [only] = items
+  if (only && items.length === 1) {
+    const title = inboxTitle(only, t)
+    return {
+      kind: 'inbox',
+      title,
+      // A sentence built from the type keeps the server's title as the detail; otherwise the
+      // body is all there is to add.
+      body: title === only.title ? (only.body ?? '') : (only.body ?? only.title),
+      target,
+    }
+  }
+  const titles = [...new Set(items.map((item) => inboxTitle(item, t)))]
+  const [first = '', second = ''] = titles
+  return {
+    kind: 'inbox',
+    title: t('notification.inbox.title', { count: items.length }),
+    body:
+      titles.length > 2
+        ? t('notification.inbox.more', { first, second, count: titles.length - 2 })
+        : titles.join(' · '),
+    target,
+  }
+}
+
 /** One notification for a group of events of the same kind. */
 export function composeNotification(
   kind: NotificationKind,
@@ -192,6 +261,11 @@ export function composeNotification(
       ),
       t,
       language
+    )
+  if (kind === 'inbox')
+    return composeInbox(
+      items.filter((item): item is InboxEvent => item.kind === 'inbox'),
+      t
     )
   return composeChats(
     items.filter((item): item is ChatFinishedEvent => item.kind === 'chat-finished'),

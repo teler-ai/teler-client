@@ -7,11 +7,11 @@ import {
 } from 'electron'
 import type { Translate } from './i18n'
 import {
-  badgeToneFor,
   drawBadge,
   drawTemplateMark,
   templateMarkFor,
   toTemplate,
+  trayToneFor,
   type BadgeTone,
 } from './tray-icon'
 import { buildTrayMenu, trayTooltip, type TrayAction, type TrayState } from './tray-menu'
@@ -64,7 +64,7 @@ export class TrayController {
   }
 
   update(state: TrayState, t: Translate): void {
-    const tone = badgeToneFor(state.health)
+    const tone = trayToneFor(state.health, state.activity)
     if (tone !== this.tone) {
       this.tone = tone
       this.tray.setImage(this.image(tone))

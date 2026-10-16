@@ -35,8 +35,9 @@ a sidecar and supervised by the main process; the app never reimplements sync.
   device code with the Teler window's session cookies (`src/main/window-session.ts`, the
   endpoints the `/device` page uses) and keeps only the resulting sync token.
   Window session cookies go only to main-process requests to the auth origin
-  and, for notifications, to two reads on the Teler origin: the chat list
-  (`GET /api/chat`) and the Agent alert feed (`GET /api/alerts/feed`), both in
+  and, for notifications and the tray, to two reads on the Teler origin: the
+  attention read (`GET /api/attention`: what runs and waits for the person) and
+  the Agent alert feed (`GET /api/alerts/feed`), both in
   `src/main/notifications/`; never forward them to the sidecar or a renderer.
   Teler decides who can sync (today every verified account); the app shows
   `not-eligible` when it refuses.

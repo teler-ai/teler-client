@@ -11,6 +11,7 @@ const SOURCES = [
   'problems',
   'chats',
   'alerts',
+  'inbox',
 ] as const satisfies readonly NotificationSetting[]
 
 interface NotificationsSectionProps {

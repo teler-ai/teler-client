@@ -7,6 +7,7 @@ import {
   drawTemplateMark,
   templateMarkFor,
   toTemplate,
+  trayToneFor,
 } from '../../src/main/tray-icon'
 import { buildTrayMenu, trayTooltip, type TrayState } from '../../src/main/tray-menu'
 
@@ -44,9 +45,19 @@ function state(overrides: Partial<TrayState> = {}): TrayState {
       { id: 'org_2', name: 'Beta' },
     ],
     activeOrganizationId: 'org_1',
+    activity: null,
     ...overrides,
   }
 }
+
+const activity = (overrides: Partial<NonNullable<TrayState['activity']>> = {}) => ({
+  runningChats: 0,
+  runningAgents: 0,
+  waitingChats: 0,
+  unreadNotifications: 0,
+  waitingChat: null,
+  ...overrides,
+})
 
 const actions = (items: ReturnType<typeof buildTrayMenu>) =>
   items.flatMap((item) => ('action' in item ? [item.action] : []))
@@ -139,6 +150,37 @@ describe('tray menu', () => {
 
   it('builds a tooltip', () => {
     expect(trayTooltip(state(), t)).toBe('Teler — Up to date')
+    expect(
+      trayTooltip(
+        state({ activity: activity({ runningChats: 2, waitingChats: 1, unreadNotifications: 2 }) }),
+        t
+      )
+    ).toBe('Teler — Up to date · 2 running · 3 waiting for you')
+  })
+
+  it('lists what runs and what waits under the account, each line opening where it is', () => {
+    expect(actions(buildTrayMenu(state({ activity: activity() }), t))).not.toContain('open-waiting')
+    const items = buildTrayMenu(
+      state({
+        activity: activity({
+          runningChats: 1,
+          runningAgents: 2,
+          waitingChats: 1,
+          unreadNotifications: 3,
+          waitingChat: { id: 'chat_1', organizationId: 'org_1' },
+        }),
+      }),
+      t
+    )
+    expect(items.slice(2, 6)).toEqual([
+      { type: 'separator' },
+      { type: 'action', action: 'open-teler', label: 'Chats running: 1' },
+      { type: 'action', action: 'open-agents', label: 'Agents running: 2' },
+      { type: 'action', action: 'open-waiting', label: 'Waiting for you: 4' },
+    ])
+    expect(labels(buildTrayMenu(state({ activity: activity({ runningAgents: 1 }) }), t))).toContain(
+      'Agents running: 1'
+    )
   })
 })
 
@@ -149,6 +191,19 @@ describe('tray icon', () => {
     expect(badgeToneFor('sign-in-required')).toBe('error')
     expect(badgeToneFor('offline')).toBe('warning')
     expect(badgeToneFor('paused')).toBe('muted')
+  })
+
+  it('shows a sync problem first, then what waits for you, then what runs', () => {
+    expect(trayToneFor('up-to-date', null)).toBeNull()
+    expect(trayToneFor('up-to-date', activity({ runningChats: 1 }))).toBe('active')
+    expect(trayToneFor('up-to-date', activity({ unreadNotifications: 1 }))).toBe('attention')
+    expect(trayToneFor('up-to-date', activity({ runningChats: 1, waitingChats: 1 }))).toBe(
+      'attention'
+    )
+    expect(trayToneFor('paused', activity({ runningAgents: 1 }))).toBe('active')
+    expect(trayToneFor('offline', activity({ waitingChats: 1 }))).toBe('warning')
+    expect(trayToneFor('sign-in-required', activity({ runningChats: 1 }))).toBe('error')
+    expect(templateMarkFor('attention')).toBe('dot')
   })
 
   it('draws an opaque dot in the corner and keeps the rest of the icon', () => {

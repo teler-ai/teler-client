@@ -4,6 +4,8 @@ import { pendingFileCount } from './sync-state'
 
 export type TrayAction =
   | 'open-teler'
+  | 'open-agents'
+  | 'open-waiting'
   | 'open-settings'
   | 'sync-folder'
   | 'pause-sync'
@@ -28,9 +30,19 @@ export type TrayState = Pick<
   | 'folders'
   | 'organizations'
   | 'activeOrganizationId'
+  | 'activity'
 > & {
   /** A newer Teler Desktop release. */
   update?: { version: string } | null
+}
+
+/** Finished chats not yet opened and unread notices: what waits for the person. */
+export function waitingCount(activity: TrayState['activity']): number {
+  return activity ? activity.waitingChats + activity.unreadNotifications : 0
+}
+
+function runningCount(activity: TrayState['activity']): number {
+  return activity ? activity.runningChats + activity.runningAgents : 0
 }
 
 const STATUS_KEYS: Record<SyncHealth, MessageKey> = {
@@ -49,9 +61,41 @@ export function trayStatusLabel(state: TrayState, t: Translate): string {
   return t(STATUS_KEYS[state.health], { count: pendingFileCount(state.folders) })
 }
 
-/** The tray tooltip: product name and the current sync state. */
+/** The tray tooltip: product name, the current sync state, and what runs and waits. */
 export function trayTooltip(state: TrayState, t: Translate): string {
-  return `Teler — ${trayStatusLabel(state, t)}`
+  const parts = [trayStatusLabel(state, t)]
+  const running = runningCount(state.activity)
+  const waiting = waitingCount(state.activity)
+  if (running > 0) parts.push(t('tray.tooltip.running', { count: running }))
+  if (waiting > 0) parts.push(t('tray.tooltip.waiting', { count: waiting }))
+  return `Teler — ${parts.join(' · ')}`
+}
+
+/** What runs and what waits, each line opening where it is; nothing when nothing does. */
+function activityItems(state: TrayState, t: Translate): TrayMenuItem[] {
+  const { activity } = state
+  if (!activity) return []
+  const items: TrayMenuItem[] = []
+  if (activity.runningChats > 0)
+    items.push({
+      type: 'action',
+      action: 'open-teler',
+      label: t('tray.running.chats', { count: activity.runningChats }),
+    })
+  if (activity.runningAgents > 0)
+    items.push({
+      type: 'action',
+      action: 'open-agents',
+      label: t('tray.running.agents', { count: activity.runningAgents }),
+    })
+  const waiting = waitingCount(activity)
+  if (waiting > 0)
+    items.push({
+      type: 'action',
+      action: 'open-waiting',
+      label: t('tray.waiting', { count: waiting }),
+    })
+  return items.length > 0 ? [{ type: 'separator' }, ...items] : []
 }
 
 /** The first line: the sync state, which opens Synced folders or (re)connects. */
@@ -81,6 +125,7 @@ export function buildTrayMenu(state: TrayState, t: Translate): TrayMenuItem[] {
   const items: TrayMenuItem[] = [
     statusItem(state, t),
     { type: 'action', action: 'open-teler', label: accountLabel(state, t) },
+    ...activityItems(state, t),
     { type: 'separator' },
     { type: 'action', action: 'sync-folder', label: t('tray.syncFolder') },
   ]

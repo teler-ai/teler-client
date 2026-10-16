@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { chatListSchema, nextChatState } from '../../src/main/notifications/chat-events'
 import { nextSyncState, type SyncRegistrationInput } from '../../src/main/notifications/sync-events'
 
 type FileInput = SyncRegistrationInput['files'][number]
@@ -128,39 +127,5 @@ describe('sync notification events', () => {
         folder('Reports', [ready('a.csv'), { relativePath: 'b.csv', status: 'failed' }]),
       ]).events
     ).toEqual([])
-  })
-})
-
-describe('chat notification events', () => {
-  const chat = (id: string, hasActiveTask: boolean, title = `Chat ${id}`) => ({
-    id,
-    title,
-    hasActiveTask,
-    organizationId: 'org_1',
-  })
-
-  it('announces chats whose turn finished since the last look', () => {
-    const baseline = nextChatState(null, [chat('a', true), chat('b', false)])
-    expect(baseline.finished).toEqual([])
-    const next = nextChatState(baseline.running, [chat('a', false), chat('b', true)])
-    expect(next.finished).toEqual([{ id: 'a', title: 'Chat a', organizationId: 'org_1' }])
-    expect([...next.running.keys()]).toEqual(['b'])
-  })
-
-  it('ignores chats that disappeared and untitled chats get no title', () => {
-    const baseline = nextChatState(null, [chat('a', true), chat('b', true, '')])
-    const next = nextChatState(baseline.running, [chat('b', false, '')])
-    expect(next.finished).toEqual([{ id: 'b', title: null, organizationId: 'org_1' }])
-  })
-
-  it('reads a chat list that includes a chat without an organization', () => {
-    const parsed = chatListSchema.safeParse({
-      chats: [chat('a', false), { ...chat('b', true), organizationId: null, lastMessage: 'hi' }],
-      total: 2,
-    })
-    expect(parsed.success).toBe(true)
-    const baseline = nextChatState(null, parsed.data?.chats ?? [])
-    const next = nextChatState(baseline.running, [{ ...chat('b', false), organizationId: null }])
-    expect(next.finished).toEqual([{ id: 'b', title: 'Chat b', organizationId: null }])
   })
 })
