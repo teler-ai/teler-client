@@ -162,7 +162,7 @@ export async function runAttentionCommand(
       limit: String(limit),
       onlyUnread: String(!all),
     })
-    const { notifications } = await client.json(`/api/notification?${query}`, notificationsSchema)
+    const { notifications } = await client.json(`/api/notifications?${query}`, notificationsSchema)
     if (output.json) return (emitJson(output, { notifications }), true)
     if (notifications.length === 0)
       output.write(all ? 'No notifications.\n' : 'No unread notifications.\n')

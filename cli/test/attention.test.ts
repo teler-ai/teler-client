@@ -257,7 +257,7 @@ describe('teler status, watch, chat seen, agent runs and notifications', () => {
     output = ''
     expect(await main(['notifications', '--org', ORG], deps)).toBe(0)
     const url = new URL(requests.at(-1)?.url ?? '')
-    expect(url.pathname).toBe('/api/notification')
+    expect(url.pathname).toBe('/api/notifications')
     expect(url.searchParams.get('onlyUnread')).toBe('true')
     expect(output).toBe('notif_1\tunread\tagent_completed\t2026-10-16T10:00:03.000Z\tWeekly pace\n')
   })
