@@ -37,6 +37,8 @@ export interface ChatFinishedEvent {
   id: string
   title: string | null
   organizationId: string | null
+  /** The turn stopped to ask the person for an approval that is still open. */
+  awaitingApproval: boolean
 }
 
 /** A notification in Teler (what its bell shows), as the attention read reports it. */

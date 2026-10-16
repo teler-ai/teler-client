@@ -34,8 +34,15 @@ export const finishedChatSchema = z
     taskId: z.string(),
     status: finishedStatusSchema,
     completedAt: z.string(),
+    /** The turn stopped to ask for an approval that is still open; absent on an older Teler. */
+    awaitingApproval: z.boolean().optional(),
   })
   .passthrough()
+
+/** A finished turn's state for people: one waiting for an approval did not finish its work. */
+function finishedState(chat: { status: string; awaitingApproval?: boolean }): string {
+  return chat.awaitingApproval ? 'awaiting_approval' : chat.status
+}
 
 const agentRunFields = {
   id: z.string(),
@@ -231,23 +238,69 @@ export function writeAttention(output: Output, attention: Attention): void {
       `running\tagent\t${run.id}\t${run.status}\t${run.agentLabel ?? run.agentId ?? ''}\n`
     )
   for (const chat of attention.waiting.chats)
-    output.write(`waiting\tchat\t${chat.id}\t${chat.status}\t${chat.title ?? 'Untitled'}\n`)
+    output.write(`waiting\tchat\t${chat.id}\t${finishedState(chat)}\t${chat.title ?? 'Untitled'}\n`)
   for (const item of attention.unreadNotifications)
     if (item.count > 0) output.write(`unread\t${item.organizationId}\t${item.count}\n`)
+}
+
+/**
+ * A notice in plain English. Teler stores a neutral, type-like title for some notices
+ * (`agent_completed`) and leaves the wording to each client; Teler Desktop words the same types
+ * in its own languages.
+ */
+export function noticeText(notice: {
+  type: string
+  title: string
+  agentLabel?: string | null
+}): string {
+  const agent = notice.agentLabel ?? 'An Agent'
+  switch (notice.type) {
+    case 'agent_completed':
+      return `${agent} finished`
+    case 'agent_failed':
+      return `${agent} failed`
+    case 'schedule_needs_approval':
+    case 'schedule_held':
+    case 'schedule_needs_run':
+    case 'dashboard_needs_approval':
+      return `${notice.title} needs your approval`
+    case 'schedule_run_failed':
+      return `A scheduled run of ${notice.title} failed`
+    case 'schedule_stopped':
+    case 'schedule_input_stopped':
+      return `The schedule of ${notice.title} stopped`
+    case 'schedule_spend_expiring':
+      return `The spending approval of ${notice.title} expires soon`
+    case 'access_requested':
+      return 'Someone asked you for access'
+    case 'access_request_decided':
+      return 'Your access request was answered'
+    case 'project_role_requested':
+      return 'Someone asked for a project role'
+    case 'project_role_granted':
+      return 'You have a new project role'
+    case 'connector_made_private':
+      return 'A connection was made private'
+    default:
+      return notice.title
+  }
 }
 
 function eventLine(event: AttentionEvent): string {
   switch (event.type) {
     case 'chat.started':
-    case 'chat.finished':
       return `${event.type}\t${event.data.id}\t${event.data.status}\t${event.data.title ?? 'Untitled'}`
+    case 'chat.finished':
+      return `${event.type}\t${event.data.id}\t${finishedState(event.data)}\t${
+        event.data.title ?? 'Untitled'
+      }`
     case 'agent_run.started':
     case 'agent_run.finished':
       return `${event.type}\t${event.data.id}\t${event.data.status}\t${
         event.data.agentLabel ?? event.data.agentId ?? ''
       }`
     case 'notification':
-      return `${event.type}\t${event.data.id}\t${event.data.type}\t${event.data.title}`
+      return `${event.type}\t${event.data.id}\t${event.data.type}\t${noticeText(event.data)}`
   }
 }
 

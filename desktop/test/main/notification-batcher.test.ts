@@ -84,8 +84,20 @@ describe('notification copy and targets', () => {
     const chats = composeNotification(
       'chats',
       [
-        { kind: 'chat-finished', id: 'chat_1', title: 'Q3 revenue', organizationId: 'org_1' },
-        { kind: 'chat-finished', id: 'chat_2', title: null, organizationId: 'org_1' },
+        {
+          kind: 'chat-finished',
+          id: 'chat_1',
+          title: 'Q3 revenue',
+          organizationId: 'org_1',
+          awaitingApproval: false,
+        },
+        {
+          kind: 'chat-finished',
+          id: 'chat_2',
+          title: null,
+          organizationId: 'org_1',
+          awaitingApproval: false,
+        },
       ],
       t
     )
@@ -98,7 +110,15 @@ describe('notification copy and targets', () => {
     expect(
       composeNotification(
         'chats',
-        [{ kind: 'chat-finished', id: 'chat_1', title: 'Q3 revenue', organizationId: 'org_1' }],
+        [
+          {
+            kind: 'chat-finished',
+            id: 'chat_1',
+            title: 'Q3 revenue',
+            organizationId: 'org_1',
+            awaitingApproval: false,
+          },
+        ],
         t
       )
     ).toMatchObject({
@@ -153,7 +173,13 @@ describe('notification batching', () => {
   it('keeps kinds apart and drops what is pending when cleared', () => {
     const { value, delivered } = batcher()
     value.add('files', file('a.csv'))
-    value.add('chats', { kind: 'chat-finished', id: 'c', title: null, organizationId: 'o' })
+    value.add('chats', {
+      kind: 'chat-finished',
+      id: 'c',
+      title: null,
+      organizationId: 'o',
+      awaitingApproval: false,
+    })
     vi.advanceTimersByTime(2_000)
     expect(delivered).toEqual([{ kind: 'chats', count: 1 }])
     value.clear()

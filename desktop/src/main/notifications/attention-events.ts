@@ -51,6 +51,7 @@ export function toNotificationEvents(events: AttentionEvent[]): {
         id: event.data.id,
         title: event.data.title || null,
         organizationId: event.data.organizationId,
+        awaitingApproval: event.data.awaitingApproval ?? false,
       })
     else if (event.type === 'notification' && !INBOX_SKIPPED_TYPES.has(event.data.type))
       inbox.push({

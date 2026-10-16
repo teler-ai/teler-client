@@ -92,16 +92,25 @@ function composeProblems(items: FolderAttentionEvent[], t: Translate): ComposedN
   }
 }
 
+/** A turn that stopped for an approval did not finish its work: it asks for the answer. */
+function chatsTitle(items: ChatFinishedEvent[], t: Translate): string {
+  const awaiting = items.filter((item) => item.awaitingApproval).length
+  if (items.length === 1)
+    return t(awaiting ? 'notification.chat.approvalTitle' : 'notification.chat.title')
+  if (awaiting === items.length)
+    return t('notification.chats.approvalTitle', { count: items.length })
+  return awaiting > 0
+    ? t('notification.chats.waiting', { count: items.length })
+    : t('notification.chats.title', { count: items.length })
+}
+
 function composeChats(items: ChatFinishedEvent[], t: Translate): ComposedNotification {
   // The latest chat is the one to open.
   const latest = items[items.length - 1]
   const titled = items.find((item) => item.title)?.title ?? t('notification.chat.untitled')
   return {
     kind: 'chats',
-    title:
-      items.length === 1
-        ? t('notification.chat.title')
-        : t('notification.chats.title', { count: items.length }),
+    title: chatsTitle(items, t),
     body:
       items.length === 1
         ? (latest?.title ?? t('notification.chat.untitled'))

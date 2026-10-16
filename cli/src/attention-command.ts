@@ -6,7 +6,7 @@ import { resolveChatId } from './chat-id'
 import { assertNoFlags, parseLimit, takeFlag, takeOption } from './command-args'
 import { emitJson, resolveOrganizationId } from './command-output'
 import { UsageError } from './errors'
-import { readAttention, watchAttention, writeAttention } from './attention'
+import { noticeText, readAttention, watchAttention, writeAttention } from './attention'
 
 const STATUS_USAGE = 'Usage: teler status [--org <id>] [--json]'
 const WATCH_USAGE =
@@ -44,6 +44,7 @@ const notificationsSchema = z.object({
         type: z.string(),
         title: z.string(),
         body: z.string().nullable(),
+        agentLabel: z.string().nullable().optional(),
         read: z.boolean(),
         createdAt: z.string(),
       })
@@ -170,7 +171,7 @@ export async function runAttentionCommand(
       output.write(
         `${notification.id}\t${notification.read ? 'read' : 'unread'}\t${notification.type}\t${
           notification.createdAt
-        }\t${notification.title}\n`
+        }\t${noticeText(notification)}\n`
       )
     return true
   }

@@ -3,8 +3,11 @@ import { TelerApiClient } from '../src/api'
 import {
   AttentionTracker,
   attentionSchema,
+  noticeText,
   summarizeAttention,
   watchAttention,
+  writeAttention,
+  writeAttentionEvent,
   type Attention,
 } from '../src/attention'
 import type { CredentialStore } from '../src/credentials'
@@ -86,6 +89,55 @@ describe('AttentionTracker', () => {
       notifications: [notice('notif_1')],
     })
     expect(tracker.next(third)).toEqual([{ type: 'chat.finished', data: finishedChat('atask_2') }])
+  })
+})
+
+describe('noticeText', () => {
+  it("words a notice by its type rather than showing Teler's neutral title", () => {
+    const stored = { type: 'agent_completed', title: 'agent_completed', agentLabel: 'Weekly pace' }
+    expect(noticeText(stored)).toBe('Weekly pace finished')
+    expect(noticeText({ ...stored, type: 'agent_failed', title: 'agent_failed' })).toBe(
+      'Weekly pace failed'
+    )
+    expect(noticeText({ ...stored, agentLabel: null })).toBe('An Agent finished')
+    expect(noticeText({ type: 'schedule_stopped', title: 'Monday report', agentLabel: null })).toBe(
+      'The schedule of Monday report stopped'
+    )
+    expect(
+      noticeText({ type: 'access_requested', title: 'Access requested', agentLabel: null })
+    ).toBe('Someone asked you for access')
+    expect(noticeText({ type: 'brand_new', title: 'Something new', agentLabel: null })).toBe(
+      'Something new'
+    )
+  })
+
+  it('is what watch prints for a new notice', () => {
+    let line = ''
+    writeAttentionEvent(
+      { json: false, metadataOnly: false, write: (text) => (line += text) },
+      { type: 'notification', data: { ...notice('notif_1'), title: 'agent_completed' } },
+      new Date('2026-10-16T10:00:04.000Z')
+    )
+    expect(line).toBe('10:00:04\tnotification\tnotif_1\tagent_completed\tWeekly pace finished\n')
+  })
+})
+
+describe('a turn that stopped for an approval', () => {
+  it('shows as waiting for approval, not as completed, in status and watch', () => {
+    const waiting = { ...finishedChat('atask_1'), awaitingApproval: true }
+    let text = ''
+    const output = { json: false, metadataOnly: false, write: (chunk: string) => (text += chunk) }
+    writeAttention(output, attention({ waiting: { chats: [waiting] } }))
+    expect(text).toBe(
+      `Nothing running; 1 chat waiting for you.\nwaiting\tchat\t${CHAT}\tawaiting_approval\tSales by region\n`
+    )
+    text = ''
+    writeAttentionEvent(
+      output,
+      { type: 'chat.finished', data: waiting },
+      new Date('2026-10-16T10:00:06.000Z')
+    )
+    expect(text).toBe(`10:00:06\tchat.finished\t${CHAT}\tawaiting_approval\tSales by region\n`)
   })
 })
 
@@ -233,8 +285,10 @@ describe('teler status, watch, chat seen, agent runs and notifications', () => {
             {
               id: 'notif_1',
               type: 'agent_completed',
-              title: 'Weekly pace',
+              // Teler stores a neutral, type-like title and leaves the wording to each client.
+              title: 'agent_completed',
               body: null,
+              agentLabel: 'Weekly pace',
               read: false,
               createdAt: '2026-10-16T10:00:03.000Z',
             },
@@ -259,6 +313,8 @@ describe('teler status, watch, chat seen, agent runs and notifications', () => {
     const url = new URL(requests.at(-1)?.url ?? '')
     expect(url.pathname).toBe('/api/notifications')
     expect(url.searchParams.get('onlyUnread')).toBe('true')
-    expect(output).toBe('notif_1\tunread\tagent_completed\t2026-10-16T10:00:03.000Z\tWeekly pace\n')
+    expect(output).toBe(
+      'notif_1\tunread\tagent_completed\t2026-10-16T10:00:03.000Z\tWeekly pace finished\n'
+    )
   })
 })

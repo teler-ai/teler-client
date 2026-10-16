@@ -4,7 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DesktopActivity, NotificationSettings } from '../../src/shared/desktop-api'
 import { createTranslator } from '../../src/main/i18n'
 import { composeNotification } from '../../src/main/notifications/compose'
-import type { InboxEvent, NotificationTarget } from '../../src/main/notifications/types'
+import type {
+  ChatFinishedEvent,
+  InboxEvent,
+  NotificationTarget,
+} from '../../src/main/notifications/types'
 
 const shown: Array<EventEmitter & { options: { title: string; body: string } }> = []
 vi.mock('electron', async () => {
@@ -182,6 +186,35 @@ describe('inbox notification copy', () => {
   })
 })
 
+describe('chat notification copy', () => {
+  const chat = (
+    id: string,
+    awaitingApproval: boolean,
+    title: string | null = 'Sales'
+  ): ChatFinishedEvent => ({
+    kind: 'chat-finished',
+    id,
+    title,
+    organizationId: 'org_a',
+    awaitingApproval,
+  })
+
+  it('asks for an approval rather than saying Teler finished', () => {
+    expect(composeNotification('chats', [chat('chat_1', true)], t)).toMatchObject({
+      title: 'Teler needs your approval',
+      body: 'Sales',
+    })
+    expect(
+      composeNotification('chats', [chat('chat_1', true), chat('chat_2', true, 'Costs')], t)
+    ).toMatchObject({ title: 'Teler needs your approval in 2 chats', body: 'Sales and 1 more' })
+    // Some finished and some wait for an answer: each of them waits for the person.
+    expect(
+      composeNotification('chats', [chat('chat_1', false), chat('chat_2', true, 'Costs')], t)
+    ).toMatchObject({ title: '2 chats waiting for you', body: 'Sales and 1 more' })
+    expect(composeNotification('chats', [chat('chat_1', false)], t).title).toBe('Teler finished')
+  })
+})
+
 describe('attention notifications', () => {
   beforeEach(() => {
     vi.useFakeTimers()
@@ -231,6 +264,23 @@ describe('attention notifications', () => {
     // The overlap repeats the finished turn: it is not announced again.
     await vi.advanceTimersByTimeAsync(23_000)
     expect(shown).toHaveLength(1)
+    notifications.stop()
+  })
+
+  it('says a turn that stopped for an approval needs it', async () => {
+    const { notifications } = setup([
+      attention(),
+      attention({
+        cursor: '2026-10-16T10:00:20.000Z',
+        finished: {
+          chats: [{ ...finishedChat('atask_1'), awaitingApproval: true }],
+          agentRuns: [],
+        },
+      }),
+    ])
+    notifications.start(session)
+    await vi.advanceTimersByTimeAsync(33_000)
+    expect(shown.map((item) => item.options.title)).toEqual(['Teler needs your approval'])
     notifications.stop()
   })
 
