@@ -191,7 +191,7 @@
   },
   "notifications": {
     "title": "Benachrichtigungen",
-    "foregroundNote": "Werden nicht angezeigt, solange Teler im Vordergrund ist.",
+    "foregroundNote": "Nicht angezeigt für das, was Sie in Teler geöffnet haben.",
     "files": "Dateien bereit",
     "filesHint": "Wenn Dateien in Teler bereit sind, gebündelt.",
     "folders": "Ordner synchronisiert",
@@ -202,6 +202,8 @@
     "chatsHint": "Wenn Teler eine Antwort in einem Chat abschließt.",
     "alerts": "Agenten-Meldungen",
     "alertsHint": "Wenn ein Agent Sie alarmiert und wenn wieder alles normal ist.",
+    "inbox": "Benachrichtigungen in Teler",
+    "inboxHint": "Was die Glocke in Teler zeigt: Agenten-Ergebnisse, Zeitpläne, Zugriffsanfragen.",
     "sound": "Ton abspielen",
     "soundHint": "Verwendet den Benachrichtigungston Ihres Systems.",
     "soundUnavailable": "Schalten Sie oben eine Benachrichtigung ein, um einen Ton abzuspielen."

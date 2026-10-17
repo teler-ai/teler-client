@@ -14,6 +14,7 @@
     ".": "./src/lib.ts",
     "./cli": "./src/index.ts",
     "./releases": "./src/releases.ts",
+    "./attention": "./src/attention.ts",
     "./package.json": "./package.json"
   },
   "scripts": {

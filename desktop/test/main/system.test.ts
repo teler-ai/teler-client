@@ -117,6 +117,7 @@ describe('preferences', () => {
         problems: true,
         chats: true,
         alerts: true,
+        inbox: true,
         sound: true,
       },
     })
@@ -132,6 +133,7 @@ describe('preferences', () => {
         problems: true,
         chats: true,
         alerts: true,
+        inbox: true,
         sound: true,
       },
     })
@@ -154,6 +156,7 @@ describe('preferences', () => {
         problems: true,
         chats: true,
         alerts: true,
+        inbox: true,
         sound: true,
       },
     })
@@ -218,6 +221,7 @@ describe('local pages', () => {
       problems: true,
       chats: false,
       alerts: true,
+      inbox: true,
       sound: true,
     })
   })

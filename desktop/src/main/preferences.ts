@@ -56,6 +56,7 @@ const settingsSchema = z.object({
       problems: z.boolean().default(true),
       chats: z.boolean().default(true),
       alerts: z.boolean().default(true),
+      inbox: z.boolean().default(true),
       sound: z.boolean().default(true),
     })
     .default({
@@ -64,6 +65,7 @@ const settingsSchema = z.object({
       problems: true,
       chats: true,
       alerts: true,
+      inbox: true,
       sound: true,
     }),
 })
@@ -81,6 +83,7 @@ const DEFAULT_SETTINGS: DesktopSettings = {
     problems: true,
     chats: true,
     alerts: true,
+    inbox: true,
     sound: true,
   },
 }

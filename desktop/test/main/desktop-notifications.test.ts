@@ -29,6 +29,7 @@ const SETTINGS = {
   problems: true,
   chats: true,
   alerts: true,
+  inbox: true,
   sound: true,
 }
 
@@ -49,9 +50,10 @@ function setup(
     settings: () => settings,
     translate: () => (key) => key,
     language: () => 'en',
-    isForeground: () => false,
+    onScreen: () => false,
     showTeler,
     openSettings: vi.fn(),
+    onActivity: vi.fn(),
   })
   return { notifications, requests, showTeler }
 }

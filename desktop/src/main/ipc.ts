@@ -20,7 +20,7 @@ const folderSchema = z.object({
 })
 const pathSchema = z.string().startsWith('/').max(2048).optional()
 const notificationSettingSchema = z.tuple([
-  z.enum(['files', 'folders', 'problems', 'chats', 'alerts', 'sound']),
+  z.enum(['files', 'folders', 'problems', 'chats', 'alerts', 'inbox', 'sound']),
   z.boolean(),
 ])
 

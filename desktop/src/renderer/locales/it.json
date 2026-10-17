@@ -191,7 +191,7 @@
   },
   "notifications": {
     "title": "Notifiche",
-    "foregroundNote": "Non vengono mostrate mentre Teler è in primo piano.",
+    "foregroundNote": "Non mostrate per ciò che hai aperto in Teler.",
     "files": "File pronti",
     "filesHint": "Quando ci sono file pronti in Teler, raggruppati.",
     "folders": "Cartella sincronizzata",
@@ -202,6 +202,8 @@
     "chatsHint": "Quando Teler finisce di rispondere in una chat.",
     "alerts": "Avvisi degli agenti",
     "alertsHint": "Quando un agente ti avvisa e quando torna alla normalità.",
+    "inbox": "Notifiche in Teler",
+    "inboxHint": "Ciò che mostra la campanella di Teler: risultati degli agenti, pianificazioni, richieste di accesso.",
     "sound": "Riproduci un suono",
     "soundHint": "Usa il suono di notifica del sistema.",
     "soundUnavailable": "Attiva una notifica qui sopra per riprodurre un suono."

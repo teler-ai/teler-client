@@ -8,6 +8,7 @@ import type {
   FileReadyEvent,
   FolderAttentionEvent,
   FolderSyncedEvent,
+  InboxEvent,
   NotificationEvent,
   NotificationKind,
   NotificationTarget,
@@ -91,16 +92,25 @@ function composeProblems(items: FolderAttentionEvent[], t: Translate): ComposedN
   }
 }
 
+/** A turn that stopped for an approval did not finish its work: it asks for the answer. */
+function chatsTitle(items: ChatFinishedEvent[], t: Translate): string {
+  const awaiting = items.filter((item) => item.awaitingApproval).length
+  if (items.length === 1)
+    return t(awaiting ? 'notification.chat.approvalTitle' : 'notification.chat.title')
+  if (awaiting === items.length)
+    return t('notification.chats.approvalTitle', { count: items.length })
+  return awaiting > 0
+    ? t('notification.chats.waiting', { count: items.length })
+    : t('notification.chats.title', { count: items.length })
+}
+
 function composeChats(items: ChatFinishedEvent[], t: Translate): ComposedNotification {
   // The latest chat is the one to open.
   const latest = items[items.length - 1]
   const titled = items.find((item) => item.title)?.title ?? t('notification.chat.untitled')
   return {
     kind: 'chats',
-    title:
-      items.length === 1
-        ? t('notification.chat.title')
-        : t('notification.chats.title', { count: items.length }),
+    title: chatsTitle(items, t),
     body:
       items.length === 1
         ? (latest?.title ?? t('notification.chat.untitled'))
@@ -163,6 +173,68 @@ function composeAlerts(
   }
 }
 
+/** The sentence of one notice in Teler, by its type; the server's title is the subject. */
+function inboxTitle(item: InboxEvent, t: Translate): string {
+  const agent = item.agentLabel ?? t('notification.inbox.agent')
+  switch (item.type) {
+    case 'agent_completed':
+      return t('notification.inbox.agentCompleted', { agent })
+    case 'agent_failed':
+      return t('notification.inbox.agentFailed', { agent })
+    case 'schedule_needs_approval':
+    case 'schedule_held':
+    case 'schedule_needs_run':
+    case 'dashboard_needs_approval':
+      return t('notification.inbox.needsApproval', { title: item.title })
+    case 'schedule_run_failed':
+      return t('notification.inbox.scheduleRunFailed', { title: item.title })
+    case 'schedule_stopped':
+    case 'schedule_input_stopped':
+      return t('notification.inbox.scheduleStopped', { title: item.title })
+    case 'schedule_spend_expiring':
+      return t('notification.inbox.scheduleSpendExpiring', { title: item.title })
+    case 'access_requested':
+      return t('notification.inbox.accessRequested')
+    case 'access_request_decided':
+      return t('notification.inbox.accessDecided')
+    case 'project_role_requested':
+      return t('notification.inbox.roleRequested')
+    case 'project_role_granted':
+      return t('notification.inbox.roleGranted')
+    case 'connector_made_private':
+      return t('notification.inbox.connectorPrivate')
+    default:
+      return item.title
+  }
+}
+
+function composeInbox(items: InboxEvent[], t: Translate): ComposedNotification {
+  // The latest notice is the one to open.
+  const latest = items[items.length - 1]
+  const target: NotificationTarget = {
+    type: 'teler',
+    path: latest?.targetPath ?? '/',
+    organizationId: latest?.organizationId ?? null,
+  }
+  const [only] = items
+  if (only && items.length === 1) {
+    // Teler stores a neutral, type-like title and leaves the wording to each client, so only
+    // the body is ever added as detail; a sentence built from the type already names its subject.
+    return { kind: 'inbox', title: inboxTitle(only, t), body: only.body ?? '', target }
+  }
+  const titles = [...new Set(items.map((item) => inboxTitle(item, t)))]
+  const [first = '', second = ''] = titles
+  return {
+    kind: 'inbox',
+    title: t('notification.inbox.title', { count: items.length }),
+    body:
+      titles.length > 2
+        ? t('notification.inbox.more', { first, second, count: titles.length - 2 })
+        : titles.join(' · '),
+    target,
+  }
+}
+
 /** One notification for a group of events of the same kind. */
 export function composeNotification(
   kind: NotificationKind,
@@ -192,6 +264,11 @@ export function composeNotification(
       ),
       t,
       language
+    )
+  if (kind === 'inbox')
+    return composeInbox(
+      items.filter((item): item is InboxEvent => item.kind === 'inbox'),
+      t
     )
   return composeChats(
     items.filter((item): item is ChatFinishedEvent => item.kind === 'chat-finished'),
