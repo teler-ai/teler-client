@@ -11,6 +11,7 @@ const SWITCHES = [
   ['problems', 'Files need attention', /When files need attention/],
   ['chats', 'Chat answered', /finishes answering in a chat/],
   ['alerts', 'Agent alerts', /When an Agent alerts you, and when it.s back to normal/],
+  ['inbox', 'Notifications in Teler', /What Teler.s bell shows/],
   ['sound', 'Play a sound', /system's notification sound/],
 ] as const
 
@@ -20,6 +21,7 @@ const allOff: NotificationSettings = {
   problems: false,
   chats: false,
   alerts: false,
+  inbox: false,
   sound: true,
 }
 
@@ -28,9 +30,11 @@ function notificationsSection() {
 }
 
 describe('notifications', () => {
-  it('says notifications stay hidden while Teler is in front', async () => {
+  it('says notifications stay hidden for what is open in Teler', async () => {
     await renderApp()
-    expect(notificationsSection().getByText('Not shown while Teler is in front.')).toBeVisible()
+    expect(
+      notificationsSection().getByText('Not shown for what you have open in Teler.')
+    ).toBeVisible()
   })
 
   it.each(SWITCHES)('turns %s notifications off and on', async (setting, name, hint) => {
@@ -59,6 +63,7 @@ describe('notifications', () => {
           problems: false,
           chats: true,
           alerts: true,
+          inbox: false,
           sound: false,
         },
       })

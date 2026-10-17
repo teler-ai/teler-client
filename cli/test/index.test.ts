@@ -311,8 +311,14 @@ describe('teler command parser', () => {
         writeOut: (text) => {
           output += text
         },
-        fetch: async (_url, init) => {
+        fetch: async (url, init) => {
           requestCount += 1
+          // Once the turn is printed in full, the chat is marked seen.
+          if (init?.method === 'POST')
+            return Response.json({
+              chatId: url.split('/')[5],
+              lastViewedAt: '2026-10-16T10:00:00.000Z',
+            })
           if (requestCount === 1) {
             expect(new Headers(init?.headers).has('Last-Event-ID')).toBe(false)
             return new Response(
@@ -332,7 +338,7 @@ describe('teler command parser', () => {
     )
 
     expect(exitCode).toBe(0)
-    expect(requestCount).toBe(2)
+    expect(requestCount).toBe(3)
     expect(output).toBe('Part one. Part two.\n')
   })
 

@@ -76,6 +76,27 @@ An upload emits `{ jobId, status }` as soon as byte transfer is accepted. With
 keep the first receipt and resume with `upload status`; the accepted upload
 continues on the server.
 
+## What runs and what waits for you
+
+```sh
+teler status --org <org-id>                 # running chats and Agents, unseen finished chats, unread notices
+teler watch --org <org-id> --interval 15    # one line per turn, run or notice that starts or ends
+teler watch --json --timeout 600            # NDJSON: a `status` record, then `chat.started`,
+                                            # `chat.finished`, `agent_run.started`, `agent_run.finished`,
+                                            # `notification` events
+teler chat seen <chat-id>                   # the finished turn no longer waits for you
+teler agent runs --org <org-id> --active    # the member's Agent runs (`--agent <id>` filters)
+teler notifications --org <org-id> [--all]  # the unread notifications of one organization
+```
+
+`status` and `watch` read `GET /api/attention`, one cheap owner-scoped read. `watch` reads every
+15 s (5 s while something runs) and passes the previous cursor as `since`, so a turn that starts
+and ends between two reads is still reported; nothing is reported twice. `send --wait` and
+`task watch` mark the chat seen once they have printed its result, except with `--metadata-only`.
+A turn that stopped to ask for your approval shows the state `awaiting_approval` instead of
+`completed` (`awaitingApproval: true` in JSON) until you answer it or the approval expires.
+A server without this read answers 404: update it first.
+
 ## Personal Knowledge
 
 Every `memory` command accepts `--org <org-id>` to select the organization.

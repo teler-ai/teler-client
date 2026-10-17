@@ -191,7 +191,7 @@
   },
   "notifications": {
     "title": "Notificacions",
-    "foregroundNote": "No es mostren mentre Teler és al davant.",
+    "foregroundNote": "No es mostren per al que tens obert a Teler.",
     "files": "Fitxers a punt",
     "filesHint": "Quan hi ha fitxers a punt a Teler, agrupats.",
     "folders": "Carpeta sincronitzada",
@@ -202,6 +202,8 @@
     "chatsHint": "Quan Teler acaba de respondre en un xat.",
     "alerts": "Alertes d’agents",
     "alertsHint": "Quan un agent t’avisa i quan torna a la normalitat.",
+    "inbox": "Notificacions a Teler",
+    "inboxHint": "El que mostra la campana de Teler: resultats d’agents, programacions, sol·licituds d’accés.",
     "sound": "Reprodueix un so",
     "soundHint": "Fa servir el so de notificació del sistema.",
     "soundUnavailable": "Activa una notificació de dalt per reproduir un so."

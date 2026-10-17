@@ -74,7 +74,7 @@ export interface ProblemFile {
 
 /**
  * Desktop notifications, by source, and whether they play the OS sound. None
- * show while a Teler window is in the foreground.
+ * shows for what the person has open in a focused Teler window.
  */
 export interface NotificationSettings {
   /** Files that are ready in Teler, new or updated (grouped). */
@@ -87,7 +87,22 @@ export interface NotificationSettings {
   chats: boolean
   /** An Agent alert that opened, or went back to normal. */
   alerts: boolean
+  /** A notification in Teler: an Agent result, a schedule that stopped, an access request. */
+  inbox: boolean
   sound: boolean
+}
+
+/** What of the person's work runs and waits for them, as the tray shows it. */
+export interface DesktopActivity {
+  runningChats: number
+  runningAgents: number
+  /** Chats whose finished turn the person has not opened yet. */
+  waitingChats: number
+  unreadNotifications: number
+  /** The most recently started running chat, to open from the tray. */
+  runningChat: { id: string; organizationId: string | null } | null
+  /** The most recently finished unseen chat, to open from the tray. */
+  waitingChat: { id: string; organizationId: string | null } | null
 }
 
 export type NotificationSetting = keyof NotificationSettings
@@ -202,6 +217,8 @@ export interface DesktopState {
   /** The organization open in the Teler window, when known. */
   activeOrganizationId: string | null
   notifications: NotificationSettings
+  /** Null until the first attention read, and while signed out. */
+  activity: DesktopActivity | null
 }
 
 export interface FolderPreview {

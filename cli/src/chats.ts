@@ -65,6 +65,17 @@ function emitValue(output: Output, value: unknown): void {
   output.write(`${JSON.stringify(value, null, output.json ? undefined : 2)}\n`)
 }
 
+const seenSchema = z.object({ chatId: chatIdSchema, lastViewedAt: z.string() })
+
+/** The person saw the chat's result: its finished turn no longer waits for them anywhere. */
+export async function markChatSeen(
+  client: TelerApiClient,
+  chatId: string,
+  signal?: AbortSignal
+): Promise<z.infer<typeof seenSchema>> {
+  return client.json(`/api/chat/${chatId}/seen`, seenSchema, { method: 'POST', signal })
+}
+
 export async function listChats(client: TelerApiClient, output: Output, limit = 20) {
   const result = await client.json(`/api/chat?limit=${limit}&offset=0`, listSchema)
   if (output.json) return emitValue(output, result)
@@ -174,14 +185,31 @@ export async function sendMessage(
     const accepted = acceptedResult.data
     if (output.json) emitValue(output, { type: 'turn.accepted', data: { chatId, ...accepted } })
     else output.write(`Task ${accepted.taskId} accepted for ${chatId}.\n`)
-    if (options.wait)
+    if (options.wait) {
       await watchTask(client, output, chatId, accepted.taskId, options.signal, {
         messageId: accepted.messageId,
       })
+      await markSeenQuietly(client, output, chatId, options.signal)
+    }
     return
   }
   const streamed = await streamResponse(response, output)
   if (options.wait && streamed.taskId) {
     await watchTask(client, output, chatId, streamed.taskId, options.signal, streamed)
+    await markSeenQuietly(client, output, chatId, options.signal)
   } else if (!output.json) output.write('\n')
+}
+
+/**
+ * A watched turn was printed in full: the chat counts as seen. Metadata-only automation saw no
+ * content, so it marks nothing. Best effort, never fatal.
+ */
+export async function markSeenQuietly(
+  client: TelerApiClient,
+  output: Output,
+  chatId: string,
+  signal?: AbortSignal
+): Promise<void> {
+  if (output.metadataOnly) return
+  await markChatSeen(client, chatId, signal).catch(() => undefined)
 }

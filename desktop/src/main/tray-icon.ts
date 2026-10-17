@@ -1,16 +1,33 @@
-import type { SyncHealth } from '../shared/desktop-api'
+import type { DesktopActivity, SyncHealth } from '../shared/desktop-api'
 
 /**
  * Tray icons are derived at runtime from the app icon, so no per-state image
- * assets are needed. Electron bitmaps are 32-bit BGRA rows.
+ * assets are needed. Electron bitmaps are 32-bit BGRA rows. `attention` is a
+ * finished chat or a notice waiting for the person; `active` is work running.
  */
-export type BadgeTone = 'active' | 'warning' | 'error' | 'muted'
+export type BadgeTone = 'active' | 'attention' | 'warning' | 'error' | 'muted'
 
 const TONE_RGB: Record<BadgeTone, readonly [number, number, number]> = {
   active: [37, 99, 235],
+  attention: [22, 163, 74],
   warning: [217, 119, 6],
   error: [220, 38, 38],
   muted: [100, 116, 139],
+}
+
+/**
+ * The icon's state: a sync problem first, then what waits for the person, then what runs
+ * (which also covers syncing), then the quieter sync states.
+ */
+export function trayToneFor(
+  health: SyncHealth,
+  activity: DesktopActivity | null
+): BadgeTone | null {
+  const sync = badgeToneFor(health)
+  if (sync === 'error' || sync === 'warning') return sync
+  if (activity && activity.waitingChats + activity.unreadNotifications > 0) return 'attention'
+  if (activity && activity.runningChats + activity.runningAgents > 0) return 'active'
+  return sync
 }
 
 export function badgeToneFor(health: SyncHealth): BadgeTone | null {
@@ -69,6 +86,7 @@ export function templateMarkFor(tone: BadgeTone | null): TemplateMark {
   if (tone === null) return 'none'
   if (tone === 'active') return 'ring'
   if (tone === 'muted') return 'dim'
+  // Attention, warning and error: something to look at.
   return 'dot'
 }
 

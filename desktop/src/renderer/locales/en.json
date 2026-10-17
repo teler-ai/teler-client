@@ -191,7 +191,7 @@
   },
   "notifications": {
     "title": "Notifications",
-    "foregroundNote": "Not shown while Teler is in front.",
+    "foregroundNote": "Not shown for what you have open in Teler.",
     "files": "Files ready",
     "filesHint": "When files are ready in Teler, grouped together.",
     "folders": "Folder synced",
@@ -202,6 +202,8 @@
     "chatsHint": "When Teler finishes answering in a chat.",
     "alerts": "Agent alerts",
     "alertsHint": "When an Agent alerts you, and when it’s back to normal.",
+    "inbox": "Notifications in Teler",
+    "inboxHint": "What Teler’s bell shows: Agent results, schedules, access requests.",
     "sound": "Play a sound",
     "soundHint": "Uses your system's notification sound.",
     "soundUnavailable": "Turn on a notification above to play a sound."

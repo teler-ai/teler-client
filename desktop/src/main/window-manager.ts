@@ -4,6 +4,7 @@ import { DESKTOP_CHANNELS, type DesktopState, type SyncTarget } from '../shared/
 import { windowIcon, type ThemeSurface } from './branding'
 import type { Translate } from './i18n'
 import { MainFrame } from './main-frame'
+import type { NotificationTarget } from './notifications/types'
 import { isTelerPage, parseSyncFolderAction } from './sync-target'
 
 /** A file in the bundled app (`dist/`), inside the asar archive when packaged. */
@@ -108,6 +109,24 @@ export class WindowManager {
   /** Matches the window backgrounds to the current theme. */
   applySurface(): void {
     if (this.main && !this.main.window.isDestroyed()) this.main.applySurface(this.options.surface())
+  }
+
+  /**
+   * Whether a focused main window shows the target: the Synced folders page, or the Teler page
+   * at that path. Notifications about it would tell the person what they are looking at.
+   */
+  isShowing(target: NotificationTarget): boolean {
+    if (!this.main || this.main.window.isDestroyed()) return false
+    if (BaseWindow.getFocusedWindow() !== this.main.window) return false
+    if (target.type === 'synced-folders') return this.main.view === 'sync'
+    if (this.main.view !== 'teler') return false
+    try {
+      const shown = new URL(this.main.contents.getURL())
+      const wanted = new URL(target.path, this.options.origin)
+      return shown.origin === this.options.origin && shown.pathname === wanted.pathname
+    } catch {
+      return false
+    }
   }
 
   /** The page shown in the focused window: the main window's page, or a popup's. */

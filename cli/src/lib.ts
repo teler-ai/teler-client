@@ -5,7 +5,15 @@
  */
 export { resolveApiUrl, TelerApiClient, type FetchLike } from './api'
 export { authStatus, loginWithDeviceFile } from './auth'
-export { sendMessage, watchTask } from './chats'
+export { markChatSeen, sendMessage, watchTask } from './chats'
+export {
+  AttentionTracker,
+  attentionSchema,
+  readAttention,
+  watchAttention,
+  type Attention,
+  type AttentionEvent,
+} from './attention'
 export { assertNoFlags, takeFlag, takeOption } from './command-args'
 export {
   createConfiguredCredentialStore,

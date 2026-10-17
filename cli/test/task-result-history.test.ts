@@ -54,6 +54,8 @@ describe('historical task reconciliation', () => {
         const parsed = new URL(url)
         requests.push(parsed)
         if (parsed.pathname.endsWith('/stream')) return completedStream()
+        if (parsed.pathname.endsWith('/seen'))
+          return Response.json({ chatId: CHAT, lastViewedAt: '2026-10-16T10:00:00.000Z' })
         return Response.json({
           id: CHAT,
           messages:
@@ -64,7 +66,9 @@ describe('historical task reconciliation', () => {
       })
       expect(result.code).toBe(0)
       expect(result.stderr).toBe('')
-      expect(requests).toHaveLength(2)
+      // The stream, the exact message, then the chat marked seen.
+      expect(requests).toHaveLength(3)
+      expect(requests[2]?.pathname).toBe(`/api/chat/${CHAT}/seen`)
       expect(requests[1]?.pathname).toBe(`/api/chat/${CHAT}`)
       expect(Object.fromEntries(requests[1]!.searchParams)).toEqual({ messageId: MESSAGE })
       if (json) {
