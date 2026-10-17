@@ -3,7 +3,8 @@ name: Publish Teler Desktop release
 # Builds Teler Desktop installers for macOS, Windows and Linux and publishes
 # them as a GitHub release. macOS and Windows builds need their native
 # toolchains, so they run on GitHub-hosted runners. Builds are unsigned unless
-# the optional DESKTOP_* signing secrets exist (see desktop/README.md).
+# the optional DESKTOP_* signing secrets exist (see desktop/README.md), and the
+# release notes say which installers are signed.
 on:
   workflow_dispatch:
     inputs:
@@ -258,19 +259,35 @@ jobs:
           TITLE: ${{ needs.plan.outputs.title }}
           VERSION: ${{ needs.plan.outputs.version }}
           PRERELEASE: ${{ needs.plan.outputs.prerelease }}
+          # The build signs each platform only when its certificate exists, and a
+          # signed macOS build always fails unless it is notarized, so these say
+          # what the attached installers are.
+          MAC_SIGNED: ${{ secrets.DESKTOP_MAC_CSC_LINK != '' }}
+          WIN_SIGNED: ${{ secrets.DESKTOP_WIN_CSC_LINK != '' }}
         run: |
           set -euo pipefail
+          if [[ "$MAC_SIGNED" == true ]]; then
+            mac_note="- macOS: \`.dmg\` or \`.zip\` for Apple silicon (arm64) or Intel (x64), signed with
+            Teler's Developer ID and notarized by Apple."
+          else
+            mac_note="- macOS: \`.dmg\` or \`.zip\` for Apple silicon (arm64) or Intel (x64). Not signed:
+            open Teler once, then choose Open Anyway in System Settings → Privacy & Security."
+          fi
+          if [[ "$WIN_SIGNED" == true ]]; then
+            win_note="- Windows: the \`.exe\` installer (x64), signed."
+          else
+            win_note="- Windows: the \`.exe\` installer (x64). Not signed yet: if SmartScreen appears,
+            choose More info → Run anyway."
+          fi
           notes="${RUNNER_TEMP}/desktop-release-notes.md"
           cat > "$notes" <<EOF
           Teler Desktop ${VERSION}, built from \`${GITHUB_SHA}\`.
 
-          - macOS: \`.dmg\` or \`.zip\` for Apple silicon (arm64) or Intel (x64).
-          - Windows: the \`.exe\` installer (x64).
+          ${mac_note}
+          ${win_note}
           - Linux: \`.AppImage\` or \`.deb\` (x64).
 
-          Verify downloads with \`SHA256SUMS.txt\`. Unsigned builds need a one-time approval:
-          on macOS, open Teler once, then choose Open Anyway in System Settings → Privacy &
-          Security; on Windows, choose More info → Run anyway. See \`desktop/README.md\`.
+          Verify downloads with \`SHA256SUMS.txt\`. See \`desktop/README.md\`.
           EOF
           args=(
             "$TAG"
