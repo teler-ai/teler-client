@@ -149,7 +149,8 @@ jobs:
         run: bun scripts/smoke-sidecar.ts
 
       # The notarization key as a file outside the checkout and build output, for
-      # the packaging step alone; the step after it always removes it.
+      # the packaging and disk image steps alone; the step after them always
+      # removes it.
       - name: Write the notarization key
         if: matrix.platform == 'mac'
         shell: bash
@@ -211,10 +212,127 @@ jobs:
           fi
           node node_modules/electron-builder/cli.js "${args[@]}"
 
-      - name: Remove the notarization key
+      # electron-builder notarizes the app but leaves the disk image unsigned, and
+      # Gatekeeper rejects a downloaded .dmg without a usable signature. A signed
+      # build signs each .dmg with the same Developer ID, then notarizes and staples
+      # it, as Apple documents for disk images. The .zip carries the stapled app.
+      - name: Sign, notarize and staple the disk images
+        if: matrix.platform == 'mac'
+        shell: bash
+        working-directory: desktop/release
+        env:
+          CSC_LINK: ${{ secrets.DESKTOP_MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.DESKTOP_MAC_CSC_KEY_PASSWORD }}
+          NOTARIZATION_KEY: ${{ runner.temp }}/notarization/AuthKey.p8
+          KEY_ID: ${{ secrets.DESKTOP_APPLE_API_KEY_ID }}
+          ISSUER: ${{ secrets.DESKTOP_APPLE_API_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${CSC_LINK:-}" ]]; then
+            echo 'Unsigned build: the disk images stay unsigned'
+            exit 0
+          fi
+          if [[ ! -s "$NOTARIZATION_KEY" || -z "${KEY_ID:-}" || -z "${ISSUER:-}" ]]; then
+            echo '::error::signed disk images need notarization: set DESKTOP_APPLE_API_KEY_P8, DESKTOP_APPLE_API_KEY_ID and DESKTOP_APPLE_API_ISSUER_ID'
+            exit 1
+          fi
+          shopt -s nullglob
+          images=(*.dmg)
+          if (( ${#images[@]} == 0 )); then
+            echo '::error::no disk images to sign'
+            exit 1
+          fi
+          # electron-builder deletes its own keychain when it finishes, so the
+          # certificate goes into a keychain for this step.
+          keychain="${RUNNER_TEMP}/teler-dmg-signing.keychain-db"
+          keychain_password="$(openssl rand -hex 24)"
+          certificate="${RUNNER_TEMP}/teler-dmg-signing.p12"
+          trap 'rm -f "$certificate"' EXIT
+          security create-keychain -p "$keychain_password" "$keychain"
+          # Exported at once, so the cleanup step deletes it even if a later command fails.
+          echo "SIGNING_KEYCHAIN=${keychain}" >> "$GITHUB_ENV"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          printf '%s' "$CSC_LINK" | base64 --decode > "$certificate"
+          security import "$certificate" -k "$keychain" -P "${CSC_KEY_PASSWORD:-}" -T /usr/bin/codesign >/dev/null
+          rm -f "$certificate"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain" >/dev/null
+          read -r -a existing <<< "$(security list-keychains -d user | tr -d '"' | tr '\n' ' ')"
+          security list-keychains -d user -s "$keychain" "${existing[@]}"
+          identity="$(security find-identity -v -p codesigning "$keychain" | awk '/"Developer ID Application/ { print $2; exit }')"
+          if [[ -z "$identity" ]]; then
+            echo '::error::DESKTOP_MAC_CSC_LINK holds no Developer ID Application identity'
+            exit 1
+          fi
+          for image in "${images[@]}"; do
+            codesign --sign "$identity" --keychain "$keychain" --timestamp \
+              --identifier ai.teler.desktop.dmg "$image"
+            result="${RUNNER_TEMP}/notarization/${image}.json"
+            xcrun notarytool submit "$image" --key "$NOTARIZATION_KEY" \
+              --key-id "$KEY_ID" --issuer "$ISSUER" --wait --timeout 30m \
+              --output-format json > "$result" || true
+            # A rejection exits non-zero: read the status here so Apple's log is printed.
+            status="$(jq -r '.status // "unknown"' "$result" 2>/dev/null || echo unknown)"
+            echo "Notarization of ${image}: ${status}"
+            if [[ "$status" != Accepted ]]; then
+              id="$(jq -r '.id // empty' "$result" 2>/dev/null || true)"
+              if [[ -n "$id" ]]; then
+                xcrun notarytool log "$id" --key "$NOTARIZATION_KEY" \
+                  --key-id "$KEY_ID" --issuer "$ISSUER" || true
+              fi
+              exit 1
+            fi
+            xcrun stapler staple "$image"
+          done
+
+      - name: Remove the notarization key and signing keychain
         if: always() && matrix.platform == 'mac'
         shell: bash
-        run: rm -rf "$RUNNER_TEMP/notarization"
+        run: |
+          rm -rf "$RUNNER_TEMP/notarization"
+          if [[ -n "${SIGNING_KEYCHAIN:-}" ]]; then security delete-keychain "$SIGNING_KEYCHAIN" || true; fi
+
+      # What a downloaded signed .dmg must pass: a valid timestamped Developer ID
+      # signature, a stapled ticket and Gatekeeper's assessment as notarized.
+      - name: Verify the disk images
+        if: matrix.platform == 'mac'
+        shell: bash
+        working-directory: desktop/release
+        env:
+          MAC_SIGNED: ${{ secrets.DESKTOP_MAC_CSC_LINK != '' }}
+        run: |
+          set -euo pipefail
+          if [[ "$MAC_SIGNED" != true ]]; then
+            echo 'Unsigned build: no disk image signatures to verify'
+            exit 0
+          fi
+          shopt -s nullglob
+          images=(*.dmg)
+          if (( ${#images[@]} == 0 )); then
+            echo '::error::no disk images to verify'
+            exit 1
+          fi
+          for image in "${images[@]}"; do
+            codesign --verify --strict --verbose=2 "$image"
+            details="$(codesign -dvv "$image" 2>&1)"
+            for expected in 'Authority=Developer ID Application' 'Timestamp='; do
+              if [[ "$details" != *"$expected"* ]]; then
+                echo "::error::${image} lacks ${expected}"
+                exit 1
+              fi
+            done
+            xcrun stapler validate "$image"
+            if ! assessment="$(spctl -a -vvv -t open --context context:primary-signature "$image" 2>&1)"; then
+              echo "$assessment"
+              echo "::error::Gatekeeper rejects ${image}"
+              exit 1
+            fi
+            echo "$assessment"
+            if [[ "$assessment" != *'source=Notarized Developer ID'* ]]; then
+              echo "::error::Gatekeeper does not see ${image} as notarized"
+              exit 1
+            fi
+          done
 
       - name: Verify package contents
         working-directory: desktop
