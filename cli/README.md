@@ -68,7 +68,8 @@ teler agent setup --print          # the skill itself, on stdout
 
 It never uses the network, prints every path it writes, and is safe to repeat:
 it updates a copy it wrote earlier but keeps a copy you changed unless you pass
-`--force`. `teler auth login` suggests it once; nothing is installed for you.
+`--force`. `teler auth login` suggests it after you sign in; nothing is installed
+for you.
 
 On a Linux host without a system keyring (no `secret-tool`), sign in with
 `TELER_CREDENTIAL_STORE=file teler auth login`, which keeps the sign-in in a

@@ -25,11 +25,14 @@ const sha256 = (text: string) => createHash('sha256').update(text).digest('hex')
  * The installed file: the shipped skill plus metadata naming the CLI that wrote it and a digest
  * of everything else, so a later setup can tell its own copy from one the person changed.
  */
-export function renderTelerSkill(cliVersion: string = version): string {
-  const unsigned = TELER_SKILL.replace(
-    /^(---\n[\s\S]*?\n)---\n/,
-    `$1metadata:\n  generator: teler agent setup ${cliVersion}\n---\n`
-  )
+export function renderTelerSkill(cliVersion: string = version, source = TELER_SKILL): string {
+  // A checkout with Windows line endings must render the same file.
+  const unsigned = source
+    .replace(/\r\n/g, '\n')
+    .replace(
+      /^(---\n[\s\S]*?\n)---\n/,
+      `$1metadata:\n  generator: teler agent setup ${cliVersion}\n---\n`
+    )
   return unsigned.replace('metadata:\n', `metadata:\n  sha256: ${sha256(unsigned)}\n`)
 }
 

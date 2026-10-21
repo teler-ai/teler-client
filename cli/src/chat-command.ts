@@ -19,12 +19,12 @@ async function deleteChat(client: TelerApiClient, output: Output, args: string[]
     // A server that predates CLI chat deletion refuses the route itself, without a code.
     if (error.code === undefined)
       throw new ApiError(
-        'This Teler server does not let the CLI delete chats yet.',
+        'Teler refused to delete this chat from the CLI (HTTP 403).',
         403,
-        'UNSUPPORTED_BY_SERVER',
+        'CHAT_DELETE_REFUSED',
         undefined,
         undefined,
-        'Delete the chat in the Teler app.'
+        'Older Teler servers do not let the CLI delete chats; delete it in the Teler app.'
       )
     if (error.code === 'ACCESS_DENIED')
       throw new ApiError('You can only delete your own chats.', 403, error.code)

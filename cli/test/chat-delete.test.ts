@@ -53,16 +53,16 @@ describe('teler chat delete', () => {
     expect(plain.stdout).toBe(`Deleted chat ${chatId}.\n`)
   })
 
-  it('explains a server that does not let the CLI delete chats yet', async () => {
+  it('explains a refusal without a reason, which older servers give the CLI', async () => {
     const result = await remove([chatId, '--yes', '--json'], () =>
       Response.json({ error: 'Forbidden' }, { status: 403 })
     )
     expect(result.exitCode).toBe(1)
     expect(JSON.parse(result.stderr).error).toMatchObject({
-      code: 'UNSUPPORTED_BY_SERVER',
+      code: 'CHAT_DELETE_REFUSED',
       status: 403,
-      message: 'This Teler server does not let the CLI delete chats yet.',
-      hint: 'Delete the chat in the Teler app.',
+      message: 'Teler refused to delete this chat from the CLI (HTTP 403).',
+      hint: 'Older Teler servers do not let the CLI delete chats; delete it in the Teler app.',
     })
   })
 

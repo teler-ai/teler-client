@@ -259,7 +259,7 @@ export const CLI_COMMANDS: readonly CliCommand[] = [
     'Keep uploading a local folder to a Teler Files path, in the background or once.'
   ),
   command('sync.list', 'sync list [--json]', 'List the folders registered for sync.'),
-  command('sync.status', 'sync status [id] [--json]', 'Show sync state, per folder and per file.'),
+  command('sync.status', 'sync status [--json]', 'Show sync state, per folder and per file.'),
   command('sync.pause', 'sync pause <id> [--json]', 'Pause uploads for a registered folder.'),
   command(
     'sync.resume',

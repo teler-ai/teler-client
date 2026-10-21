@@ -66,7 +66,7 @@ export const RESOURCE_COMMANDS: readonly CliCommand[] = [
   ),
   command(
     'post.delete-comment',
-    'post delete-comment <post-id> <comment-id> [--org <id>] [--json]',
+    'post delete-comment <post-id> <comment-id> --yes [--org <id>] [--json]',
     'Delete one of your comments.'
   ),
   command(
@@ -81,13 +81,13 @@ export const RESOURCE_COMMANDS: readonly CliCommand[] = [
   ),
   command(
     'post.unreact',
-    'post unreact <post-id> --file <json-file> [--org <id>] [--json]',
+    'post unreact <post-id> --file <json-file> --yes [--org <id>] [--json]',
     'Remove your emoji reaction from a post.'
   ),
   command('post.hide', 'post hide <post-id> [--org <id>] [--json]', 'Hide a post from your feed.'),
   command(
     'post.unhide',
-    'post unhide <post-id> [--org <id>] [--json]',
+    'post unhide <post-id> --yes [--org <id>] [--json]',
     'Show a hidden post again.'
   ),
   command(
@@ -128,7 +128,7 @@ export const RESOURCE_COMMANDS: readonly CliCommand[] = [
   ),
   command(
     'dashboard.unshare',
-    'dashboard unshare <id> <share-id> [--org <id>] [--json]',
+    'dashboard unshare <id> <share-id> --yes [--org <id>] [--json]',
     'Remove one share of a dashboard.'
   ),
   command(

@@ -113,6 +113,12 @@ describe('teler agent setup', () => {
     expect(await readFile(path, 'utf8')).toBe(renderTelerSkill())
   })
 
+  it('renders the same file from a checkout with Windows line endings', () => {
+    expect(renderTelerSkill('1.0.0', TELER_SKILL.replace(/\n/g, '\r\n'))).toBe(
+      renderTelerSkill('1.0.0')
+    )
+  })
+
   it('ships a valid, lean Agent Skills file', () => {
     const [, frontmatter = '', body = ''] = TELER_SKILL.split(/^---$/m)
     expect(frontmatter).toMatch(/^name: teler$/m)

@@ -40,7 +40,7 @@ function apiHint(error: ApiError): string | undefined {
   if (code === 'CLIENT_UPDATE_REQUIRED' || error.status === 426)
     return 'Run `teler update`, then retry.'
   if (code === 'PLAN_REQUIRED' || code === 'PLAN_LIMIT_EXCEEDED')
-    return "Your organization's plan does not include this; an owner can change the plan in the Teler app."
+    return "Your organization's plan does not allow this; an owner can change the plan in the Teler app."
   if (code === 'INSUFFICIENT_CREDITS' || code === 'BUDGET_EXCEEDED')
     return 'Lower --max-credits to what the organization has, or add credits in the Teler app.'
   if (code === 'IDEMPOTENCY_CONFLICT')

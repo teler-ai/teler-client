@@ -17,6 +17,17 @@ Guidance for anyone, human or agent, changing this repository. Also read the
 - Keep secrets, private hostnames and personal data out of code, tests, docs and
   commit messages. Tests use example origins such as `https://app.teler.example`.
 
+## Public repository
+
+Everything here is public: code, tests, docs, commit messages, branch names, pull
+request titles and descriptions, review comments and release notes. Write all of
+it for an outside reader. Describe behavior through the public API, and keep these
+out: internal hostnames and environments, internal tools, links to private
+repositories and their issue or pull request numbers, people's names and contact
+details, customer or account details, and pricing or business plans. When a change
+needs a server update, say so in general terms ("needs a server that returns X;
+older servers keep working").
+
 ## Conventions
 
 - Strict TypeScript; no `any`. Validate API responses with Zod before using them.

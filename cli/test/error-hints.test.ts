@@ -62,6 +62,46 @@ describe('a Linux host without a system keyring', () => {
     expect(JSON.stringify(jsonError(error))).not.toContain('token-secret')
   })
 
+  it('tells an unreachable keyring service apart from a sign-in that is not stored', async () => {
+    const encode = (text: string) => new TextEncoder().encode(text)
+    const unreachable = createCredentialStore('linux', () => ({
+      exitCode: 1,
+      stdout: new Uint8Array(),
+      stderr: encode('secret-tool: Cannot autolaunch D-Bus without X11 $DISPLAY\n'),
+    }))
+    const error: unknown = await unreachable.get(ORIGIN).then(
+      () => null,
+      (rejection: unknown) => rejection
+    )
+    expect(jsonError(error).error).toMatchObject({
+      code: 'CREDENTIAL_STORE_UNAVAILABLE',
+      message: 'The system keyring service is not reachable.',
+      hint: expect.stringContaining('TELER_CREDENTIAL_STORE=file'),
+    })
+    expect(JSON.stringify(jsonError(error))).not.toContain('X11')
+    const notStored = createCredentialStore('linux', () => ({
+      exitCode: 1,
+      stdout: new Uint8Array(),
+      stderr: encode('(secret-tool:1): GLib-WARNING **: unrelated\n'),
+    }))
+    expect(await notStored.get(ORIGIN)).toBeNull()
+    const login = await (async () => {
+      let requests = 0
+      await main(['auth', 'login', '--json'], {
+        env: { TELER_URL: ORIGIN },
+        createStore: () => unreachable,
+        fetch: async () => {
+          requests += 1
+          return Response.json({})
+        },
+        writeOut: () => undefined,
+        writeErr: () => undefined,
+      })
+      return requests
+    })()
+    expect(login).toBe(0)
+  })
+
   it('stops before the browser sign-in starts, in JSON and in plain output', async () => {
     const store = createCredentialStore('linux', missingSecretTool)
     const json = await login(store, true)

@@ -12,12 +12,12 @@ export interface CredentialStore {
   delete(resource: string): Promise<void>
 }
 
-type RunResult = { exitCode: number; stdout: Uint8Array }
+type RunResult = { exitCode: number; stdout: Uint8Array; stderr?: Uint8Array }
 type RunCommand = (command: string[], stdin?: Uint8Array) => RunResult
 type LoadMacOSStore = () => Promise<CredentialStore>
 
 const runCommand: RunCommand = (command, stdin) =>
-  Bun.spawnSync(command, { stdin, stdout: 'pipe', stderr: 'ignore' })
+  Bun.spawnSync(command, { stdin, stdout: 'pipe', stderr: 'pipe' })
 
 const KEYRING_HINT =
   'Set TELER_CREDENTIAL_STORE=file to keep the sign-in in a private file, or use TELER_TOKEN.'
@@ -25,6 +25,9 @@ const KEYRING_HINT =
 function keyringUnavailable(message: string): CommandError {
   return new CommandError('CREDENTIAL_STORE_UNAVAILABLE', message, KEYRING_HINT)
 }
+
+// secret-tool's own error when no session bus or Secret Service answers; never shown.
+const KEYRING_UNREACHABLE = /d-?bus|org\.freedesktop\.secrets|secret service/i
 
 /** Runs secret-tool; a host without it is told so instead of seeing a spawn error. */
 function runSecretTool(run: RunCommand, command: string[], stdin?: Uint8Array): RunResult {
@@ -154,7 +157,11 @@ export function createCredentialStore(
           'resource',
           resource,
         ])
-        return result.exitCode === 0 ? new TextDecoder().decode(result.stdout).trim() || null : null
+        if (result.exitCode === 0) return new TextDecoder().decode(result.stdout).trim() || null
+        // A lookup that finds nothing exits 1 quietly; one that reaches no keyring says why.
+        if (KEYRING_UNREACHABLE.test(new TextDecoder().decode(result.stderr ?? new Uint8Array())))
+          throw keyringUnavailable('The system keyring service is not reachable.')
+        return null
       },
       async set(resource, token) {
         const result = runSecretTool(

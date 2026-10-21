@@ -6,6 +6,7 @@ import {
 } from '../src/data-contract'
 import type { Output } from '../src/chats'
 import { UsageError } from '../src/errors'
+import { DASHBOARD_ACTIONS, POST_ACTIONS } from '../src/resource-actions'
 import { runSubmitInputJsonSchemas } from '../src/run-contract'
 import { CLI_SCHEMA_REGISTRY, runSchemaCommand } from '../src/schema-command'
 import { USAGE } from '../src/usage'
@@ -86,6 +87,20 @@ describe('CLI schema command', () => {
       (runSubmitInputJsonSchemas.python as { properties: Record<string, unknown> }).properties
         .timeoutSeconds
     ).toMatchObject({ maximum: 3600, default: 60 })
+  })
+
+  it('documents the confirmation and file every post and dashboard action requires', () => {
+    for (const [group, actions] of [
+      ['post', POST_ACTIONS],
+      ['dashboard', DASHBOARD_ACTIONS],
+    ] as const) {
+      for (const [action, definition] of Object.entries(actions)) {
+        const usage = CLI_SCHEMA_REGISTRY.find(({ name }) => name === `${group}.${action}`)?.usage
+        expect(usage).toBeDefined()
+        if (definition.method === 'DELETE') expect(usage).toContain('--yes')
+        if (definition.body) expect(usage).toContain('--file')
+      }
+    }
   })
 
   it('returns the real input schemas with defaults and unknown-key rules', async () => {
