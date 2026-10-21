@@ -25,11 +25,13 @@ Usage:
   teler run get|cancel <run-id> [--org <id>] [--json]
   teler run wait <run-id> [--org <id>] [--timeout <seconds>] [--json]
   Run submissions require a stable 16–128 character idempotency key. Reuse it only for the same task.
-  --execution-timeout bounds sandbox execution (1–120s); --timeout only bounds local waiting.
+  --execution-timeout bounds sandbox execution (default 60s, up to 3600s or your plan's limit);
+  --timeout only bounds local waiting.
   --wait --json emits an accepted receipt and a terminal receipt as newline-delimited JSON.
   teler auth login [--device-file <absolute-path>]
   teler auth status [--json]
   teler auth logout
+  teler agent setup [--claude] [--codex] [--project <dir>] [--print | --dry-run] [--force] [--json]
   teler agent-access show [--org <id>] [--json]
   teler agent-access set --preset ask [--org <id>] [--json]
   teler status [--org <id>] [--json]
@@ -39,8 +41,9 @@ Usage:
   teler chat seen <chat-id-or-url> [--json]
   teler chat show <chat-id-or-url> [--json]
   teler chat artifacts <chat-id-or-url> [--json]
-  teler sync <folder> --to <remote-path> [--org <id>] [--once] [--dry-run] [--json]
-  teler sync list|status|pause|resume|remove|stop|daemon [id] [--json]
+  teler chat delete <chat-id-or-url> --yes [--json]
+  teler sync <folder> --to <remote-path> [--org <id>] [--project <id>] [--once] [--dry-run] [--json]
+  teler sync list|status|pause|resume|retry|remove|stop|daemon [id] [--json]
   teler upload <local-file> [--org <id>] [--to <path>] [--scope personal|organization]
              [--project <id>] [--wait] [--timeout <seconds>] [--json]
   teler upload list [--org <id>] [--status <status>] [--limit <count>] [--json]
@@ -69,7 +72,8 @@ Usage:
   teler post artifact <post-id> <artifact-id> [--download --output <file>] [--org <id>] [--json]
   teler post document <post-id> <document-id> [--cursor <cursor>] [--max-bytes <n>] [--page-number <n>] [--anchor <anchor>] [--org <id>] [--json]
   teler post comments|comment|delete-comment|mark-comments-seen <post-id> [options]
-  teler post react|unreact|hide|unhide|visibility|export <post-id> [options]
+  teler post react|unreact|hide|unhide|export <post-id> [options]
+  teler post|dashboard visibility <id> --file <json-file> [--org <id>] [--json]
   teler dashboard shares|share|unshare|public-links|create-public-link|revoke-public-link <id> [options]
   teler dashboard activity|create-post <id> [options]
   teler dashboard templates [--project <id>] [--org <id>] [--json]
@@ -95,7 +99,7 @@ Usage:
   teler agent  list|get|create|update|delete [options] [--json]
   teler agent  runs [--org <id>] [--agent <id>] [--active] [--limit <count>] [--json]
   teler send (--chat <chat-id-or-url> | --new) [--org <id>] [--model-set lite|pro]
-             [--title <title>] [--deep] [--wait] [--timeout <seconds>] [--json]
+             [--title <title>] [--wait] [--timeout <seconds>] [--json]
              [--metadata-only] "message"
   teler steer <chat-id-or-url> [--timeout <seconds>] [--json] "message"
   teler approval respond <chat-id-or-url> <approval-id> (--allow | --deny)

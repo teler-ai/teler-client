@@ -26,12 +26,17 @@ import {
 } from './run-watch'
 
 const MAX_FILE_BYTES = 256 * 1024
-const watchTimeoutSchema = z.number().finite().positive().max(3600)
+const watchTimeoutSchema = z.number().finite().positive().max(7200)
 const optionsSchema = runSubmitInputSchema.omit({ task: true }).extend({
   file: z.string().min(1),
   rowLimit: z.number().int().min(1).max(1000).default(100),
-  watchTimeout: watchTimeoutSchema.default(180),
+  watchTimeout: watchTimeoutSchema.optional(),
 })
+
+/** Local waiting outlasts the run's own limit plus sandbox start, unless `--timeout` is given. */
+export function defaultWatchSeconds(executionSeconds: number): number {
+  return Math.max(180, executionSeconds + 120)
+}
 
 async function readTaskFile(path: string): Promise<string> {
   try {
@@ -171,7 +176,12 @@ async function submitRun(
     await watchRun(
       client,
       output,
-      { id: run.id, organizationId: org, timeoutSeconds: options.watchTimeout, lastKnown: run },
+      {
+        id: run.id,
+        organizationId: org,
+        timeoutSeconds: options.watchTimeout ?? defaultWatchSeconds(input.timeoutSeconds),
+        lastKnown: run,
+      },
       dependencies
     )
 }

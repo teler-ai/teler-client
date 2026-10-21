@@ -5,6 +5,8 @@ import { dataOrganizationIdSchema, dataProjectIdSchema } from './data-contract'
 const typeIdSuffix = '[0-9a-hjkmnp-tv-z]{26}'
 const typedId = (prefix: string) => z.string().regex(new RegExp(`^${prefix}_${typeIdSuffix}$`))
 export const runIdSchema = typedId('expjob')
+/** The longest run any plan allows; the server refuses more than the organization's plan. */
+export const MAX_EXECUTION_SECONDS = 3600
 const credits = z.string().regex(/^(?:0|[1-9]\d{0,20})(?:\.\d{1,9})?$/)
 export function creditNano(value: string): bigint {
   const [whole, fraction = ''] = value.split('.')
@@ -33,35 +35,65 @@ const importedArtifact = z.discriminatedUnion('type', [
   }),
 ])
 
-export const runTaskSchema = z.discriminatedUnion('kind', [
-  z.strictObject({ kind: z.literal('python'), code: source(128 * 1024) }),
-  z.strictObject({
-    kind: z.literal('sql'),
-    sql: source(64 * 1024),
-    rowLimit: z.number().int().min(1).max(1000).default(100),
-  }),
-  z.strictObject({ kind: z.literal('artifact'), artifact: importedArtifact }),
-])
+const pythonTask = z.strictObject({
+  kind: z.literal('python'),
+  code: source(128 * 1024).describe('Python source, read from --file (at most 128 KiB).'),
+})
+const sqlTask = z.strictObject({
+  kind: z.literal('sql'),
+  sql: source(64 * 1024).describe('One SQL SELECT, read from --file (at most 64 KiB).'),
+  rowLimit: z
+    .number()
+    .int()
+    .min(1)
+    .max(1000)
+    .default(100)
+    .describe('Maximum rows to return (--row-limit).'),
+})
+const artifactTask = z.strictObject({
+  kind: z.literal('artifact'),
+  artifact: importedArtifact.describe('Static chart snapshot, read as JSON from --file.'),
+})
+export const runTaskSchema = z.discriminatedUnion('kind', [pythonTask, sqlTask, artifactTask])
 
 /** Logical request; funding approval is obtained from preflight, never invented locally. */
 export const runSubmitInputSchema = z.strictObject({
   organizationId: dataOrganizationIdSchema.optional(),
   projectId: dataProjectIdSchema,
-  chatId: typedId('chat').optional(),
+  chatId: typedId('chat')
+    .optional()
+    .describe('One of your chats in the same project to hold the run; otherwise a new chat.'),
   task: runTaskSchema,
   maximumCredits: credits
     .refine((value) => creditNano(value) > 0n && creditNano(value) <= 100_000_000_000n)
     .describe('Maximum approved credits, greater than zero and at most 100.'),
-  idempotencyKey: z.string().regex(/^[a-zA-Z0-9._:-]{16,128}$/),
-  timeoutSeconds: z.number().int().min(1).max(120).default(60),
+  idempotencyKey: z
+    .string()
+    .regex(/^[a-zA-Z0-9._:-]{16,128}$/)
+    .describe('Stable key for this task; the same key returns the same run.'),
+  timeoutSeconds: z
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_EXECUTION_SECONDS)
+    .default(60)
+    .describe(
+      "Sandbox execution limit in seconds (--execution-timeout). The organization's plan sets the actual maximum."
+    ),
 })
 
 export const runSelectionInputSchema = z.strictObject({
-  id: runIdSchema,
+  id: runIdSchema.describe('Run ID from a submit receipt.'),
   organizationId: dataOrganizationIdSchema.optional(),
 })
 export const runTaskJsonSchema = z.toJSONSchema(runTaskSchema, { io: 'input' })
 export const runSubmitInputJsonSchema = z.toJSONSchema(runSubmitInputSchema, { io: 'input' })
+/** One submit command's input: the shared fields with only that command's task. */
+export const runSubmitInputJsonSchemas = {
+  python: z.toJSONSchema(runSubmitInputSchema.extend({ task: pythonTask }), { io: 'input' }),
+  sql: z.toJSONSchema(runSubmitInputSchema.extend({ task: sqlTask }), { io: 'input' }),
+  artifact: z.toJSONSchema(runSubmitInputSchema.extend({ task: artifactTask }), { io: 'input' }),
+}
 export const runSelectionInputJsonSchema = z.toJSONSchema(runSelectionInputSchema, { io: 'input' })
 
 export const runResponseSchema = z.object({
@@ -74,7 +106,7 @@ export const runResponseSchema = z.object({
   maximumCredits: credits,
   chargedCredits: credits.nullable(),
   tariffVersion: z.string().min(1).max(128),
-  timeoutSeconds: z.number().int().min(1).max(120),
+  timeoutSeconds: z.number().int().min(1).max(86_400),
   cancelRequested: z.boolean(),
   output: z
     .string()
@@ -84,6 +116,12 @@ export const runResponseSchema = z.object({
     .string()
     .regex(/^[a-zA-Z0-9_]{1,128}$/)
     .nullable(),
+  /** A failed run's own traceback or error message, from servers that return it. */
+  errorDetail: z
+    .string()
+    .max(64 * 1024)
+    .nullable()
+    .optional(),
   executionTimeMs: z.number().finite().min(0).nullable(),
   artifacts: z
     .array(

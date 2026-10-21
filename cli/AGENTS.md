@@ -27,6 +27,11 @@ only with the versioned HTTP API selected by `TELER_URL`; production
   `teler agent-access set --preset ask`, each with optional `--org <id>`.
   `show` emits policy metadata; `set` changes only the authenticated member's
   preset through the normal revision-checked API and preserves chat overrides.
+- Coding agents: `teler agent setup` installs the shipped Agent Skills file
+  `skills/teler/SKILL.md` (bundled as text) for Claude Code and Codex, offline.
+  Agents read that file whenever they use Teler: keep it short, public and in
+  step with the commands. `teler schema` lists every command from
+  `src/command-catalog*.ts`; its test fails when the usage text and the catalog differ.
 - Files: `teler files list|read|search|write|mkdir|move|copy`
 - Attention: `teler status`, `teler watch` (events as NDJSON with `--json`), `teler chat seen`,
   `teler agent runs`, `teler notifications`; all read the public attention and inbox routes.

@@ -8,7 +8,8 @@
     "teler": "./src/index.ts"
   },
   "files": [
-    "src"
+    "src",
+    "skills"
   ],
   "exports": {
     ".": "./src/lib.ts",

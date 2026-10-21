@@ -24,6 +24,8 @@ const errorSchema = z.object({
     .regex(/^[A-Z0-9_]{1,64}$/)
     .optional(),
 })
+// The plan's run limit a TIME_LIMIT_EXCEEDED refusal states, as a number only.
+const limitSchema = z.object({ limitSeconds: z.number().int().positive().max(86_400) })
 // Only plain capability ids; a malformed list is dropped, never echoed.
 const capabilitiesSchema = z.object({
   capabilities: z
@@ -88,12 +90,16 @@ export class TelerApiClient {
     if (!response.ok) {
       let code: string | undefined
       let capabilities: string[] | undefined
+      let hint: string | undefined
       try {
         const body = (await response.clone().json()) as unknown
         const parsed = errorSchema.safeParse(body)
         code = parsed.success ? parsed.data.code : undefined
         const named = capabilitiesSchema.safeParse(body)
         capabilities = named.success ? named.data.capabilities : undefined
+        const limit = limitSchema.safeParse(body)
+        if (code === 'TIME_LIMIT_EXCEEDED' && limit.success)
+          hint = `Your plan allows runs of up to ${limit.data.limitSeconds} seconds; lower --execution-timeout.`
       } catch {
         // Status is the safe fallback. Never echo an untrusted response body.
       }
@@ -105,7 +111,8 @@ export class TelerApiClient {
         response.status,
         code,
         retryAfterMilliseconds(response.headers.get('Retry-After')),
-        capabilities
+        capabilities,
+        hint
       )
     }
     return response

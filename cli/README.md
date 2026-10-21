@@ -47,6 +47,35 @@ behind Cloudflare Access, set `TELER_ACCESS_TOKEN` to an Access token (for
 example `cloudflared access token -app=$TELER_URL`); the CLI sends it as
 `cf-access-token`, only to that origin.
 
+## Coding agents
+
+`teler agent setup` teaches Claude Code and Codex to use Teler. It installs the
+Teler skill (`skills/teler/SKILL.md` in this package) where they look for skills:
+
+| Agent       | Your user folder (default)          | A project (`--project <dir>`)         |
+| ----------- | ----------------------------------- | ------------------------------------- |
+| Claude Code | `~/.claude/skills/teler/SKILL.md` ¹ | `<dir>/.claude/skills/teler/SKILL.md` |
+| Codex       | `~/.agents/skills/teler/SKILL.md`   | `<dir>/.agents/skills/teler/SKILL.md` |
+
+¹ `$CLAUDE_CONFIG_DIR/skills/…` when `CLAUDE_CONFIG_DIR` is set.
+
+```sh
+teler agent setup                  # both agents, user folders
+teler agent setup --codex --project .
+teler agent setup --dry-run        # what it would write
+teler agent setup --print          # the skill itself, on stdout
+```
+
+It never uses the network, prints every path it writes, and is safe to repeat:
+it updates a copy it wrote earlier but keeps a copy you changed unless you pass
+`--force`. `teler auth login` suggests it once; nothing is installed for you.
+
+On a Linux host without a system keyring (no `secret-tool`), sign in with
+`TELER_CREDENTIAL_STORE=file teler auth login`, which keeps the sign-in in a
+private file, or provide `TELER_TOKEN`. `teler schema --json` lists every
+command with its usage; typed commands also give their input schema and which
+flag sets each field.
+
 ## Chat results and uploads
 
 ```sh
@@ -134,18 +163,41 @@ how the run will be funded. Identical retries recover the existing run before
 quoting credits; changing the task with the same key fails with a conflict.
 There is one execution attempt, with no automatic replay after a worker failure.
 
-`--execution-timeout` limits execution to 1–120 seconds (default 60).
-`--timeout` only limits local waiting; it never cancels a dispatched run.
+`--execution-timeout` limits execution to 1–3600 seconds (default 60); your
+organization's plan sets the actual maximum, and Teler refuses a longer run with
+`TIME_LIMIT_EXCEEDED`, naming the limit. `--timeout` only limits local waiting; it
+never cancels a dispatched run. Without it, `--wait` waits for the execution limit
+plus two minutes (at least 180 seconds).
 `--wait --json` emits an initial receipt and a terminal receipt as NDJSON. Keep
 the run ID for `run get`, `run wait`, or `run cancel`. Receipts include the chat,
 status, charged credits, bounded output, and artifact IDs/slugs. A `reconciling`
 run is still being settled and can still hold credits.
 
 SQL returns bounded JSON rows with `truncated`; data metadata uses `nextOffset`.
-The CLI never fetches all pages implicitly. Python can use Teler's chart helpers
-and read the project's data; it cannot write persistent files or tables or reach
-the web. Use `--chat <id>` to reuse your own chat in
-the same project; otherwise the run creates a private analysis chat.
+The CLI never fetches all pages implicitly. Use `--chat <id>` to reuse your own
+chat in the same project; otherwise each run creates a private analysis chat.
+Delete chats you no longer need with `teler chat delete <chat-id> --yes`; deletion
+is permanent.
+
+Python can use Teler's chart helpers and read the project's data through DuckDB:
+
+```python
+from teler import get_connection
+
+con = get_connection()
+df = con.sql("SELECT region, sum(amount) AS total FROM organization.sales GROUP BY 1").df()
+print(df.head())
+```
+
+`get_connection()` is for reading. `teler.execute(sql)` only runs `INSERT`,
+`UPDATE` or `DELETE` on an organization table, and like any change to tables or
+files it works only where your Agent Access settings allow it without asking.
+Runs cannot reach the web.
+
+A failed run reports `errorCode`. When your own code raised (`execution_failed`),
+servers that support it also return the traceback, with secrets redacted, as
+`errorDetail`; plain output prints it after the receipt. Fix the code and submit
+it with a new idempotency key: the same key returns the failed run.
 
 Create a chart from an explicit static data snapshot:
 
@@ -174,7 +226,8 @@ Artifact inspection omits physical storage details. Downloads are capped at
 32 MiB and never overwrite an existing destination.
 
 With `--json`, failures emit `{ "error": { "code", "message", "retryable" } }`
-on stderr and return a nonzero exit code. Transient errors include
+on stderr and return a nonzero exit code. When there is a clear next step, the
+error also has a `hint` (plain output prints it as a `hint:` line). Transient errors include
 `retrySafety: "read-or-idempotent-only"`: retry writes only with the same
 idempotency key. Exit code 2 denotes invalid command input; 1 denotes an
 operation failure. Successful inspection of a failed run remains exit code 0;

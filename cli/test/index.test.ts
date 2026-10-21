@@ -219,6 +219,7 @@ describe('teler command parser', () => {
   it('sends one message to an existing chat through the authenticated API', async () => {
     const requests: Array<{ url: string; init?: RequestInit }> = []
     let output = ''
+    let errors = ''
 
     const exitCode = await main(
       ['send', '--chat', 'chat_01m2mgs69ge8nvmkdg6924cgg9', '--deep', 'Analyze sales'],
@@ -227,6 +228,9 @@ describe('teler command parser', () => {
         store,
         writeOut: (text) => {
           output += text
+        },
+        writeErr: (text) => {
+          errors += text
         },
         fetch: async (url, init) => {
           requests.push({ url, init })
@@ -247,11 +251,14 @@ describe('teler command parser', () => {
       'https://app.teler.example/api/chat/chat_01m2mgs69ge8nvmkdg6924cgg9/message'
     )
     expect(new Headers(requests[0]?.init?.headers).get('Authorization')).toBe('Bearer token-secret')
-    expect(JSON.parse(String(requests[0]?.init?.body))).toMatchObject({
+    const body = JSON.parse(String(requests[0]?.init?.body)) as Record<string, unknown>
+    expect(body).toMatchObject({
       messages: [{ role: 'user', content: 'Analyze sales' }],
       modelSet: 'lite',
-      deepAnalysis: true,
     })
+    // `--deep` no longer does anything: it is not sent, and the person is told so.
+    expect(body).not.toHaveProperty('deepAnalysis')
+    expect(errors).toBe('teler: --deep is deprecated and has no effect; it will be removed.\n')
     expect(output).toContain('atask_01m2mgs69ge8nvmkdg6924cgg9')
   })
 
