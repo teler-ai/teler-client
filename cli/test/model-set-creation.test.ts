@@ -29,7 +29,6 @@ async function sendNewChat(modelSetArgs: string[] = []): Promise<ApiRequest[]> {
       organizationId,
       '--title',
       'First analysis',
-      '--deep',
       ...modelSetArgs,
       'Analyze sales',
     ],
@@ -91,8 +90,7 @@ for (const { label, args, modelSet } of [
     expect(messageBody).toMatchObject({
       messages: [{ role: 'user', content: 'Analyze sales' }],
       modelSet: modelSet ?? 'lite',
-      deepAnalysis: true,
     })
-    expect(Object.keys(messageBody).sort()).toEqual(['deepAnalysis', 'messages', 'modelSet'])
+    expect(Object.keys(messageBody).sort()).toEqual(['messages', 'modelSet'])
   })
 }

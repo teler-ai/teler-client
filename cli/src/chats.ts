@@ -141,7 +141,6 @@ export async function sendMessage(
     title?: string
     message: string
     modelSet?: 'lite' | 'pro'
-    deepAnalysis: boolean
     wait: boolean
     signal?: AbortSignal
   }
@@ -175,7 +174,6 @@ export async function sendMessage(
     body: JSON.stringify({
       messages: [{ id: `cli_${randomUUID()}`, role: 'user', content: options.message }],
       modelSet: options.modelSet ?? 'lite',
-      deepAnalysis: options.deepAnalysis,
     }),
   })
   if (response.status === 202) {

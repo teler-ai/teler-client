@@ -184,7 +184,7 @@ describe('direct analysis commands', () => {
     const invalid = [
       ['--file', '/does-not-exist', '--project', projectId],
       [...submitArgs(), '--unexpected'],
-      [...submitArgs(), '--execution-timeout', '121'],
+      [...submitArgs(), '--execution-timeout', '3601'],
       [...submitArgs(), '--timeout', '0', '--wait'],
       submitArgs('oversize.py'),
     ]

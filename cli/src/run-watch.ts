@@ -14,12 +14,19 @@ export function runPath(id: string, organizationId: string, cancel = false): str
   return `/api/runs/${id}${cancel ? '/cancel' : ''}?${query}`
 }
 
+// Terminal control sequences and characters in server-relayed text, kept off the terminal.
+const TERMINAL_CONTROL =
+  // eslint-disable-next-line no-control-regex -- matching control text is the point
+  /\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b\n]*(?:\x07|\x1b\\)?|[\x00-\x08\x0b-\x1f\x7f-\x9f]/g
+
 export function emitRunReceipt(output: Output, run: RunResponse): void {
   if (output.json) return emitJson(output, run)
   output.write(
     `${run.id}\t${run.status}\t${run.language}\tcharged=${run.chargedCredits ?? 'pending'}\n`
   )
   if (!output.metadataOnly && run.output) output.write(`${run.output.replace(/\n$/, '')}\n`)
+  const detail = run.errorDetail?.replace(TERMINAL_CONTROL, '').trim()
+  if (!output.metadataOnly && detail) output.write(`${detail}\n`)
   for (const artifact of run.artifacts)
     output.write(`artifact\t${artifact.id}\t${artifact.slug}\t${artifact.type}\n`)
 }
@@ -28,11 +35,35 @@ export function isTerminalRun(run: RunResponse): boolean {
   return ['completed', 'failed', 'cancelled'].includes(run.status)
 }
 
+const RESUBMIT = 'submit it again with a new --idempotency-key (the same key returns this run)'
+
+/** What to change before trying again, by the run's error code. */
+function failedRunHint(run: RunResponse): string | undefined {
+  switch (run.errorCode) {
+    case 'execution_failed':
+      return run.errorDetail
+        ? `Fix the code using the traceback in errorDetail, then ${RESUBMIT}.`
+        : `Fix the code, then ${RESUBMIT}.`
+    case 'time_limit':
+      return `Raise --execution-timeout (up to your plan's limit) or do less per run, then ${RESUBMIT}.`
+    case 'budget_exhausted':
+      return `Raise --max-credits, then ${RESUBMIT}.`
+    case 'capacity_unavailable':
+    case 'queue_expired':
+      return `No sandbox became free in time; ${RESUBMIT}.`
+    case 'approval_expired':
+      return `Approve the run in the Teler app before it expires, then ${RESUBMIT}.`
+    default:
+      return undefined
+  }
+}
+
 export function assertRunSucceeded(run: RunResponse): void {
   if (run.status === 'failed')
     throw new CommandError(
       'RUN_FAILED',
-      `Run ${run.id} failed${run.errorCode ? ` (${run.errorCode})` : ''}`
+      `Run ${run.id} failed${run.errorCode ? ` (${run.errorCode})` : ''}`,
+      failedRunHint(run)
     )
   if (run.status === 'cancelled')
     throw new CommandError('RUN_CANCELLED', `Run ${run.id} was cancelled`)

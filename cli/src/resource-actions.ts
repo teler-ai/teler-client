@@ -13,7 +13,8 @@ interface ResourceAction {
   collection?: boolean
   binary?: boolean
 }
-const DASHBOARD_ACTIONS: Record<string, ResourceAction> = {
+/** Dashboard actions beyond list/get/create/update/delete/move/refresh; read by `teler schema`'s test. */
+export const DASHBOARD_ACTIONS: Record<string, ResourceAction> = {
   visibility: { method: 'PATCH', suffix: '', body: true },
   shares: { method: 'GET', suffix: '/share' },
   share: { method: 'POST', suffix: '/share', body: true },
@@ -36,7 +37,7 @@ const DASHBOARD_ACTIONS: Record<string, ResourceAction> = {
     collection: true,
   },
 }
-const POST_ACTIONS: Record<string, ResourceAction> = {
+export const POST_ACTIONS: Record<string, ResourceAction> = {
   artifact: { method: 'GET', suffix: '/artifact', childId: true },
   document: { method: 'GET', suffix: '/document', childId: true },
   comments: { method: 'GET', suffix: '/comment' },

@@ -130,7 +130,6 @@ export async function respondToApproval(
         },
       ],
       modelSet: 'lite',
-      deepAnalysis: false,
     }),
   })
   const accepted = await readTaskAcceptance(response)

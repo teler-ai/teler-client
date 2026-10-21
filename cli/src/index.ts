@@ -4,14 +4,8 @@ import { authStatus, login, loginWithDeviceFile, logout } from './auth'
 import { respondToApproval } from './approvals'
 import { TelerApiClient, type FetchLike } from './api'
 import { resolveChatId, resolveTaskId } from './chat-id'
-import {
-  listArtifacts,
-  listChats,
-  markSeenQuietly,
-  sendMessage,
-  showChat,
-  watchTask,
-} from './chats'
+import { markSeenQuietly, sendMessage, watchTask } from './chats'
+import { runChatCommand } from './chat-command'
 import { runAttentionCommand } from './attention-command'
 import { assertNoFlags, takeFlag, takeOption, withTimeout } from './command-args'
 import {
@@ -20,11 +14,12 @@ import {
   type CredentialStore,
   type ResolvedCredential,
 } from './credentials'
-import { jsonError, UsageError } from './errors'
+import { CommandError, errorHint, jsonError, UsageError } from './errors'
 import { runDataCommand } from './data-command'
 import { runAnalysisCommand } from './run-command'
 import { runArtifactCommand } from './artifact-command'
 import { runSchemaCommand } from './schema-command'
+import { runAgentSetupCommand } from './agent-setup'
 import { runFileCommand } from './file-command'
 import { runUploadCommand } from './upload-command'
 import { runSyncCommand } from './sync-command'
@@ -73,6 +68,9 @@ export async function main(argv: readonly string[], deps: MainDeps = {}): Promis
     }
     const [group, action] = args.splice(0, 2)
     if (runSchemaCommand(group, action, args, { json, metadataOnly, write: writeOut })) return 0
+    const localOutput = { json, metadataOnly, write: writeOut }
+    if (await runAgentSetupCommand(group, action, args, localOutput, deps.env ?? process.env))
+      return 0
     if (group === 'update')
       return await runUpdateCommand(action, args, { json, write: writeOut }, { fetch: deps.fetch })
     const env = deps.env ?? process.env
@@ -100,6 +98,13 @@ export async function main(argv: readonly string[], deps: MainDeps = {}): Promis
       }
       const store =
         deps.store ?? (deps.createStore ?? (() => createConfiguredCredentialStore(env)))()
+      // A host that cannot keep the sign-in hears so before anyone approves it in a browser;
+      // an unreadable earlier sign-in is replaced by this one.
+      await store.get(baseUrl.origin).catch((error: unknown) => {
+        if (error instanceof CommandError && error.code === 'CREDENTIAL_STORE_UNAVAILABLE')
+          throw error
+        return null
+      })
       if (deviceFile) {
         await loginWithDeviceFile(baseUrl, deviceFile, {
           store,
@@ -109,6 +114,8 @@ export async function main(argv: readonly string[], deps: MainDeps = {}): Promis
       } else {
         await login(baseUrl, { store, write: writeOut, fetch: fetchImpl })
       }
+      if (!json)
+        writeOut('Tip: run `teler agent setup` to teach Claude Code and Codex to use Teler.\n')
       return 0
     }
 
@@ -177,25 +184,7 @@ export async function main(argv: readonly string[], deps: MainDeps = {}): Promis
       await runResourceCommand(client, output, command)
       return 0
     }
-    if (group === 'chat' && action === 'list') {
-      const limitRaw = takeOption(args, '--limit')
-      assertNoFlags(args)
-      if (args.length > 0) throw new UsageError('Usage: teler chat list [--limit <count>]')
-      const limit = limitRaw ? Number(limitRaw) : 20
-      if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
-        throw new UsageError('--limit must be an integer from 1 to 100')
-      }
-      await listChats(client, output, limit)
-      return 0
-    }
-    if (group === 'chat' && (action === 'show' || action === 'artifacts')) {
-      assertNoFlags(args)
-      if (args.length !== 1) throw new UsageError(`Usage: teler chat ${action} <chat-id-or-url>`)
-      const chatId = resolveChatId(args[0] ?? '')
-      if (action === 'show') await showChat(client, output, chatId)
-      else await listArtifacts(client, output, chatId)
-      return 0
-    }
+    if (await runChatCommand(group, action, args, client, output)) return 0
     if (group === 'task' && action === 'watch') {
       const timeout = takeOption(args, '--timeout')
       assertNoFlags(args)
@@ -260,7 +249,9 @@ export async function main(argv: readonly string[], deps: MainDeps = {}): Promis
       const organizationId = takeOption(args, '--org')
       const title = takeOption(args, '--title')
       const modelSetRaw = takeOption(args, '--model-set')
-      const deepAnalysis = takeFlag(args, '--deep')
+      // Teler no longer has a separate deep mode; the flag is accepted for one release.
+      if (takeFlag(args, '--deep'))
+        writeErr('teler: --deep is deprecated and has no effect; it will be removed.\n')
       const wait = takeFlag(args, '--wait')
       const timeout = takeOption(args, '--timeout')
       assertNoFlags(args)
@@ -279,7 +270,6 @@ export async function main(argv: readonly string[], deps: MainDeps = {}): Promis
           organizationId,
           title,
           modelSet: modelSetRaw,
-          deepAnalysis,
           wait,
           message: args[0],
           signal,
@@ -291,7 +281,12 @@ export async function main(argv: readonly string[], deps: MainDeps = {}): Promis
     throw new UsageError('Unknown command. Run `teler --help`.')
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unexpected error'
-    writeErr(json ? `${JSON.stringify(jsonError(error))}\n` : `teler: ${message}\n`)
+    const hint = errorHint(error)
+    writeErr(
+      json
+        ? `${JSON.stringify(jsonError(error))}\n`
+        : `teler: ${message}\n${hint ? `hint: ${hint}\n` : ''}`
+    )
     return error instanceof UsageError ? 2 : 1
   }
 }
