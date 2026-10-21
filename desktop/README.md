@@ -169,7 +169,10 @@ Builds are unsigned unless these optional repository secrets exist:
 | `DESKTOP_WIN_CSC_LINK`, `DESKTOP_WIN_CSC_KEY_PASSWORD`                                | Windows Authenticode certificate                                                                             |
 
 A signed macOS build is always notarized: with the certificate but without the
-key, the release fails rather than publish an app Gatekeeper refuses.
+key, the release fails rather than publish an app Gatekeeper refuses. The
+workflow also signs each `.dmg` with the same Developer ID, notarizes and staples
+it, and fails unless `stapler validate` and Gatekeeper (`spctl`) accept the disk
+image as notarized. The `.zip` carries the notarized, stapled app.
 
 Unsigned macOS builds are ad-hoc signed so Apple silicon can run them. On the
 first launch macOS refuses to open them: choose **Open Anyway** in System
