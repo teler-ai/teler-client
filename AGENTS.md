@@ -21,12 +21,14 @@ Guidance for anyone, human or agent, changing this repository. Also read the
 
 Everything here is public: code, tests, docs, commit messages, branch names, pull
 request titles and descriptions, review comments and release notes. Write all of
-it for an outside reader. Describe behavior through the public API, and keep these
-out: internal hostnames and environments, internal tools, links to private
-repositories and their issue or pull request numbers, people's names and contact
-details, customer or account details, and pricing or business plans. When a change
-needs a server update, say so in general terms ("needs a server that returns X;
-older servers keep working").
+it for an outside reader and describe behavior through the public API. Keep these
+out of all of it: internal hostnames, environments and tools; links to private
+repositories and their issue or pull request numbers; people's names, email
+addresses and other contact details; which AI models, providers or accounts run
+the Teler service; customer, organization or account details; and pricing,
+business plans or roadmap. Standard AI-assistant attribution lines are fine. When
+a change needs a server update, say so in general terms ("needs a server that
+returns X; older servers keep working").
 
 ## Conventions
 
