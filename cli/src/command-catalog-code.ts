@@ -22,6 +22,16 @@ export const CODE_FILE_COMMANDS: readonly CliCommand[] = [
     "Read a code File run's status and, once it succeeded, its outputs; also for a schedule's runs."
   ),
   command(
+    'files.runs',
+    'files runs [--limit <n>] [--cursor <cursor>] [--org <id>] [--json]',
+    'List your code File runs, newest first, from runs now and schedules.'
+  ),
+  command(
+    'files.output',
+    'files output <run-id> <slot> [--output <file>] [--org <id>] [--json]',
+    "Print one output of a succeeded code run, or save it to a new file with --output (needed for a model's bytes)."
+  ),
+  command(
     'schedule.file.create',
     `schedule file create <file-id> --frequency daily|weekly|monthly (--time-utc <HH:MM> | --time <HH:MM> --timezone <zone>) --idempotency-key <key> [--day-of-week <0-6>] [--day-of-month <1-31>] ${DECLARATION} [--org <id>] [--json]`,
     "Schedule a code File's current version. It starts paused until you approve its monthly spend; without --output it repeats your last run of that version. Paid plans only."
@@ -56,6 +66,11 @@ export const CODE_FILE_COMMANDS: readonly CliCommand[] = [
     'schedule.file.runs',
     'schedule file runs <id> [--json]',
     "Show a File schedule's last ten occurrences, their code runs and why any was skipped."
+  ),
+  command(
+    'schedule.file.latest',
+    'schedule file latest <id> [--slot <slot>] [--output <file>] [--json]',
+    "Show the latest run of a File schedule and its outputs, typed: a dataset's columns, rows and time coverage, a model's features; --output saves one. Latest is the newest occurrence, succeeded or not."
   ),
   command(
     'schedule.file.delete',

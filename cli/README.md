@@ -341,8 +341,19 @@ teler schedule file create <file-id> --frequency daily --time 06:00 --timezone E
 teler schedule file quote <schedule-id> --json
 teler schedule file approve <schedule-id> --revision <n> --monthly-credits 20 --yes --json
 teler schedule file runs <schedule-id> --json
+teler schedule file latest <schedule-id> --json
+teler schedule file latest <schedule-id> --slot result --output result.json
 teler files result <code-run-id> --json
 ```
+
+`schedule file latest` reads the newest occurrence that started a run, whether
+it succeeded or not, and its outputs with their contracts: a dataset's columns,
+rows and time coverage, a model's framework, features and output, or a JSON
+value. `--json` returns each output's contract; `--slot` with `--output <file>`
+saves one to a new file. `files runs` lists your code runs, and
+`files output <run-id> <slot>` prints one JSON output or, with `--output`, saves
+any output, including a model's bytes. Outputs are readable by the person who
+ran or scheduled the File.
 
 `files run` charges at most `--max-credits`. Keep the run ID from its receipt:
 repeating an `--idempotency-key` is refused (`RETRY_CONFLICT`) rather than run

@@ -62,6 +62,8 @@ Usage:
   teler files run <file-id> --max-credits <amount> --idempotency-key <key> [--output <slot>]...
              [--input <name>=<ref>]... [--params <json>] [--project <id>] [--org <id>] [--wait [--timeout <seconds>]] [--json]
   teler files result <run-id> [--org <id>] [--wait [--timeout <seconds>]] [--json]
+  teler files runs [--limit <n>] [--cursor <cursor>] [--org <id>] [--json]
+  teler files output <run-id> <slot> [--output <file>] [--org <id>] [--json]
   A code File is a Python script run in Teler's sandbox (paid plans). It reads teler.job.context()['parameters'] and
   teler.job.load_input_bytes(<name>), and writes teler.job.save_json(<slot>, value). --input <name>=<table-ref>
   reads a table in --project; <name>=file:<file-id> reads a json, dataset or model File.
@@ -108,6 +110,7 @@ Usage:
   teler schedule file quote <id> [--max-run-minutes <minutes>] [--json]
   teler schedule file approve <id> --revision <n> --monthly-credits <amount> --yes [--max-run-minutes <minutes>] [--json]
   teler schedule file show|runs|pause|resume|re-pin <id> [--json]
+  teler schedule file latest <id> [--slot <slot>] [--output <file>] [--json]
   teler schedule file delete <id> --yes [--json]
   A File schedule starts paused; approve exactly the quoted revision with a monthly credit cap to start it.
   teler skill  list|get|create|update|delete [options] [--json]

@@ -186,7 +186,9 @@ describe('teler files run and result', () => {
       'POST /api/saved-code-runs/preflight': () => Response.json(quote),
       'POST /api/saved-code-runs': () => Response.json(run('succeeded'), { status: 202 }),
       'GET /api/saved-code-runs/scrun_01m2k72d22fqe8ww472ycs3px3/outputs/result': () =>
-        new Response('{"forecast":[1,2]}'),
+        new Response('{"forecast":[1,2]}', {
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        }),
     })
     const argv = ['files', 'run', fileId, '--max-credits', '2', '--idempotency-key']
     const first = await cli([...argv, 'weekly-forecast-0001', '--org', org, '--json'], api.fetch)
@@ -322,7 +324,13 @@ describe('teler files run and result', () => {
       'GET /api/saved-code-runs/scrun_01m2k72d22fqe8ww472ycs3px3': () =>
         Response.json(run('failed', 'execution_failed')),
     })
-    const result = await cli(['files', 'result', runId, '--org', org, '--json'], api.fetch)
+    // Reading a failed run succeeds; waiting for one that fails does not.
+    const read = await cli(['files', 'result', runId, '--org', org, '--json'], api.fetch)
+    expect(read).toMatchObject({ exitCode: 0, stderr: '' })
+    const result = await cli(
+      ['files', 'result', runId, '--wait', '--org', org, '--json'],
+      api.fetch
+    )
     expect(result.exitCode).toBe(1)
     expect(JSON.parse(result.stdout.split('\n')[0] ?? '')).toMatchObject({
       status: 'failed',
@@ -373,5 +381,76 @@ describe('teler files, after review', () => {
       server({}).fetch
     )
     expect(result.exitCode).toBe(2)
+  })
+})
+
+describe('teler files runs and output', () => {
+  const runPath = '/api/saved-code-runs/scrun_01m2k72d22fqe8ww472ycs3px3'
+
+  it('lists code runs, newest first, with a cursor for the next page', async () => {
+    const listed = {
+      ...run('succeeded'),
+      streamSha256: 'a'.repeat(64),
+      occurrenceAt: '2026-10-22T09:00:00.000Z',
+    }
+    const api = server({
+      'GET /api/saved-code-runs': () =>
+        Response.json({ items: [listed], hasMore: true, nextCursor: 'next-page' }),
+    })
+    const result = await cli(['files', 'runs', '--limit', '1', '--org', org], api.fetch)
+    expect(result.stdout).toBe(
+      `${runId}\tsucceeded\t${fileId}\t2026-10-22T09:00:00.000Z\nMore: teler files runs --cursor next-page\n`
+    )
+    expect(api.sent[0]?.path).toBe(`/api/saved-code-runs?organizationId=${org}&limit=1`)
+  })
+
+  it('prints a JSON output, refuses to print binary bytes and saves any output to a new file', async () => {
+    const api = server({
+      [`GET ${runPath}/outputs/result`]: () =>
+        new Response('[{"week":13,"units":191.5}]', {
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        }),
+      [`GET ${runPath}/outputs/model`]: () =>
+        new Response(new Uint8Array([128, 4, 149]), {
+          headers: { 'Content-Type': 'application/octet-stream' },
+        }),
+    })
+    const printed = await cli(
+      ['files', 'output', runId, 'result', '--org', org, '--json'],
+      api.fetch
+    )
+    expect(JSON.parse(printed.stdout)).toEqual({
+      runId,
+      slot: 'result',
+      value: [{ week: 13, units: 191.5 }],
+    })
+    const binary = await cli(['files', 'output', runId, 'model', '--org', org], api.fetch)
+    expect(binary.exitCode).toBe(2)
+    const target = join(await mkdtemp(join(tmpdir(), 'teler-output-')), 'model.joblib')
+    const saved = await cli(
+      ['files', 'output', runId, 'model', '--output', target, '--org', org],
+      api.fetch
+    )
+    expect(saved).toMatchObject({ exitCode: 0, stdout: `Saved model to ${target}\n` })
+    expect([...new Uint8Array(await Bun.file(target).arrayBuffer())]).toEqual([128, 4, 149])
+    const again = await cli(
+      ['files', 'output', runId, 'model', '--output', target, '--org', org],
+      api.fetch
+    )
+    expect(again.exitCode).toBe(2)
+  })
+
+  it('reports a binary output of a result by its size, not its bytes', async () => {
+    const api = server({
+      [`GET ${runPath}`]: () => Response.json({ ...run('succeeded'), requiredSlots: ['model'] }),
+      [`GET ${runPath}/outputs/model`]: () =>
+        new Response(new Uint8Array([1, 2, 3, 4]), {
+          headers: { 'Content-Type': 'application/octet-stream' },
+        }),
+    })
+    const result = await cli(['files', 'result', runId, '--org', org, '--json'], api.fetch)
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      outputs: { model: { mediaType: 'application/octet-stream', byteLength: 4 } },
+    })
   })
 })

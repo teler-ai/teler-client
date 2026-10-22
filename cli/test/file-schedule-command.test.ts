@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'bun:test'
+import { mkdtemp } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { main } from '../src/index'
 
 const suffix = '01m2k72d22fqe8ww472ycs3px3'
@@ -395,5 +398,162 @@ describe('teler schedule file, after review', () => {
     })
     const approved = await cli([...approve, '20', '--yes'], api.fetch)
     expect(approved.stdout).not.toContain('undefined')
+  })
+})
+
+describe('teler schedule file latest', () => {
+  const runId = `scrun_${suffix}`
+  const stream = 'b'.repeat(64)
+  const runPath = `/api/saved-code-runs/${runId}`
+  const occurrence = {
+    id: `srun_${suffix}`,
+    status: 'success',
+    scheduledFor: '2026-10-23T04:00:00.000Z',
+    executedAt: '2026-10-23T04:00:01.000Z',
+    errorMessage: null,
+    savedCodeRunId: runId,
+    savedCodeRunStatus: 'succeeded',
+    attempts: 1,
+    settledAt: '2026-10-23T04:02:00.000Z',
+  }
+  const codeRun = (status: string) => ({
+    id: runId,
+    streamSha256: stream,
+    sourceFileId: fileId,
+    sourceRevisionId: revisionId,
+    occurrenceAt: '2026-10-23T04:00:00.000Z',
+    status,
+    stopReason: status === 'failed' ? 'execution_failed' : null,
+    requiredSlots: ['result'],
+    createdAt: '2026-10-23T04:00:01.000Z',
+    completedAt: '2026-10-23T04:02:00.000Z',
+  })
+  const dataset = {
+    contractVersion: 1,
+    kind: 'dataset',
+    representation: 'json-rows-v1',
+    dataset: {
+      contractVersion: 1,
+      columns: [
+        { name: 'week', type: 'date', nullable: false },
+        { name: 'units', type: 'number', nullable: false },
+      ],
+      rowIdentity: [],
+      rowOrder: [],
+      grain: 'week',
+      time: {
+        column: 'week',
+        semantics: 'date',
+        timezone: 'UTC',
+        coverage: { start: null, end: null },
+      },
+      query: {},
+    },
+  }
+  const model = {
+    contractVersion: 1,
+    kind: 'model',
+    codec: 'joblib-v1',
+    model: {
+      framework: 'sklearn',
+      frameworkVersion: '1.5.2',
+      pythonVersion: '3.12',
+      features: [{ name: 'week', type: 'integer', nullable: false }],
+      outputSchema: { type: 'number' },
+    },
+  }
+  const latest = (status: string) => ({
+    streamSha256: stream,
+    run: codeRun(status),
+    publishedAt: status === 'succeeded' ? '2026-10-23T04:02:00.000Z' : null,
+    outputs:
+      status === 'succeeded'
+        ? [
+            {
+              slot: 'result',
+              required: true,
+              contract: dataset,
+              byteLength: 64,
+              mediaType: 'application/json',
+              sha256: 'c'.repeat(64),
+            },
+            {
+              slot: 'model',
+              required: false,
+              contract: model,
+              byteLength: 900,
+              mediaType: 'application/octet-stream',
+              sha256: 'd'.repeat(64),
+            },
+          ]
+        : null,
+  })
+  function api(status: string) {
+    return server({
+      [`GET ${base}`]: () => Response.json(schedule({ isPaused: false, spend })),
+      [`GET ${base}/history`]: () => Response.json({ runs: [occurrence] }),
+      [`GET ${runPath}`]: () => Response.json(codeRun(status)),
+      [`GET /api/saved-code-runs/streams/${stream}/latest`]: () => Response.json(latest(status)),
+      [`GET ${runPath}/outputs/result`]: () =>
+        new Response('[{"week":"2026-10-19","units":180},{"week":"2026-10-26","units":187}]', {
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        }),
+      [`GET ${runPath}/outputs/model`]: () =>
+        new Response(new Uint8Array([128, 4]), {
+          headers: { 'Content-Type': 'application/octet-stream' },
+        }),
+    })
+  }
+
+  it('summarizes typed outputs for a person and returns their contracts as JSON', async () => {
+    const human = await cli(['schedule', 'file', 'latest', id], api('succeeded').fetch)
+    expect(human.exitCode).toBe(0)
+    expect(human.stdout).toBe(
+      `${runId}\tsucceeded\toccurrence 2026-10-23T04:00:00.000Z\tpublished 2026-10-23T04:02:00.000Z\n` +
+        'output\tresult\tdataset: 2 rows; columns week:date, units:number; time week (date) 2026-10-19..2026-10-26\n' +
+        'output\tmodel\tmodel: sklearn 1.5.2; features week:integer; output number\n'
+    )
+    const json = await cli(
+      ['schedule', 'file', 'latest', id, '--slot', 'model', '--json'],
+      api('succeeded').fetch
+    )
+    expect(JSON.parse(json.stdout)).toMatchObject({
+      run: { id: runId, status: 'succeeded' },
+      outputs: [{ slot: 'model', contract: model }],
+    })
+  })
+
+  it('saves one output of the latest run, and says when the latest has none', async () => {
+    const target = join(await mkdtemp(join(tmpdir(), 'teler-latest-')), 'model.joblib')
+    const saved = await cli(
+      ['schedule', 'file', 'latest', id, '--slot', 'model', '--output', target],
+      api('succeeded').fetch
+    )
+    expect(saved.exitCode).toBe(0)
+    expect(saved.stdout).toContain(`Saved to ${target}`)
+    const both = await cli(
+      ['schedule', 'file', 'latest', id, '--output', target],
+      api('succeeded').fetch
+    )
+    expect(both.exitCode).toBe(2)
+
+    const failed = await cli(['schedule', 'file', 'latest', id], api('failed').fetch)
+    expect(failed).toMatchObject({ exitCode: 0 })
+    expect(failed.stdout).toContain(`${runId}\tfailed\texecution_failed`)
+    const none = await cli(
+      ['schedule', 'file', 'latest', id, '--slot', 'result', '--output', `${target}.2`, '--json'],
+      api('failed').fetch
+    )
+    expect(JSON.parse(none.stderr)).toMatchObject({ error: { code: 'NO_OUTPUT_YET' } })
+  })
+
+  it('says when the schedule has not started a run yet', async () => {
+    const quiet = server({
+      [`GET ${base}`]: () => Response.json(schedule()),
+      [`GET ${base}/history`]: () => Response.json({ runs: [] }),
+    })
+    const result = await cli(['schedule', 'file', 'latest', id, '--json'], quiet.fetch)
+    expect(result.exitCode).toBe(1)
+    expect(JSON.parse(result.stderr)).toMatchObject({ error: { code: 'NO_RUN_YET' } })
   })
 })

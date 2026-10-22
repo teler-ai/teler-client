@@ -8,6 +8,7 @@ import { emitJson } from './command-output'
 import {
   codeFileIdSchema,
   fileDescriptorSchema,
+  jobNameSchema,
   fileScheduleIdSchema,
   fileScheduleRunsSchema,
   fileScheduleSchema,
@@ -16,6 +17,7 @@ import {
   type SpendQuote,
 } from './code-file-contract'
 import { declarationFor, takeDeclarationFlags } from './code-file-declaration'
+import { showLatest } from './file-schedule-latest'
 import { parseControlInput } from './control-args'
 import { CommandError, UsageError } from './errors'
 import { creditNano, runSubmitInputSchema } from './run-contract'
@@ -254,6 +256,15 @@ export async function runFileScheduleCommand(
   }
   if (action === 'show')
     return emitSchedule(output, 'File schedule', await read(client, scheduleId(args, 'show <id>')))
+  if (action === 'latest') {
+    const slot = takeOption(args, '--slot')
+    const destination = takeOption(args, '--output')
+    const id = scheduleId(args, 'latest <id> [--slot <slot>] [--output <file>]')
+    return await showLatest(client, output, await read(client, id), {
+      slot: slot === undefined ? undefined : parseControlInput(jobNameSchema, slot, '--slot'),
+      destination,
+    })
+  }
   if (action === 'runs') {
     const id = scheduleId(args, 'runs <id>')
     const { runs } = await client.json(path(id, '/history'), fileScheduleRunsSchema)
@@ -296,6 +307,6 @@ export async function runFileScheduleCommand(
     return
   }
   throw new UsageError(
-    'Unknown schedule file command. Use create, show, quote, approve, pause, resume, re-pin, runs or delete.'
+    'Unknown schedule file command. Use create, show, quote, approve, pause, resume, re-pin, runs, latest or delete.'
   )
 }

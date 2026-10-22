@@ -86,6 +86,11 @@ const runStatusSchema = z.enum([
 ])
 export const codeRunSchema = z.object({
   id: codeRunIdSchema,
+  streamSha256: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/)
+    .optional(),
+  occurrenceAt: z.string().optional(),
   sourceFileId: codeFileIdSchema,
   sourceRevisionId: revisionIdSchema,
   status: runStatusSchema,

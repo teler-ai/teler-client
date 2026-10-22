@@ -3,26 +3,35 @@ import { z } from 'zod'
 import type { TelerApiClient } from './api'
 import type { Output } from './chats'
 import { resolveCliOrganizationId } from './chats'
-import { assertNoFlags, takeFlag, takeOption } from './command-args'
+import { assertNoFlags, parseLimit, takeFlag, takeOption } from './command-args'
 import { emitJson } from './command-output'
 import {
   codeFileIdSchema,
   codeRunIdSchema,
   codeRunSchema,
   fileDescriptorSchema,
+  jobNameSchema,
   runQuoteSchema,
   savedCodeFileSchema,
   tariffSchema,
   type CodeRun,
 } from './code-file-contract'
 import { declarationFor, resolveBindings, takeDeclarationFlags } from './code-file-declaration'
+import {
+  codeRunListSchema,
+  describeOutput,
+  isJsonMedia,
+  parseJsonOutput,
+  readOutput,
+  saveOutput,
+} from './code-run-output'
 import { parseControlInput, parseControlJson } from './control-args'
 import { dataOrganizationIdSchema } from './data-contract'
 import { ApiError, CommandError, UsageError } from './errors'
 import { creditNano, runSubmitInputSchema } from './run-contract'
 import { readTaskFile } from './run-command'
 
-export const CODE_FILE_ACTIONS = new Set(['save-code', 'run', 'result'])
+export const CODE_FILE_ACTIONS = new Set(['save-code', 'run', 'result', 'runs', 'output'])
 const RUNTIME_ID = 'python-sandbox-v1'
 const TERMINAL = new Set(['succeeded', 'failed', 'cancelled'])
 const keySchema = runSubmitInputSchema.shape.idempotencyKey
@@ -124,34 +133,34 @@ function runKey(key: string): string {
   return createHash('sha256').update(`teler-files-run:${key}`).digest('hex')
 }
 
+/** Each required output: a JSON value, or what a binary one is (save it with `files output`). */
 async function readOutputs(client: TelerApiClient, organizationId: string, run: CodeRun) {
   const outputs: Record<string, unknown> = {}
-  const query = new URLSearchParams({ organizationId })
   for (const slot of run.requiredSlots) {
-    const response = await client.request(`/api/saved-code-runs/${run.id}/outputs/${slot}?${query}`)
-    const text = await response.text()
-    try {
-      outputs[slot] = JSON.parse(text) as unknown
-    } catch {
-      throw new ApiError('Teler API returned an invalid output', 502)
-    }
+    const { mediaType, bytes } = await readOutput(client, organizationId, run.id, slot)
+    outputs[slot] = isJsonMedia(mediaType)
+      ? parseJsonOutput(bytes)
+      : { mediaType, byteLength: bytes.byteLength }
   }
   return outputs
 }
 
+/** Prints a run and its outputs; a failed or cancelled one fails the command when `strict`. */
 async function emitRun(
   client: TelerApiClient,
   output: Output,
   organizationId: string,
-  run: CodeRun
+  run: CodeRun,
+  strict = true
 ): Promise<void> {
   const outputs = run.status === 'succeeded' ? await readOutputs(client, organizationId, run) : {}
   if (output.json) emitJson(output, { ...run, outputs })
   else {
     output.write(`${run.id}\t${run.status}${run.stopReason ? `\t${run.stopReason}` : ''}\n`)
     for (const [slot, value] of Object.entries(outputs))
-      output.write(`output\t${slot}\t${JSON.stringify(value)}\n`)
+      output.write(`output\t${slot}\t${describeOutput(null, value)}\n`)
   }
+  if (!strict) return
   if (run.status === 'failed')
     throw new CommandError(
       'RUN_FAILED',
@@ -264,10 +273,55 @@ async function result(client: TelerApiClient, output: Output, args: string[]) {
   let run = await client.json(`/api/saved-code-runs/${runId}?${query}`, codeRunSchema)
   if (run.id !== runId) throw new ApiError('Teler API returned a mismatched run receipt', 502)
   if (waitSeconds !== undefined) run = await waitForRun(client, organizationId, run, waitSeconds)
-  await emitRun(client, output, organizationId, run)
+  // Reading a failed run succeeds; waiting for one that fails does not.
+  await emitRun(client, output, organizationId, run, waitSeconds !== undefined)
 }
 
-/** `teler files save-code|run|result`: code saved as a File, and its runs. */
+async function listRuns(client: TelerApiClient, output: Output, args: string[]) {
+  const organizationOption = takeOption(args, '--org')
+  const limit = parseLimit(takeOption(args, '--limit'), 20, 100)
+  const cursor = takeOption(args, '--cursor')
+  assertNoFlags(args)
+  if (args.length) throw new UsageError('Usage: teler files runs [--limit <n>] [--cursor <cursor>]')
+  const organizationId = await organizationOf(client, organizationOption)
+  const query = new URLSearchParams({ organizationId, limit: String(limit) })
+  if (cursor) query.set('cursor', cursor)
+  const page = await client.json(`/api/saved-code-runs?${query}`, codeRunListSchema)
+  if (output.json) return emitJson(output, page)
+  if (!page.items.length) return output.write('No code runs yet.\n')
+  for (const run of page.items)
+    output.write(
+      `${run.id}\t${run.status}\t${run.sourceFileId}\t${run.occurrenceAt ?? run.createdAt}\n`
+    )
+  if (page.nextCursor) output.write(`More: teler files runs --cursor ${page.nextCursor}\n`)
+}
+
+async function downloadOutput(client: TelerApiClient, output: Output, args: string[]) {
+  const organizationOption = takeOption(args, '--org')
+  const destination = takeOption(args, '--output')
+  assertNoFlags(args)
+  if (args.length !== 2)
+    throw new UsageError('Usage: teler files output <run-id> <slot> [--output <file>]')
+  const runId = parseControlInput(codeRunIdSchema, args[0], 'run ID')
+  const slot = parseControlInput(jobNameSchema, args[1], 'output slot')
+  const organizationId = await organizationOf(client, organizationOption)
+  if (destination !== undefined) {
+    const savedTo = await saveOutput(client, organizationId, runId, slot, destination)
+    if (output.json) emitJson(output, { runId, slot, savedTo })
+    else output.write(`Saved ${slot} to ${savedTo}\n`)
+    return
+  }
+  const { mediaType, bytes } = await readOutput(client, organizationId, runId, slot)
+  if (!isJsonMedia(mediaType))
+    throw new UsageError(
+      `${slot} is binary (${bytes.byteLength} bytes); save it with --output <file>`
+    )
+  const value = parseJsonOutput(bytes)
+  if (output.json) emitJson(output, { runId, slot, value })
+  else output.write(`${JSON.stringify(value)}\n`)
+}
+
+/** `teler files save-code|run|result|runs|output`: code saved as a File, and its runs. */
 export async function runCodeFileCommand(
   client: TelerApiClient,
   output: Output,
@@ -276,5 +330,7 @@ export async function runCodeFileCommand(
 ): Promise<void> {
   if (action === 'save-code') return await saveCode(client, output, args)
   if (action === 'run') return await runNow(client, output, args)
+  if (action === 'runs') return await listRuns(client, output, args)
+  if (action === 'output') return await downloadOutput(client, output, args)
   return await result(client, output, args)
 }

@@ -59,6 +59,7 @@ teler schedule file create <file-id> --frequency daily --time-utc 06:00 --idempo
 teler schedule file quote <schedule-id> --json
 teler schedule file approve <schedule-id> --revision <n> --monthly-credits <cap> --yes --json
 teler schedule file runs <schedule-id> --json
+teler schedule file latest <schedule-id> --json        # typed outputs; --slot/--output to save
 ```
 
 Approving commits the person's credits: agree the cap with them. New code: `save-code --file
