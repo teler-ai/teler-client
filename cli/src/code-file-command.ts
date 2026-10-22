@@ -19,8 +19,8 @@ import {
 import { declarationFor, resolveBindings, takeDeclarationFlags } from './code-file-declaration'
 import {
   codeRunListSchema,
-  describeOutput,
   isJsonMedia,
+  printableJson,
   parseJsonOutput,
   readOutput,
   saveOutput,
@@ -136,13 +136,20 @@ function runKey(key: string): string {
 /** Each required output: a JSON value, or what a binary one is (save it with `files output`). */
 async function readOutputs(client: TelerApiClient, organizationId: string, run: CodeRun) {
   const outputs: Record<string, unknown> = {}
+  const lines: string[] = []
   for (const slot of run.requiredSlots) {
     const { mediaType, bytes } = await readOutput(client, organizationId, run.id, slot)
-    outputs[slot] = isJsonMedia(mediaType)
-      ? parseJsonOutput(bytes)
-      : { mediaType, byteLength: bytes.byteLength }
+    if (isJsonMedia(mediaType)) {
+      outputs[slot] = parseJsonOutput(bytes)
+      lines.push(`output\t${slot}\t${printableJson(outputs[slot])}`)
+    } else {
+      outputs[slot] = { mediaType, byteLength: bytes.byteLength }
+      lines.push(
+        `output\t${slot}\tbinary, ${bytes.byteLength} bytes (teler files output ${run.id} ${slot} --output <file>)`
+      )
+    }
   }
-  return outputs
+  return { outputs, lines }
 }
 
 /** Prints a run and its outputs; a failed or cancelled one fails the command when `strict`. */
@@ -153,12 +160,14 @@ async function emitRun(
   run: CodeRun,
   strict = true
 ): Promise<void> {
-  const outputs = run.status === 'succeeded' ? await readOutputs(client, organizationId, run) : {}
+  const { outputs, lines } =
+    run.status === 'succeeded'
+      ? await readOutputs(client, organizationId, run)
+      : { outputs: {}, lines: [] }
   if (output.json) emitJson(output, { ...run, outputs })
   else {
     output.write(`${run.id}\t${run.status}${run.stopReason ? `\t${run.stopReason}` : ''}\n`)
-    for (const [slot, value] of Object.entries(outputs))
-      output.write(`output\t${slot}\t${describeOutput(null, value)}\n`)
+    for (const line of lines) output.write(`${line}\n`)
   }
   if (!strict) return
   if (run.status === 'failed')

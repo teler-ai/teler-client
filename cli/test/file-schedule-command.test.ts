@@ -547,6 +547,25 @@ describe('teler schedule file latest', () => {
     expect(JSON.parse(none.stderr)).toMatchObject({ error: { code: 'NO_OUTPUT_YET' } })
   })
 
+  it('describes an output too large to read from its contract alone', async () => {
+    const large = server({
+      [`GET ${base}`]: () => Response.json(schedule({ isPaused: false, spend })),
+      [`GET ${base}/history`]: () => Response.json({ runs: [occurrence] }),
+      [`GET ${runPath}`]: () => Response.json(codeRun('succeeded')),
+      [`GET /api/saved-code-runs/streams/${stream}/latest`]: () => {
+        const body = latest('succeeded')
+        return Response.json({
+          ...body,
+          outputs: [{ ...body.outputs![0]!, byteLength: 64 * 1024 * 1024 }],
+        })
+      },
+    })
+    const result = await cli(['schedule', 'file', 'latest', id], large.fetch)
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain('output\tresult\tdataset: columns week:date, units:number')
+    expect(large.sent.some((sent) => sent.path.includes('/outputs/'))).toBe(false)
+  })
+
   it('says when the schedule has not started a run yet', async () => {
     const quiet = server({
       [`GET ${base}`]: () => Response.json(schedule()),

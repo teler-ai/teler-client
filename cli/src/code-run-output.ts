@@ -4,7 +4,7 @@ import { downloadArtifact } from './artifact-command'
 import { codeRunSchema, jobNameSchema, type CodeRun } from './code-file-contract'
 import { ApiError } from './errors'
 
-const MAX_READ_BYTES = 32 * 1024 * 1024
+export const MAX_READ_BYTES = 32 * 1024 * 1024
 const columnSchema = z.object({ name: z.string(), type: z.string() })
 const columnsSchema = z.array(columnSchema)
 
@@ -163,6 +163,16 @@ function describe(contract: OutputContract | null, value?: unknown): string {
     return `json: keys ${Object.keys(value).join(', ')}`
   if (value !== undefined) return `json: ${JSON.stringify(value)}`
   return contract ? `${contract.kind}` : 'output'
+}
+
+const PRINTED_JSON_CHARACTERS = 4000
+
+/** A JSON value on one line for a person: escaped, so no control text, and bounded. */
+export function printableJson(value: unknown): string {
+  const text = JSON.stringify(value)
+  return text.length > PRINTED_JSON_CHARACTERS
+    ? `${text.slice(0, PRINTED_JSON_CHARACTERS)}… (use --json for all of it)`
+    : text
 }
 
 /** The run of the newest occurrence that started one; null before any did. */

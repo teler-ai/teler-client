@@ -454,3 +454,28 @@ describe('teler files runs and output', () => {
     })
   })
 })
+
+describe('teler files result for a person', () => {
+  it('prints JSON output values, bounded, and names binary outputs by size', async () => {
+    const runPath = '/api/saved-code-runs/scrun_01m2k72d22fqe8ww472ycs3px3'
+    const api = server({
+      [`GET ${runPath}`]: () =>
+        Response.json({ ...run('succeeded'), requiredSlots: ['result', 'model'] }),
+      [`GET ${runPath}/outputs/result`]: () =>
+        new Response('{"forecast":[191.5,198.5],"note":"ok\\u001b[2J"}', {
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      [`GET ${runPath}/outputs/model`]: () =>
+        new Response(new Uint8Array([1, 2, 3]), {
+          headers: { 'Content-Type': 'application/octet-stream' },
+        }),
+    })
+    const result = await cli(['files', 'result', runId, '--org', org], api.fetch)
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout).toContain(
+      'output\tresult\t{"forecast":[191.5,198.5],"note":"ok\\u001b[2J"}'
+    )
+    expect(result.stdout).toContain('output\tmodel\tbinary, 3 bytes')
+    expect(result.stdout).not.toContain('\u001b')
+  })
+})

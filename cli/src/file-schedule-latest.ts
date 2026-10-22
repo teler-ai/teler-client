@@ -6,6 +6,7 @@ import {
   describeOutput,
   isJsonMedia,
   latestOccurrenceSchema,
+  MAX_READ_BYTES,
   newestRunId,
   parseJsonOutput,
   readOutput,
@@ -81,7 +82,11 @@ export async function showLatest(
   for (const item of outputs) {
     // A JSON or dataset output is read to count its rows; a model's contract says enough.
     let value: unknown
-    if (item.contract.kind === 'json' || item.contract.kind === 'dataset') {
+    // One too large to read here is described from its contract alone.
+    if (
+      (item.contract.kind === 'json' || item.contract.kind === 'dataset') &&
+      item.byteLength <= MAX_READ_BYTES
+    ) {
       const read = await readOutput(client, schedule.organizationId, latestRun.id, item.slot)
       if (isJsonMedia(read.mediaType)) value = parseJsonOutput(read.bytes)
     }
