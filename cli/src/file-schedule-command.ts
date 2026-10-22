@@ -177,7 +177,11 @@ async function approve(client: TelerApiClient, output: Output, args: string[]) {
   if (quote.definitionRevision !== expectedRevision) {
     // An approval whose answer was lost moved the revision on: report it, approve nothing new.
     const current = await read(client, id)
-    if (sameApproval(current, monthly, maxRunMillis)) {
+    // An approval moves the revision exactly one on; anything since makes it another approval.
+    if (
+      current.definitionRevision === expectedRevision + 1 &&
+      sameApproval(current, monthly, maxRunMillis)
+    ) {
       if (output.json) return emitJson(output, current)
       return output.write(`${id} is already approved: ${spendWords(current)}\n`)
     }

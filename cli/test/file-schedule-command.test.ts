@@ -350,6 +350,14 @@ describe('teler schedule file, after review', () => {
     expect(api.sent.every((sent) => !sent.path.endsWith('/spend/approve'))).toBe(true)
     const other = await cli([...approve, '30', '--yes', '--json'], api.fetch)
     expect(JSON.parse(other.stderr)).toMatchObject({ error: { code: 'STALE_QUOTE' } })
+    // Moved on again since (a pause, a hold): the live approval is not this one.
+    const later = server({
+      [`POST ${base}/spend/prepare`]: () => Response.json({ ...quote, definitionRevision: 3 }),
+      [`GET ${base}`]: () =>
+        Response.json(schedule({ needsSpendApproval: false, spend, definitionRevision: 3 })),
+    })
+    const moved = await cli([...approve, '20', '--yes', '--json'], later.fetch)
+    expect(JSON.parse(moved.stderr)).toMatchObject({ error: { code: 'STALE_QUOTE' } })
   })
 
   it('keeps the run time a quote was asked for in the approve command it suggests', async () => {
