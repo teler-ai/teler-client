@@ -46,7 +46,8 @@ teler run python --file analysis.py --project <project-id> --max-credits 1 \
 
 ## Put Python into production
 
-Test with `teler run python` first (save a model with `teler.models`). The scheduled job is a
+Test with `teler run python` first. Saving a model there with `teler.models` needs the person's
+Agent Access to allow file changes without asking; otherwise train inside the job. The job is a
 script using only `teler.job`: `context()["parameters"]`, `load_input_bytes("<name>")` (a table
 is JSON rows, a model File joblib bytes) and `save_json("result", value)`. No `get_connection`.
 

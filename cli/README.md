@@ -380,7 +380,9 @@ so a change made meanwhile is refused instead of overwritten. Repeating an
 `approve` whose answer was lost reports the approval already in force.
 
 A run of a saved code File does not return its traceback. Debug the same code
-with `teler run python` first.
+with `teler run python` first. A model saved there with `teler.models` becomes a
+model File input only where your Agent Access settings allow file changes without
+asking; otherwise train the model inside the job from its table inputs.
 
 ## Folder sync
 
