@@ -216,7 +216,7 @@ describe('teler files run and result', () => {
       approvedReservedMemoryMiB: 2048,
     })
     expect(submitted.idempotencyKey).toMatch(/^[0-9a-f]{64}$/)
-    expect(submitted.occurrenceAt).toMatch(/:00\.000Z$/)
+    expect(Number.isNaN(Date.parse(submitted.occurrenceAt))).toBe(false)
   })
 
   it('declares outputs and inputs from flags, and refuses several outputs without result', async () => {
@@ -296,7 +296,7 @@ describe('teler files run and result', () => {
             ),
         },
         'RETRY_CONFLICT',
-        'new --idempotency-key',
+        'nothing new ran',
       ],
     ]
     for (const [routes, code, hint] of refusals) {
@@ -332,5 +332,46 @@ describe('teler files run and result', () => {
     expect(JSON.parse(result.stderr)).toMatchObject({
       error: { code: 'RUN_FAILED', hint: expect.stringContaining('teler run python') },
     })
+  })
+})
+
+describe('teler files, after review', () => {
+  it('says a reused run key ran nothing new, without promising a replay', async () => {
+    const api = server({
+      'GET /api/files/doc_01m2k72d22fqe8ww472ycs3px3/content-descriptor': () =>
+        Response.json({ revisionId, version: 1, securityVersion: 1 }),
+      'GET /api/saved-code-runs/tariff': () => Response.json({ tariffVersion: 'compute-v1' }),
+      'POST /api/saved-code-runs/preflight': () => Response.json(quote),
+      'POST /api/saved-code-runs': () =>
+        Response.json({ error: { code: 'RETRY_CONFLICT' } }, { status: 409 }),
+    })
+    const result = await cli(
+      [
+        'files',
+        'run',
+        fileId,
+        '--max-credits',
+        '2',
+        '--idempotency-key',
+        'key-for-refusal-002',
+        '--output',
+        'result',
+        '--org',
+        org,
+      ],
+      api.fetch
+    )
+    expect(result.exitCode).toBe(1)
+    expect(result.stderr).toContain('nothing new ran')
+    expect(result.stderr).not.toContain('belongs to a different task')
+  })
+
+  it('refuses run flags on save-code instead of ignoring them', async () => {
+    const code = await localFile('score.py', 'print(1)\n')
+    const result = await cli(
+      ['files', 'save-code', code, '--to', '/personal/a.py', '--params', '{}', '--org', org],
+      server({}).fetch
+    )
+    expect(result.exitCode).toBe(2)
   })
 })

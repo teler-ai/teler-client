@@ -61,8 +61,10 @@ function apiHint(error: ApiError): string | undefined {
     return "Your organization's plan does not allow this; an owner can change the plan in the Teler app."
   if (code === 'INSUFFICIENT_CREDITS' || code === 'BUDGET_EXCEEDED')
     return 'Lower --max-credits to what the organization has, or add credits in the Teler app.'
-  if (code === 'IDEMPOTENCY_CONFLICT' || code === 'RETRY_CONFLICT')
+  if (code === 'IDEMPOTENCY_CONFLICT')
     return 'That key belongs to a different task; use a new --idempotency-key for this one.'
+  if (code === 'RETRY_CONFLICT')
+    return 'That --idempotency-key was already used, so nothing new ran. If an earlier answer was lost, its run may be going; use a new key only to run it again.'
   if (code === 'STALE_REVISION')
     return 'It changed since you read it; read it again and retry with what it shows now.'
   if (code.endsWith('APPROVAL_REQUIRED') || code === 'SESSION_NEEDS_APPROVAL')

@@ -119,7 +119,8 @@ export const fileScheduleSchema = z.object({
   dayOfWeek: z.number().int().nullable(),
   dayOfMonth: z.number().int().nullable(),
   isPaused: z.boolean(),
-  pauseReason: code.nullable(),
+  /** Why it paused itself for an uploaded table it reads; only `kind` is printed. */
+  pauseReason: z.looseObject({ kind: reasonCode }).nullable(),
   nextRunAt: z.string(),
   definitionRevision: z.number().int().positive(),
   needsSpendApproval: z.boolean(),
@@ -127,6 +128,14 @@ export const fileScheduleSchema = z.object({
   heldByAdmin: z.boolean(),
 })
 export type FileSchedule = z.infer<typeof fileScheduleSchema>
+
+/** A File schedule as `teler schedule list` needs it, so a new field never breaks the list. */
+export const fileScheduleListItemSchema = z.looseObject({
+  id: fileScheduleIdSchema,
+  fileId: codeFileIdSchema,
+  isPaused: z.boolean(),
+  nextRunAt: z.string(),
+})
 
 export const spendQuoteSchema = z.object({
   tariffVersion: z.string().min(1).max(100),

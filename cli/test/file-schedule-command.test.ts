@@ -198,6 +198,7 @@ describe('teler schedule file', () => {
   it('refuses a quote that moved on, locally or from the server, with the next step', async () => {
     const moved = server({
       [`POST ${base}/spend/prepare`]: () => Response.json({ ...quote, definitionRevision: 2 }),
+      [`GET ${base}`]: () => Response.json(schedule({ definitionRevision: 2 })),
     })
     const local = await cli([...approve, '20', '--yes', '--json'], moved.fetch)
     expect(local.exitCode).toBe(1)
@@ -307,5 +308,84 @@ describe('teler schedule file', () => {
     })
     const listed = await cli(['schedule', 'list', '--org', org], list.fetch)
     expect(listed.stdout).toBe(`${id}\tfile ${fileId}\tpaused\n`)
+  })
+})
+
+describe('teler schedule file, after review', () => {
+  const selfPaused = {
+    kind: 'upload_missing',
+    input: 'sales',
+    upload: 'sales.csv',
+  }
+
+  it('reads a schedule that paused itself for an upload, and still lists every schedule', async () => {
+    const api = server({
+      [`GET ${base}`]: () => Response.json(schedule({ pauseReason: selfPaused })),
+      'GET /api/schedule': () =>
+        Response.json({
+          schedules: [],
+          eventStarts: [],
+          fileSchedules: [schedule({ pauseReason: selfPaused, futureField: { a: 1 } })],
+        }),
+    })
+    const shown = await cli(['schedule', 'file', 'show', id], api.fetch)
+    expect(shown.exitCode).toBe(0)
+    expect(shown.stdout).toContain('paused (upload_missing)')
+    expect(shown.stdout).not.toContain('sales.csv')
+    const listed = await cli(['schedule', 'list', '--org', org], api.fetch)
+    expect(listed).toMatchObject({ exitCode: 0, stdout: `${id}\tfile ${fileId}\tpaused\n` })
+  })
+
+  it('reports an approval that already went through instead of a stale quote', async () => {
+    const api = server({
+      [`POST ${base}/spend/prepare`]: () => Response.json({ ...quote, definitionRevision: 2 }),
+      [`GET ${base}`]: () =>
+        Response.json(
+          schedule({ isPaused: false, needsSpendApproval: false, spend, definitionRevision: 2 })
+        ),
+    })
+    const again = await cli([...approve, '20', '--yes'], api.fetch)
+    expect(again.exitCode).toBe(0)
+    expect(again.stdout).toContain(`${id} is already approved`)
+    expect(api.sent.every((sent) => !sent.path.endsWith('/spend/approve'))).toBe(true)
+    const other = await cli([...approve, '30', '--yes', '--json'], api.fetch)
+    expect(JSON.parse(other.stderr)).toMatchObject({ error: { code: 'STALE_QUOTE' } })
+  })
+
+  it('keeps the run time a quote was asked for in the approve command it suggests', async () => {
+    const api = server({
+      [`POST ${base}/spend/prepare`]: () => Response.json({ ...quote, maxRunMillis: 1_200_000 }),
+    })
+    const quoted = await cli(
+      ['schedule', 'file', 'quote', id, '--max-run-minutes', '20'],
+      api.fetch
+    )
+    expect(quoted.stdout).toContain('--max-run-minutes 20 --yes')
+    expect(api.sent[0]?.body).toEqual({ maxRunMillis: 1_200_000 })
+  })
+
+  it('needs a time zone with a local time, and words an approval without spend plainly', async () => {
+    const refused = await cli(
+      [
+        'schedule',
+        'file',
+        'create',
+        fileId,
+        '--frequency',
+        'daily',
+        '--time',
+        '06:00',
+        '--idempotency-key',
+        'daily-forecast-schedule-1',
+      ],
+      server({}).fetch
+    )
+    expect(refused.exitCode).toBe(2)
+    const api = server({
+      [`POST ${base}/spend/prepare`]: () => Response.json(quote),
+      [`POST ${base}/spend/approve`]: () => Response.json(schedule(), { status: 201 }),
+    })
+    const approved = await cli([...approve, '20', '--yes'], api.fetch)
+    expect(approved.stdout).not.toContain('undefined')
   })
 })

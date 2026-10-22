@@ -52,6 +52,7 @@ async function read(client: TelerApiClient, id: string): Promise<FileSchedule> {
 
 function state(schedule: FileSchedule): string {
   if (schedule.heldByAdmin) return 'held by an admin'
+  if (schedule.pauseReason) return `paused (${schedule.pauseReason.kind})`
   if (schedule.isPaused)
     return schedule.needsSpendApproval ? 'paused until its spend is approved' : 'paused'
   return `next run ${schedule.nextRunAt}`
@@ -65,15 +66,21 @@ function emitSchedule(output: Output, verb: string, schedule: FileSchedule): voi
     )
 }
 
-function emitQuote(output: Output, id: string, quote: SpendQuote): void {
+function emitQuote(
+  output: Output,
+  id: string,
+  quote: SpendQuote,
+  maxRunMillis: number | undefined
+): void {
   if (output.json) return emitJson(output, quote)
+  const runTime = maxRunMillis === undefined ? '' : ` --max-run-minutes ${maxRunMillis / 60_000}`
   output.write(
     `${id} revision ${quote.definitionRevision}: up to ${quote.maximumCreditsPerOccurrence} credits a run ` +
       `(runs up to ${Math.ceil(quote.maxRunMillis / 1000)} s), about ${quote.expectedOccurrencesPerMonth} runs a month ` +
       `(at most ${quote.worstCaseOccurrencesPerMonth}); suggested cap ${quote.suggestedMaximumCreditsPerMonth} ` +
       `credits a month; ${quote.monthToDateCredits} spent this month; approval lasts until ${quote.expiresAt}\n` +
       `Approve: teler schedule file approve ${id} --revision ${quote.definitionRevision} ` +
-      `--monthly-credits ${quote.suggestedMaximumCreditsPerMonth} --yes\n`
+      `--monthly-credits ${quote.suggestedMaximumCreditsPerMonth}${runTime} --yes\n`
   )
 }
 
@@ -113,7 +120,7 @@ async function create(client: TelerApiClient, output: Output, args: string[]) {
   if (
     args.length !== 1 ||
     (timeUtc === undefined) === (time === undefined) ||
-    (timeUtc && timezone)
+    (timeUtc === undefined) === (timezone === undefined)
   )
     throw new UsageError(
       'Usage: teler schedule file create <file-id> --frequency <cadence> (--time-utc <HH:MM> | --time <HH:MM> --timezone <zone>) --idempotency-key <key>'
@@ -123,7 +130,7 @@ async function create(client: TelerApiClient, output: Output, args: string[]) {
   const at =
     timeUtc !== undefined
       ? { timeUtc: parseControlInput(timeSchema, timeUtc, '--time-utc') }
-      : { time: parseControlInput(timeSchema, time, '--time'), timezone: timezone ?? 'UTC' }
+      : { time: parseControlInput(timeSchema, time, '--time'), timezone }
   const organizationId = await resolveCliOrganizationId(client, organizationOption)
   const query = new URLSearchParams({ organizationId })
   const descriptor = await client.json(
@@ -167,17 +174,24 @@ async function approve(client: TelerApiClient, output: Output, args: string[]) {
       `Approving spend requires --yes; read the quote first with \`teler schedule file quote ${id}\``
     )
   const quote = await quoteOf(client, id, maxRunMillis)
-  if (quote.definitionRevision !== expectedRevision)
+  if (quote.definitionRevision !== expectedRevision) {
+    // An approval whose answer was lost moved the revision on: report it, approve nothing new.
+    const current = await read(client, id)
+    if (sameApproval(current, monthly, maxRunMillis)) {
+      if (output.json) return emitJson(output, current)
+      return output.write(`${id} is already approved: ${spendWords(current)}\n`)
+    }
     throw new CommandError(
       'STALE_QUOTE',
       `${id} is at revision ${quote.definitionRevision}, not ${expectedRevision}`,
       `Run \`teler schedule file quote ${id}\` again and approve the revision it shows.`
     )
+  }
   if (creditNano(monthly) < creditNano(quote.maximumCreditsPerOccurrence))
     throw new UsageError(
       `--monthly-credits must be at least one run's hold, ${quote.maximumCreditsPerOccurrence} credits`
     )
-  // The same approval sent again (after a lost answer) is the same operation, so it replays.
+  // The same approval sent again before it took effect is the same operation, so it replays.
   const operationKey = `cli-approve-${createHash('sha256')
     .update(JSON.stringify([id, expectedRevision, monthly, quote.maxRunMillis, quote.configSha256]))
     .digest('hex')}`
@@ -196,11 +210,28 @@ async function approve(client: TelerApiClient, output: Output, args: string[]) {
     }),
   })
   if (output.json) return emitJson(output, schedule)
+  output.write(`Approved ${schedule.id}: ${spendWords(schedule)}\n`)
+}
+
+/** Its live approval already has this monthly cap (and run time, when one was asked for). */
+function sameApproval(schedule: FileSchedule, monthly: string, maxRunMillis: number | undefined) {
   const spend = schedule.spend
-  output.write(
-    `Approved ${schedule.id}: up to ${spend?.maximumCreditsPerOccurrence} credits a run and ` +
-      `${spend?.maximumCreditsPerMonth} a month, until ${spend?.expiresAt}; ${state(schedule)}\n`
+  return (
+    spend !== null &&
+    spend.status === 'active' &&
+    creditNano(spend.maximumCreditsPerMonth) === creditNano(monthly) &&
+    (maxRunMillis === undefined || spend.maxRunMillis === maxRunMillis)
   )
+}
+
+function spendWords(schedule: FileSchedule): string {
+  const spend = schedule.spend
+  const terms =
+    spend === null || spend.status !== 'active'
+      ? 'no spend in force'
+      : `up to ${spend.maximumCreditsPerOccurrence} credits a run and ` +
+        `${spend.maximumCreditsPerMonth} a month, until ${spend.expiresAt}`
+  return `${terms}; ${state(schedule)}`
 }
 
 /** `teler schedule file …`: a saved code File run on a schedule, and its approved spend. */
@@ -215,7 +246,7 @@ export async function runFileScheduleCommand(
   if (action === 'quote') {
     const maxRunMillis = takeMinutes(args)
     const id = scheduleId(args, 'quote <id> [--max-run-minutes <minutes>]')
-    return emitQuote(output, id, await quoteOf(client, id, maxRunMillis))
+    return emitQuote(output, id, await quoteOf(client, id, maxRunMillis), maxRunMillis)
   }
   if (action === 'show')
     return emitSchedule(output, 'File schedule', await read(client, scheduleId(args, 'show <id>')))
@@ -235,7 +266,7 @@ export async function runFileScheduleCommand(
     const confirmed = action === 'delete' && takeFlag(args, '--yes')
     const id = scheduleId(args, `${action} <id>${action === 'delete' ? ' --yes' : ''}`)
     if (action === 'delete' && !confirmed) throw new UsageError('Schedule delete requires --yes')
-    // File schedules change only at the revision last read, so nothing applies blind.
+    // Each change names the revision just read: a change made meanwhile is refused, not overwritten.
     const { definitionRevision: expectedRevision } = await read(client, id)
     if (action === 'delete') {
       await client.request(path(id, `?expectedRevision=${expectedRevision}`), { method: 'DELETE' })

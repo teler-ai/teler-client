@@ -67,7 +67,12 @@ async function saveCode(client: TelerApiClient, output: Output, args: string[]) 
   const organizationOption = takeOption(args, '--org')
   const flags = takeDeclarationFlags(args)
   assertNoFlags(args)
-  if (args.length !== 1 || Boolean(to) === Boolean(fileOption) || flags.outputs.length)
+  if (
+    args.length !== 1 ||
+    Boolean(to) === Boolean(fileOption) ||
+    flags.outputs.length > 0 ||
+    flags.parameters !== undefined
+  )
     throw new UsageError(
       'Usage: teler files save-code <local.py> (--to <path> | --file <file-id>) [--input <name>=<ref>]... [--params-schema <schema.json>]'
     )
@@ -217,8 +222,7 @@ async function runNow(client: TelerApiClient, output: Output, args: string[]) {
     creditNano(quote.maximumCredits) !== creditNano(credits)
   )
     throw new ApiError('Teler API returned a mismatched quote', 502)
-  // A run's time is the minute it was asked for, so a retry soon after with the key replays it.
-  const occurrenceAt = new Date(Math.floor(Date.now() / 60_000) * 60_000).toISOString()
+  const occurrenceAt = new Date().toISOString()
   const accepted = await client.json(`/api/saved-code-runs?${query}`, codeRunSchema, {
     method: 'POST',
     body: JSON.stringify({

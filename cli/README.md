@@ -344,6 +344,10 @@ teler schedule file runs <schedule-id> --json
 teler files result <code-run-id> --json
 ```
 
+`files run` charges at most `--max-credits`. Keep the run ID from its receipt:
+repeating an `--idempotency-key` is refused (`RETRY_CONFLICT`) rather than run
+twice, so a lost answer can hide a run that is already going.
+
 `files save-code --file <file-id>` saves a new version of the same File. A
 schedule keeps the version it was made with until `teler schedule file re-pin`,
 which ends its approved spend: quote and approve it again. Without `--output`,
@@ -360,7 +364,9 @@ schedule's owner can approve. Approving starts a schedule that was waiting for i
 Runs past the cap, an organization hold, a lost access or repeated failures stop
 or skip occurrences as they do in the web app; `runs` shows each occurrence with
 its code run and, for a skipped one, a reason code such as `SPEND_CAP_REACHED`.
-`pause`, `resume`, `re-pin` and `delete --yes` act at the revision they read.
+`pause`, `resume`, `re-pin` and `delete --yes` name the revision they just read,
+so a change made meanwhile is refused instead of overwritten. Repeating an
+`approve` whose answer was lost reports the approval already in force.
 
 A run of a saved code File does not return its traceback. Debug the same code
 with `teler run python` first.

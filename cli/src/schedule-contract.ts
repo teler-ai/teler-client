@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { fileScheduleSchema } from './code-file-contract'
+import { fileScheduleListItemSchema } from './code-file-contract'
 
 const idSuffix = '[0-9a-hjkmnp-tv-z]{26}'
 export const scheduleIdSchema = z.string().regex(new RegExp(`^sched_${idSuffix}$`))
@@ -111,7 +111,7 @@ export const scheduleListSchema = z.object({
   // Servers before event starts do not send the key.
   eventStarts: z.array(eventStartSchema).default([]),
   // A saved code File on a schedule (`teler schedule file`); older servers do not send the key.
-  fileSchedules: z.array(fileScheduleSchema).default([]),
+  fileSchedules: z.array(fileScheduleListItemSchema).default([]),
 })
 
 export const scheduleHistorySchema = z.object({
