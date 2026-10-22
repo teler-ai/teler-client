@@ -3,6 +3,7 @@ import { assertNoFlags, parseLimit, takeOption } from './command-args'
 import type { Output } from './chats'
 import { UsageError } from './errors'
 import { copyFile, listFiles, mkdir, moveFile, readFiles, searchFiles, writeFile } from './files'
+import { CODE_FILE_ACTIONS, runCodeFileCommand } from './code-file-command'
 
 type FileScope = 'organization' | 'personal' | 'organization,personal'
 
@@ -25,6 +26,8 @@ export async function runFileCommand(
   action: string | undefined,
   args: string[]
 ): Promise<void> {
+  if (action && CODE_FILE_ACTIONS.has(action))
+    return await runCodeFileCommand(client, output, action, args)
   const organizationId = takeOption(args, '--org')
   if (action === 'list') {
     const path = takeOption(args, '--path')

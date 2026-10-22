@@ -306,6 +306,65 @@ remain `null`; error text and stored prompts are excluded from CLI schedule JSON
 Tokens remain bound to their granted organizations on collection, mutation,
 widget, and history routes. Pause, archive and delete provide ordinary cleanup.
 
+## Code Files and File schedules
+
+Code that worked in `teler run python` can run in Teler on a schedule as a code
+File: a Python script that Teler's sandbox runs with only its declared inputs,
+writing JSON results that your team opens in Teler. These commands need a server
+that supports code Files, and a paid plan to run code; older servers refuse them.
+
+A code File reads its parameters and inputs, and saves each output slot, through
+`teler.job`:
+
+```python
+import json
+import joblib, io
+import teler.job
+
+params = teler.job.context()["parameters"]
+sales = json.loads(teler.job.load_input_bytes("sales"))          # a table: a list of rows
+model = joblib.load(io.BytesIO(teler.job.load_input_bytes("model")))  # a model File
+teler.job.save_json("result", {"forecast": model.predict(...).tolist()})
+```
+
+```sh
+# Save the script; an input is <name>=<table-ref> (read in --project) or <name>=file:<file-id>.
+teler files save-code score.py --to /personal/jobs/score.py --project <project-id> \
+  --input sales=<table-ref> --input model=file:<model-file-id> --json
+# Run it once now; this also records what it reads and writes for its schedule.
+teler files run <file-id> --project <project-id> --input sales=<table-ref> \
+  --input model=file:<model-file-id> --output result --params '{"horizon":4}' \
+  --max-credits 2 --idempotency-key score-test-0001 --wait --json
+# Schedule it (it starts paused), read the quote, approve a monthly cap.
+teler schedule file create <file-id> --frequency daily --time 06:00 --timezone Europe/Madrid \
+  --idempotency-key score-daily-0001 --json
+teler schedule file quote <schedule-id> --json
+teler schedule file approve <schedule-id> --revision <n> --monthly-credits 20 --yes --json
+teler schedule file runs <schedule-id> --json
+teler files result <code-run-id> --json
+```
+
+`files save-code --file <file-id>` saves a new version of the same File. A
+schedule keeps the version it was made with until `teler schedule file re-pin`,
+which ends its approved spend: quote and approve it again. Without `--output`,
+`files run` and `schedule file create` repeat your own last run of the File's
+current version. With several outputs, one must be named `result`.
+
+A File schedule starts paused. `quote` shows, for the schedule's current
+`revision`, the most one run may hold (`--max-run-minutes`, 1 to 30, sets its run
+time), the runs expected in a month and a suggested monthly cap. `approve` needs
+`--yes`, the `--revision` you read and your own `--monthly-credits`; it approves
+the server's quote for exactly that revision, and Teler refuses it (`STALE_QUOTE`
+locally, or `STALE_APPROVAL` / `STALE_REVISION`) when anything moved since. Only the
+schedule's owner can approve. Approving starts a schedule that was waiting for it.
+Runs past the cap, an organization hold, a lost access or repeated failures stop
+or skip occurrences as they do in the web app; `runs` shows each occurrence with
+its code run and, for a skipped one, a reason code such as `SPEND_CAP_REACHED`.
+`pause`, `resume`, `re-pin` and `delete --yes` act at the revision they read.
+
+A run of a saved code File does not return its traceback. Debug the same code
+with `teler run python` first.
+
 ## Folder sync
 
 Sync keeps analytical inputs fresh with recursive, one-way local → Teler uploads.

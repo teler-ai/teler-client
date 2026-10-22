@@ -6,6 +6,7 @@ import { emitJson, resolveOrganizationId } from './command-output'
 import { parseControlInput } from './control-args'
 import { takeApprovedCapabilities, withApprovalGuidance } from './capability-approval'
 import { UsageError } from './errors'
+import { runFileScheduleCommand } from './file-schedule-command'
 import {
   createScheduleSchema,
   scheduleDefinitionSchema,
@@ -56,6 +57,7 @@ export async function runScheduleCommand(
   action: string | undefined,
   args: string[]
 ): Promise<void> {
+  if (action === 'file') return await runFileScheduleCommand(client, output, args.shift(), args)
   if (action === 'create') {
     const input = parseControlInput(
       createScheduleSchema,
@@ -93,7 +95,11 @@ export async function runScheduleCommand(
     const query = new URLSearchParams({ organizationId })
     const result = await client.json(`/api/schedule?${query.toString()}`, scheduleListSchema)
     if (output.json) emitJson(output, result)
-    else if (result.schedules.length === 0 && result.eventStarts.length === 0)
+    else if (
+      result.schedules.length === 0 &&
+      result.eventStarts.length === 0 &&
+      result.fileSchedules.length === 0
+    )
       output.write('No schedules found.\n')
     else {
       for (const schedule of result.schedules) {
@@ -104,6 +110,11 @@ export async function runScheduleCommand(
       for (const start of result.eventStarts) {
         output.write(
           `${start.id}\t${start.startKind}\t${start.isPaused ? 'paused' : startWords(start)}\n`
+        )
+      }
+      for (const file of result.fileSchedules) {
+        output.write(
+          `${file.id}\tfile ${file.fileId}\t${file.isPaused ? 'paused' : file.nextRunAt}\n`
         )
       }
     }
@@ -175,6 +186,6 @@ export async function runScheduleCommand(
     return
   }
   throw new UsageError(
-    'Unknown schedule command. Use create, list, update, pause, resume, approve, history or delete.'
+    'Unknown schedule command. Use create, list, update, pause, resume, approve, history, delete or file.'
   )
 }

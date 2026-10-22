@@ -38,7 +38,8 @@ export function defaultWatchSeconds(executionSeconds: number): number {
   return Math.max(180, executionSeconds + 120)
 }
 
-async function readTaskFile(path: string): Promise<string> {
+/** A local UTF-8 file of at most 256 KiB that does not change while it is read. */
+export async function readTaskFile(path: string, label = '--file'): Promise<string> {
   try {
     const handle = await open(
       path,
@@ -62,7 +63,9 @@ async function readTaskFile(path: string): Promise<string> {
       await handle.close()
     }
   } catch {
-    throw new UsageError('--file must be a readable, stable UTF-8 regular file of at most 256 KiB')
+    throw new UsageError(
+      `${label} must be a readable, stable UTF-8 regular file of at most 256 KiB`
+    )
   }
 }
 

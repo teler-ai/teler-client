@@ -1,6 +1,6 @@
 ---
 name: teler
-description: Work with an organization's data in Teler (teler.ai) through the `teler` CLI. Find projects and tables, run SQL or Python on them in Teler's sandbox, ask Teler's analyst agent, put charts on dashboards and posts, and schedule Teler Agents. Use when a task needs data or results that live in Teler.
+description: Work with an organization's data in Teler (teler.ai) through the `teler` CLI. Find projects and tables, run SQL or Python on them in Teler's sandbox, put tested Python into production on a schedule, ask Teler's analyst agent, put charts on dashboards and posts, and schedule Teler Agents. Use when a task needs data or results that live in Teler.
 ---
 
 # Teler CLI
@@ -43,6 +43,26 @@ teler run python --file analysis.py --project <project-id> --max-credits 1 \
   `--timeout` only bounds waiting; the run continues and `teler run get <run-id> --json` reads it.
 - `--wait --json` prints NDJSON: an accepted receipt, then a terminal one with `status`,
   `output`, `chargedCredits` and `artifacts` (chart IDs).
+
+## Put Python into production
+
+Test with `teler run python` first (save a model with `teler.models`). The scheduled job is a
+script using only `teler.job`: `context()["parameters"]`, `load_input_bytes("<name>")` (a table
+is JSON rows, a model File joblib bytes) and `save_json("result", value)`. No `get_connection`.
+
+```sh
+teler files save-code job.py --to /personal/jobs/job.py --project <project-id> \
+  --input sales=<table-ref> --input model=file:<file-id> --json
+teler files run <file-id> --project <project-id> --input sales=<table-ref> \
+  --input model=file:<file-id> --output result --max-credits 2 --idempotency-key <key> --wait --json
+teler schedule file create <file-id> --frequency daily --time-utc 06:00 --idempotency-key <key> --json
+teler schedule file quote <schedule-id> --json
+teler schedule file approve <schedule-id> --revision <n> --monthly-credits <cap> --yes --json
+teler schedule file runs <schedule-id> --json
+```
+
+Approving commits the person's credits: agree the cap with them. New code: `save-code --file
+<file-id>`, `schedule file re-pin`, approve again. Saved runs show no traceback.
 
 ## When something fails
 
