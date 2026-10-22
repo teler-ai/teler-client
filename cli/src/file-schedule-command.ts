@@ -175,9 +175,9 @@ async function approve(client: TelerApiClient, output: Output, args: string[]) {
     )
   const quote = await quoteOf(client, id, maxRunMillis)
   if (quote.definitionRevision !== expectedRevision) {
-    // An approval whose answer was lost moved the revision on: report it, approve nothing new.
+    // An approval whose answer was lost moved the revision exactly one on: report it and
+    // approve nothing new. Any other move (a pause, a hold) makes the live approval another one.
     const current = await read(client, id)
-    // An approval moves the revision exactly one on; anything since makes it another approval.
     if (
       current.definitionRevision === expectedRevision + 1 &&
       sameApproval(current, monthly, maxRunMillis)
