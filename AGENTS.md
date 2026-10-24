@@ -29,6 +29,8 @@ the Teler service; customer, organization or account details; and pricing,
 business plans or roadmap. Standard AI-assistant attribution lines are fine. When
 a change needs a server update, say so in general terms ("needs a server that
 returns X; older servers keep working").
+Commit with a GitHub noreply address (`<id>+<login>@users.noreply.github.com`)
+as both author and committer; CI rejects any other address.
 
 ## Conventions
 
