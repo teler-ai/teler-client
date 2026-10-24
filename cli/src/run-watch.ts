@@ -22,13 +22,21 @@ const TERMINAL_CONTROL =
 /** Where to ask when a run needs more than the sandbox allows; fixed, never taken from the server. */
 const CONTACT_SALES = 'Contact sales: https://teler.ai/contact?topic=sales'
 
-/** What a failed run that stopped at a limit of the sandbox needed, by its error code. */
+/**
+ * What a failed run needed, when the server says it stopped at a limit of the sandbox. Only the
+ * `limit` object counts: a run's own `--execution-timeout` also ends in `time_limit`.
+ */
 function limitNeed(run: RunResponse): string | undefined {
   if (run.status !== 'failed') return undefined
-  if (run.errorCode === 'memory_limit' || run.errorCode === 'time_limit')
-    return 'needs more compute than is available here.'
-  if (run.errorCode === 'gpu_needed') return 'needs a GPU.'
-  return undefined
+  switch (run.limit?.kind) {
+    case 'memory_limit':
+    case 'time_limit':
+      return 'needs more compute than is available here.'
+    case 'gpu_needed':
+      return 'needs a GPU.'
+    default:
+      return undefined
+  }
 }
 
 export function emitRunReceipt(output: Output, run: RunResponse): void {
@@ -81,7 +89,7 @@ export function assertRunSucceeded(run: RunResponse): void {
       need
         ? `Run ${run.id} ${need}\n${CONTACT_SALES}`
         : `Run ${run.id} failed${run.errorCode ? ` (${run.errorCode})` : ''}`,
-      failedRunHint(run)
+      need ? undefined : failedRunHint(run)
     )
   }
   if (run.status === 'cancelled')

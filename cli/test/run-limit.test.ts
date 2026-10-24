@@ -55,7 +55,12 @@ describe('a run that stopped at a limit of the sandbox', () => {
     ['time_limit', COMPUTE_LINE],
     ['gpu_needed', GPU_LINE],
   ])('%s says what happened and where to ask, with the usual exit status', async (code, line) => {
-    const failed = { ...failedRun, errorCode: code, errorDetail: 'The sandbox stopped it.' }
+    const failed = {
+      ...failedRun,
+      errorCode: code,
+      limit: limit(code),
+      errorDetail: 'The sandbox stopped it.',
+    }
     for (const action of ['wait', 'get'] as const) {
       const result = await run(action, failed, false)
       expect(result.stdout).toBe(
@@ -71,13 +76,21 @@ describe('a run that stopped at a limit of the sandbox', () => {
   })
 
   test('prints the exact two lines for a memory limit', async () => {
-    const result = await run('wait', { ...failedRun, errorCode: 'memory_limit' }, false)
+    const result = await run(
+      'wait',
+      { ...failedRun, errorCode: 'memory_limit', limit: limit('memory_limit') },
+      false
+    )
     expect(result.exitCode).toBe(1)
     expect(result.stderr).toBe(`${COMPUTE_LINE}${CONTACT_LINE}`)
   })
 
   test('prints the exact two lines for a GPU need', async () => {
-    const result = await run('wait', { ...failedRun, errorCode: 'gpu_needed' }, false)
+    const result = await run(
+      'wait',
+      { ...failedRun, errorCode: 'gpu_needed', limit: limit('gpu_needed') },
+      false
+    )
     expect(result.exitCode).toBe(1)
     expect(result.stderr).toBe(`${GPU_LINE}${CONTACT_LINE}`)
   })
@@ -97,25 +110,53 @@ describe('a run that stopped at a limit of the sandbox', () => {
     expect(JSON.parse(waited.stderr).error).toMatchObject({ code: 'RUN_FAILED' })
   })
 
-  test('from an older server that sends only the error code', async () => {
-    const older = { ...failedRun, errorCode: 'time_limit' }
-    const json = await run('wait', older, true)
-    expect(json.exitCode).toBe(1)
-    const receipt = JSON.parse(json.stdout) as Record<string, unknown>
-    expect(receipt).toEqual({ ...older, hint: COMPUTE_HINT })
-    expect('limit' in receipt).toBe(false)
-    const plain = await run('wait', older, false)
+  test('a time limit with limit.kind time_limit shows the contact lines and no timeout advice', async () => {
+    const limited = { ...failedRun, errorCode: 'time_limit', limit: { kind: 'time_limit' } }
+    const plain = await run('wait', limited, false)
     expect(plain.exitCode).toBe(1)
-    expect(plain.stderr.startsWith(`${COMPUTE_LINE}${CONTACT_LINE}`)).toBe(true)
+    expect(plain.stderr).toBe(`${COMPUTE_LINE}${CONTACT_LINE}`)
+    const json = await run('wait', limited, true)
+    expect(JSON.parse(json.stdout)).toEqual({ ...limited, hint: COMPUTE_HINT })
+    expect(JSON.parse(json.stderr).error).not.toHaveProperty('hint')
   })
 
   test('adds no size, memory, core or time figure of its own', async () => {
-    const result = await run('wait', { ...failedRun, errorCode: 'memory_limit' }, true)
+    const result = await run(
+      'wait',
+      { ...failedRun, errorCode: 'memory_limit', limit: limit('memory_limit') },
+      true
+    )
     const { hint } = JSON.parse(result.stdout) as { hint: string }
     expect(hint).not.toMatch(/\d|GB|MiB|CPU|core|minute|second|plan|price|larger|bigger/i)
     expect(`${COMPUTE_LINE}${CONTACT_LINE}${GPU_LINE}`.replaceAll(id, '<id>')).not.toMatch(
       /\d|GB|MiB|CPU|core|minute|second|plan|price|larger|bigger/i
     )
+  })
+})
+
+describe('a run that stopped at its own limit', () => {
+  const HINT =
+    "hint: Raise --execution-timeout (up to your plan's limit) or do less per run, then submit it again with a new --idempotency-key (the same key returns this run).\n"
+
+  test.each([
+    ['older server: errorCode only', {}],
+    ['newer server: null limit', { limit: null }],
+    ['a limit of another kind', { limit: { kind: 'other' } }],
+  ])("keeps today's output exactly (%s)", async (_name, extra) => {
+    const older = { ...failedRun, errorCode: 'time_limit', ...extra }
+    const plain = await run('wait', older, false)
+    expect(plain.exitCode).toBe(1)
+    expect(plain.stderr).toBe(`teler: Run ${id} failed (time_limit)\n${HINT}`)
+    const json = await run('wait', older, true)
+    expect(JSON.parse(json.stdout)).toEqual(older)
+    expect(JSON.parse(json.stdout)).not.toHaveProperty('hint')
+  })
+
+  test('memory_limit or gpu_needed without a limit object are ordinary failures', async () => {
+    for (const errorCode of ['memory_limit', 'gpu_needed']) {
+      const result = await run('wait', { ...failedRun, errorCode }, false)
+      expect(result.stderr).toBe(`teler: Run ${id} failed (${errorCode})\n`)
+    }
   })
 })
 
@@ -144,7 +185,7 @@ describe('an ordinary failed run', () => {
   test('a limit code on a run that did not fail gets no hint', async () => {
     const json = await run(
       'get',
-      { ...failedRun, status: 'completed', errorCode: 'time_limit' },
+      { ...failedRun, status: 'completed', errorCode: 'time_limit', limit: limit('time_limit') },
       true
     )
     expect('hint' in (JSON.parse(json.stdout) as object)).toBe(false)
