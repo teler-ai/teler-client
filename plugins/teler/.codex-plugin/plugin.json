@@ -1,6 +1,6 @@
 {
   "name": "teler",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Work with your organization's data in Teler through the teler CLI: find projects and tables, run SQL and Python in Teler's sandbox, ask Teler's analyst agent, put results on dashboards and posts, and schedule tested Python.",
   "author": {
     "name": "Teler",
