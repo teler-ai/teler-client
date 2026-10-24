@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'bun:test'
 import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { TELER_SKILL, renderTelerSkill } from '../src/agent-setup'
+import { TELER_SKILL, renderTelerSkill, renderTelerSkillFiles } from '../src/agent-setup'
 import { main } from '../src/index'
 
 const directories: string[] = []
@@ -43,7 +43,7 @@ describe('teler agent setup', () => {
     expect(result.requests).toBe(0)
     const claude = join(home, '.claude', 'skills', 'teler', 'SKILL.md')
     const codex = join(home, '.agents', 'skills', 'teler', 'SKILL.md')
-    expect(JSON.parse(result.stdout)).toEqual({
+    expect(JSON.parse(result.stdout)).toMatchObject({
       skill: 'teler',
       results: [
         { agent: 'claude', path: claude, action: 'installed' },
@@ -79,7 +79,7 @@ describe('teler agent setup', () => {
   it('writes nothing with --print or --dry-run', async () => {
     const home = await temporary()
     const printed = await setup(['--print'], { HOME: home })
-    expect(printed.stdout).toBe(renderTelerSkill())
+    expect(printed.stdout.startsWith(`==> SKILL.md <==\n${renderTelerSkill()}`)).toBe(true)
     const planned = await setup(['--dry-run', '--json'], { HOME: home })
     expect(
       JSON.parse(planned.stdout).results.map((entry: { action: string }) => entry.action)
@@ -90,9 +90,11 @@ describe('teler agent setup', () => {
 
   it('updates its own earlier copy but keeps a copy the person changed unless --force', async () => {
     const home = await temporary()
-    const path = join(home, '.claude', 'skills', 'teler', 'SKILL.md')
-    await mkdir(join(home, '.claude', 'skills', 'teler'), { recursive: true })
-    await writeFile(path, renderTelerSkill('0.0.1'))
+    const folder = join(home, '.claude', 'skills', 'teler')
+    const path = join(folder, 'SKILL.md')
+    await mkdir(join(folder, 'references'), { recursive: true })
+    for (const [file, text] of renderTelerSkillFiles('0.0.1'))
+      await writeFile(join(folder, file), text)
     expect((await setup(['--claude', '--json'], { HOME: home })).stdout).toContain(
       '"action":"updated"'
     )

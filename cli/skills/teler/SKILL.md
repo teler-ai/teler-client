@@ -1,102 +1,63 @@
 ---
 name: teler
-description: Work with an organization's data in Teler (teler.ai) through the `teler` CLI. Find projects and tables, run SQL or Python on them in Teler's sandbox, put tested Python into production on a schedule, ask Teler's analyst agent, put charts on dashboards and posts, and schedule Teler Agents. Use when a task needs data or results that live in Teler.
+description: Work with an organization's data in Teler (teler.ai) through the `teler` CLI. Find projects and tables, run SQL or Python on them in Teler's sandbox, ask Teler's analyst agent, put results on dashboards and posts, and schedule tested Python or Teler Agents. Use when a task needs data, analysis or results that live in Teler.
 ---
 
 # Teler CLI
 
-Add `--json` to every command and read stdout. `teler schema --json` lists all commands;
-`teler schema <command> --json` (for example `run.python`) gives its flags and inputs.
+Teler holds an organization's data (tables, uploads and files, in projects), chats with Teler's
+analyst agent, and what comes out of them: charts, dashboards, posts, code Files and their
+schedules, and Teler Agents. The `teler` CLI reaches all of it through Teler's API, signed in
+as the person you work for.
 
-## Sign in
+## When to use it
 
-- `teler auth status --json` checks the sign-in. Otherwise ask the person to run
-  `teler auth login` (it shows a code to approve in a browser).
-- Headless Linux without a keyring: `TELER_CREDENTIAL_STORE=file teler auth login`, or the
-  person sets `TELER_TOKEN`. Never print, log or store a token yourself.
+- The data, or results built from it, live in Teler.
+- The person asks for an analysis, chart, dashboard, post, scheduled job or Teler Agent there.
 
-## Find data
+Analyze data inside Teler (a run, or Teler's analyst) rather than copying it out.
 
-```sh
-teler project list --json
-teler data list --project <project-id> --json                  # tables; page with --offset <nextOffset>
-teler data describe <table-ref> --project <project-id> --json  # columns
-```
+## The loop
 
-## Run SQL or Python
+1. `teler auth status --json`. If it fails, ask the person to sign in
+   ([auth and access](references/auth-and-access.md)).
+2. Find the data: `teler project list --json`, then `teler data list --project <id> --json`
+   and `teler data describe <table-ref> --project <id> --json`.
+3. Answer: ask Teler's analyst (`teler send --new --wait --json "<question>"`), or run your own
+   SQL or Python (`teler data query`, `teler run python`).
+4. Share: pin charts to a dashboard, or write a post.
+5. Automate, once the person agrees: schedule tested Python as a code File, or a Teler Agent.
+6. Delete the chats you created and no longer need.
 
-```sh
-teler data query --file query.sql --project <project-id> --max-credits 1 \
-  --idempotency-key <key> --wait --json
-teler run python --file analysis.py --project <project-id> --max-credits 1 \
-  --idempotency-key <key> --wait --json
-```
+Add `--json` to every command and read stdout; `--wait` commands print NDJSON, one event per
+line. `teler schema --json` lists every command; `teler schema <command> --json` (for example
+`run.python`) gives its flags and inputs.
 
-- Runs cost credits and need a paid plan. `--max-credits` caps the cost (at most 100).
-- The key is 16–128 characters of `A-Z a-z 0-9 . _ : -`, unique per task.
-- SQL: one `SELECT`; `--row-limit` up to 1000 rows.
-- Python reads the project's tables through DuckDB:
-  `from teler import get_connection; df = get_connection().sql("SELECT * FROM <table-ref>").df()`.
-  `teler.execute(sql)` only runs INSERT, UPDATE or DELETE on organization tables, and only where
-  the person's Agent Access allows it. No internet access.
-- `--execution-timeout <seconds>` (default 60) bounds the run, up to the plan's limit.
-  `--timeout` only bounds waiting; the run continues and `teler run get <run-id> --json` reads it.
-- `--wait --json` prints NDJSON: an accepted receipt, then a terminal one with `status`,
-  `output`, `chargedCredits` and `artifacts` (chart IDs).
+## Safety rules
 
-## Put Python into production
-
-Test with `teler run python` first. Saving a model there with `teler.models` needs the person's
-Agent Access to allow file changes without asking; otherwise train inside the job. The job is a
-script using only `teler.job`: `context()["parameters"]`, `load_input_bytes("<name>")` (a table
-is JSON rows, a model File joblib bytes) and `save_json("result", value)`. No `get_connection`.
-
-```sh
-teler files save-code job.py --to /personal/jobs/job.py --project <project-id> \
-  --input sales=<table-ref> --input model=file:<file-id> --json
-teler files run <file-id> --project <project-id> --input sales=<table-ref> \
-  --input model=file:<file-id> --output result --max-credits 2 --idempotency-key <key> --wait --json
-teler schedule file create <file-id> --frequency daily --time-utc 06:00 --idempotency-key <key> --json
-teler schedule file quote <schedule-id> --json
-teler schedule file approve <schedule-id> --revision <n> --monthly-credits <cap> --yes --json
-teler schedule file runs <schedule-id> --json
-teler schedule file latest <schedule-id> --json        # typed outputs; --slot/--output to save
-```
-
-Approving commits the person's credits: agree the cap with them. New code: `save-code --file
-<file-id>`, `schedule file re-pin`, approve again. Saved runs show no traceback.
+- **Credits.** Runs and dashboard refreshes spend the organization's credits. Every run needs
+  `--max-credits`, a cap of at most 100: keep it small. Agree any monthly spend or refresh
+  schedule with the person before you approve or set it.
+- **Idempotency keys.** Every submission takes `--idempotency-key`: 16–128 characters of
+  `A-Z a-z 0-9 . _ : -`, new for each task. After a network error or timeout, repeat the
+  command with the same key to get the same run, never a second one. Changed code needs a new key.
+- **`--yes`.** Deleting, revoking and approving spend need `--yes`. Pass it only for what the
+  person asked for.
+- Never print, log or store a token. Change sharing or Agent Access only when asked.
 
 ## When something fails
 
-- Exit code 2 is invalid input, 1 a failure. With `--json`, stderr holds
-  `{"error":{"code","message","retryable","hint"}}`: follow `hint`.
-- A failed run has `errorCode`; `execution_failed` comes with the traceback in `errorDetail`. A receipt with a `limit` object
-  (`kind` `memory_limit`, `time_limit` or `gpu_needed`) means the run needs more than the sandbox
-  allows: tell the person, and give them the receipt's `hint` (it names where to contact sales).
-- The same idempotency key returns the same run. Reuse it to recover after a network error or a
-  timeout; after fixing code, submit with a new key.
-- `retryable: true`: wait `retryAfterMs`, then repeat reads, or writes with the same key.
+Exit code 2 is invalid input, 1 a failure. With `--json`, stderr holds
+`{"error":{"code","message","retryable","hint"}}`: follow `hint`. When `retryable` is true,
+wait `retryAfterMs`, then repeat a read, or a write with the same idempotency key.
 
-## Ask Teler's analyst
+## Guides
 
-```sh
-teler send --new --wait --json "Which regions grew fastest last quarter?"
-teler send --chat <chat-id> --wait --json "Break that down by product."
-```
+Read the one the task needs:
 
-The `task.result` event holds the final answer; it replaces the streamed text.
-
-## Share and automate
-
-- Dashboard: `teler dashboard create --name "<name>" --json`, then
-  `teler dashboard add-widget <dashboard-id> --artifact <artifact-id> --position '{"x":0,"y":0,"w":2,"h":2}' --json`.
-  New dashboards refresh only when asked; ask the person before
-  `teler dashboard update <dashboard-id> --refresh-interval <setting> --json` (settings: its schema).
-- Post: `teler post create --file post.json --json` (inputs: `teler schema post.create --json`).
-- Teler Agents: `teler agent list --json`; schedule one with
-  `teler schedule create --agent <agent-id> --frequency daily --time-utc 09:00 --json`.
-
-## Clean up
-
-Each run without `--chat <chat-id>` creates a chat. Reuse one chat with `--chat`, and delete
-chats you no longer need: `teler chat delete <chat-id> --yes --json` (permanent).
+- [Data and queries](references/data-and-queries.md): projects, tables, SQL, Files, uploads and folder sync.
+- [Runs and code Files](references/runs-and-code-files.md): Python runs, receipts and failures; saving tested code as a code File.
+- [File schedules](references/file-schedules.md): run a code File daily, weekly or monthly under an approved monthly cap.
+- [Outputs](references/outputs.md): artifacts, dashboards and posts.
+- [Agents and chats](references/agents-and-chats.md): Teler's analyst, approvals, Teler Agents and their schedules, knowledge.
+- [Auth and access](references/auth-and-access.md): sign-in, origins, organizations, Agent Access and updates.

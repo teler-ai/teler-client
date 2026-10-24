@@ -63,6 +63,13 @@ jobs:
           set -euo pipefail
           bun scripts/compile.ts linux-x64
           test "$(release/teler-linux-x64 --version)" = "teler $(jq -r .version package.json)"
+          # The executable installs every file of the bundled skill, for both agents.
+          home="$(mktemp -d)"
+          env -u CLAUDE_CONFIG_DIR HOME="$home" release/teler-linux-x64 agent setup --json > /dev/null
+          for agent in .claude .agents; do
+            diff <(cd skills/teler && find . -type f | sort) \
+              <(cd "$home/$agent/skills/teler" && find . -type f | sort)
+          done
 
   test-desktop:
     name: Test Desktop

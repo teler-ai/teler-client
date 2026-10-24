@@ -17,6 +17,17 @@ Guidance for anyone, human or agent, changing this repository. Also read the
 - Keep secrets, private hostnames and personal data out of code, tests, docs and
   commit messages. Tests use example origins such as `https://app.teler.example`.
 
+## The agent skill and its plugin
+
+`cli/skills/teler/` is the skill `teler agent setup` installs for Claude Code and
+Codex: `SKILL.md` and the guides in `references/`, bundled into the CLI. Keep it
+short, accurate and in step with the commands (see [`cli/AGENTS.md`](cli/AGENTS.md)).
+`plugins/teler/` packages the same skill as a Claude Code and Codex plugin. Its
+`skills/teler/` is an exact copy (`cp -R cli/skills/teler/. plugins/teler/skills/teler/`),
+and the `version` in both of its manifests equals `cli/package.json`'s; a CLI test
+checks both. Submitting the plugin to a directory publishes it, and is decided
+outside this repository.
+
 ## Public repository
 
 Everything here is public: code, tests, docs, commit messages, branch names, pull

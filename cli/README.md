@@ -1,7 +1,28 @@
 # Teler CLI
 
 The `teler` CLI works with your Teler account through Teler's authenticated HTTP
-API.
+API. Add `--json` for machine-readable output; `teler schema --json` lists every
+command, and `teler schema <command> --json` gives one command's usage, flags and,
+for typed commands, its input schema.
+
+## What it can do
+
+| Area                             | Commands                                                                                                                                | Section                                                                                                    |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Sign-in, updates, discovery      | `auth login\|status\|logout`, `update`, `--version`, `schema`                                                                           | [Sign-in and organizations](#sign-in-and-organizations)                                                    |
+| Coding agents                    | `agent setup`                                                                                                                           | [Coding agents](#coding-agents)                                                                            |
+| Data and SQL                     | `project list`, `data list\|describe\|query`                                                                                            | [Data analysis from an agent](#data-analysis-from-an-agent)                                                |
+| Python runs and charts           | `run python\|get\|wait\|cancel`, `artifact create\|get\|source`                                                                         | [Data analysis from an agent](#data-analysis-from-an-agent)                                                |
+| Teler Files                      | `files list\|read\|search\|write\|mkdir\|move\|copy`                                                                                    | [Teler Files](#teler-files)                                                                                |
+| Uploads and folder sync          | `upload`, `upload list\|status`, `sync`, `sync list\|status\|pause\|resume\|retry\|remove\|stop\|daemon`                                | [Chat results and uploads](#chat-results-and-uploads), [Folder sync](#folder-sync)                         |
+| Teler's analyst and chats        | `send`, `steer`, `task watch`, `approval respond`, `chat list\|show\|artifacts\|seen\|delete`                                           | [Chat results and uploads](#chat-results-and-uploads), [Approvals and steering](#approvals-and-steering)   |
+| What runs and waits for you      | `status`, `watch`, `notifications`, `agent runs`                                                                                        | [What runs and what waits for you](#what-runs-and-what-waits-for-you)                                      |
+| Dashboards                       | `dashboard list\|get\|create\|add-widget\|update\|refresh\|approve-refresh\|archive\|delete\|move`, templates, sharing                  | [Dashboards and Agent schedules](#dashboards-and-agent-schedules), [Posts and sharing](#posts-and-sharing) |
+| Posts                            | `post list\|get\|create\|generate\|update\|delete\|move\|visibility`, comments, reactions, `post export`                                | [Posts and sharing](#posts-and-sharing)                                                                    |
+| Teler Agents and their schedules | `agent list\|get\|create\|update\|delete`, `schedule create\|approve\|list\|update\|pause\|resume\|history\|delete`                     | [Teler Agents](#teler-agents), [Dashboards and Agent schedules](#dashboards-and-agent-schedules)           |
+| Code Files and File schedules    | `files save-code\|run\|result\|runs\|output`, `schedule file create\|show\|quote\|approve\|pause\|resume\|re-pin\|runs\|latest\|delete` | [Code Files and File schedules](#code-files-and-file-schedules)                                            |
+| Personal knowledge               | `skill list\|get\|create\|update\|delete`, `memory list\|get\|create\|update\|delete`                                                   | [Personal Knowledge](#personal-knowledge)                                                                  |
+| Agent Access                     | `agent-access show\|set`                                                                                                                | [Sign-in and organizations](#sign-in-and-organizations)                                                    |
 
 ## Install and update
 
@@ -47,29 +68,57 @@ behind Cloudflare Access, set `TELER_ACCESS_TOKEN` to an Access token (for
 example `cloudflared access token -app=$TELER_URL`); the CLI sends it as
 `cf-access-token`, only to that origin.
 
+## Sign-in and organizations
+
+```sh
+teler auth login           # approve a code in a browser
+teler auth status --json   # the signed-in account on the selected origin
+teler auth logout          # revoke the sign-in and remove it from this computer
+```
+
+The sign-in is kept in the system keyring. On a Linux host without one (no
+`secret-tool`), `TELER_CREDENTIAL_STORE=file teler auth login` keeps it in a
+private file; `TELER_TOKEN` provides a token without storing it. A sign-in is bound
+to the origin that issued it. Commands use the session's active organization;
+`--org <org-id>` selects another for one command.
+
+Agent Access is your policy for what agents may do on your behalf without asking,
+such as changing tables or files. `teler agent-access show --json` reads it and
+`teler agent-access set --preset ask --json` resets it to asking first; chat
+overrides are kept.
+
 ## Coding agents
 
 `teler agent setup` teaches Claude Code and Codex to use Teler. It installs the
-Teler skill (`skills/teler/SKILL.md` in this package) where they look for skills:
+Teler skill folder (`skills/teler/` in this package) where they look for skills: a
+short `SKILL.md` with the core loop and safety rules (credit caps, idempotency keys,
+`--yes`), and a guide per area in `references/` (data and queries, runs and code
+Files, File schedules, outputs, Agents and chats, auth and access).
 
-| Agent       | Your user folder (default)          | A project (`--project <dir>`)         |
-| ----------- | ----------------------------------- | ------------------------------------- |
-| Claude Code | `~/.claude/skills/teler/SKILL.md` ¹ | `<dir>/.claude/skills/teler/SKILL.md` |
-| Codex       | `~/.agents/skills/teler/SKILL.md`   | `<dir>/.agents/skills/teler/SKILL.md` |
+| Agent       | Your user folder (default)  | A project (`--project <dir>`) |
+| ----------- | --------------------------- | ----------------------------- |
+| Claude Code | `~/.claude/skills/teler/` ¹ | `<dir>/.claude/skills/teler/` |
+| Codex       | `~/.agents/skills/teler/`   | `<dir>/.agents/skills/teler/` |
 
-¹ `$CLAUDE_CONFIG_DIR/skills/…` when `CLAUDE_CONFIG_DIR` is set.
+¹ `$CLAUDE_CONFIG_DIR/skills/teler/` when `CLAUDE_CONFIG_DIR` is set.
 
 ```sh
 teler agent setup                  # both agents, user folders
 teler agent setup --codex --project .
 teler agent setup --dry-run        # what it would write
-teler agent setup --print          # the skill itself, on stdout
+teler agent setup --print          # every file, each under a ==> path <== header
 ```
 
-It never uses the network, prints every path it writes, and is safe to repeat:
-it updates a copy it wrote earlier but keeps a copy you changed unless you pass
-`--force`. `teler auth login` suggests it after you sign in; nothing is installed
-for you.
+It never uses the network, prints where it installs each skill (`--json` lists
+every file), and is safe to repeat: it reports `unchanged` when nothing changed,
+updates a copy it wrote earlier, including removing a guide that copy had and this
+version does not, and keeps a copy you changed (any of its files) unless you pass
+`--force`. Files you add to the folder yourself are left alone. `teler auth login`
+suggests it after you sign in; nothing is installed for you.
+
+The same skill is also packaged as a Claude Code and Codex plugin in
+[`plugins/teler`](../plugins/teler/). Use the plugin or `teler agent setup`, not
+both.
 
 On a Linux host without a system keyring (no `secret-tool`), sign in with
 `TELER_CREDENTIAL_STORE=file teler auth login`, which keeps the sign-in in a
@@ -106,6 +155,17 @@ An upload emits `{ jobId, status }` as soon as byte transfer is accepted. With
 keep the first receipt and resume with `upload status`; the accepted upload
 continues on the server.
 
+## Approvals and steering
+
+```sh
+teler approval respond <chat-id> <approval-id> --allow --wait --json   # or --deny
+teler steer <chat-id> "Use only last year's orders." --json
+```
+
+A turn that stops for your approval shows `awaiting_approval`; `approval respond`
+answers one pending approval and, with `--wait`, follows the resumed turn.
+`steer` adds guidance to a turn that is still running.
+
 ## What runs and what waits for you
 
 ```sh
@@ -126,6 +186,40 @@ and ends between two reads is still reported; nothing is reported twice. `send -
 A turn that stopped to ask for your approval shows the state `awaiting_approval` instead of
 `completed` (`awaitingApproval: true` in JSON) until you answer it or the approval expires.
 A server without this read answers 404: update it first.
+
+## Teler Files
+
+```sh
+teler files list --path /organization --json
+teler files search "churn definition" --json
+teler files read /organization/notes/metrics.md --json
+teler files write /personal/notes/summary.md "Text" --json
+teler files mkdir /personal/notes --json
+teler files move <from> <to> --json
+teler files copy <from> <to> --json
+```
+
+Teler Files holds personal (`/personal/…`) and organization (`/organization/…`)
+files. `list` filters with `--path`, `--query`, `--kind` and `--scope` and pages
+with `--limit`/`--offset`; `search` narrows with `--path`, `--scope` and `--limit`.
+Changes follow your Agent Access policy.
+
+## Teler Agents
+
+A Teler Agent is a saved set of instructions Teler runs on demand or on a schedule.
+
+```sh
+teler agent list --json
+teler agent create --name weekly-sales --label "Weekly sales" --content-file agent.md --json
+teler agent update <agent-id> --content-file agent.md --model-set pro --json
+teler agent get <agent-id> --json
+teler agent delete <agent-id> --yes --json
+```
+
+`create` and `update` also take `--description`, `--model-set lite|pro`,
+`--output none|private_post`, `--quick-action`/`--no-quick-action` and
+`--capabilities <capability,...>`; `create` takes `--scope personal|organization`.
+Schedule an Agent with `teler schedule create` (below).
 
 ## Personal Knowledge
 
@@ -258,7 +352,7 @@ teler dashboard create --name "Daily overview" --refresh-interval 1h --org <org-
 teler dashboard add-widget <dashboard-id> --artifact <artifact-id> \
   --position '{"x":0,"y":0,"w":4,"h":3}' --idempotency-key overview.chart.1 --json
 teler dashboard update <dashboard-id> --refresh-interval on_change --json
-teler dashboard list --org <org-id> --limit 20 --offset 0 --json
+teler dashboard list --org <org-id> --limit 20 --json   # next page: --cursor <nextCursor>
 teler dashboard get <dashboard-id> --org <org-id> --json
 teler dashboard archive <dashboard-id> --yes --json
 ```
@@ -297,9 +391,15 @@ credits reports `status: "error"` with `pausedReason: "no_credits"` and a `null`
 alone does not prove success. Refreshes run on Teler's normal schedule; the CLI
 only reports them.
 
+A dashboard's content (new or reworked charts, filters and analyses) is changed
+by asking Teler's analyst with `teler send`, naming the dashboard; `dashboard update
+<id> --file <json-file>` changes its settings. `dashboard delete <id> --yes` deletes
+one and `dashboard move <id> --file <json-file>` (`{"projectId":"<id>"}`) moves it
+to another project.
+
 Agent schedules use real daily, weekly, or monthly recurrence at a UTC time.
-They require a ready Agent, membership in the organization, and a plan that
-includes schedules; the same setup, approval and quota rules as in the web app apply.
+They require a ready Agent and membership in the organization; the same setup,
+approval and quota rules as in the web app apply.
 
 ```sh
 teler schedule create --agent <agent-id> --org <org-id> \
@@ -322,6 +422,38 @@ remain `null`; error text and stored prompts are excluded from CLI schedule JSON
 
 Tokens remain bound to their granted organizations on collection, mutation,
 widget, and history routes. Pause, archive and delete provide ordinary cleanup.
+
+## Posts and sharing
+
+```sh
+teler post list --json                                  # page with --cursor <nextCursor>
+teler post get <post-id> --json
+teler post create --file post.json --json
+teler dashboard create-post <dashboard-id> --json
+teler post comments <post-id> --json
+teler post delete <post-id> --yes --json
+```
+
+`post.json` holds the chat the post comes from, its Markdown and the artifacts it
+shows: `{"chatId":"<chat-id>","title":"Q3 revenue","content":"…","artifactIds":["<artifact-id>"]}`.
+`post generate <id> --file <json-file>` has Teler's agent draft a post's content.
+Posts also have `update`, `move`, `visibility`, `artifact`, `document`, `comment`,
+`delete-comment`, `mark-comments-seen`, `react`, `unreact`, `hide`, `unhide` and
+`export` (a PDF); `teler schema post.<action>` shows each one's usage.
+
+Dashboards are shared with people in the organization, or through public links:
+
+```sh
+teler dashboard visibility <dashboard-id> --file visibility.json --json   # {"visibility":"organization"}
+teler dashboard share <dashboard-id> --file share.json --json             # {"email":"<email>","permission":"view"}
+teler dashboard shares <dashboard-id> --json
+teler dashboard unshare <dashboard-id> <share-id> --yes --json
+teler dashboard public-links <dashboard-id> --json
+teler dashboard activity <dashboard-id> --json
+```
+
+`create-public-link` and `revoke-public-link <id> <link-id> --yes` manage public
+links; some organizations turn them off, and Teler refuses the request.
 
 ## Code Files and File schedules
 
