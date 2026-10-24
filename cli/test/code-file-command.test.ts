@@ -221,6 +221,43 @@ describe('teler files run and result', () => {
     expect(Number.isNaN(Date.parse(submitted.occurrenceAt))).toBe(false)
   })
 
+  it('quotes a run in the project it names, from the last run or from --project', async () => {
+    const projectId = `prj_${suffix}`
+    const lastRun = { ...declaration, projectId }
+    const api = server({
+      'GET /api/files/doc_01m2k72d22fqe8ww472ycs3px3/content-descriptor': () =>
+        Response.json({ revisionId, version: 1, securityVersion: 1 }),
+      'GET /api/schedule/files/run-declaration': () =>
+        Response.json({
+          revisionId,
+          declaration: lastRun,
+          schedule: { available: true },
+          runNow: { available: true },
+        }),
+      'POST /api/schedule/files/inputs': () => Response.json({ bindings: declaration.bindings }),
+      'GET /api/saved-code-runs/tariff': () => Response.json({ tariffVersion: 'compute-v1' }),
+      'POST /api/saved-code-runs/preflight': () => Response.json(quote),
+      'POST /api/saved-code-runs': () => Response.json(run('queued'), { status: 202 }),
+    })
+    const base = ['files', 'run', fileId, '--max-credits', '2', '--org', org]
+    const flags = ['--project', projectId, '--output', 'result']
+    for (const [key, declared] of [
+      ['project-quote-0001', []],
+      ['project-quote-0002', flags],
+    ] as const) {
+      api.sent.length = 0
+      const result = await cli([...base, '--idempotency-key', key, ...declared], api.fetch)
+      expect(result.exitCode).toBe(0)
+      const body = (prefix: string) => api.sent.find((sent) => sent.path.startsWith(prefix))?.body
+      expect(body('/api/saved-code-runs/preflight')).toEqual({
+        maximumCredits: '2',
+        tariffVersion: 'compute-v1',
+        projectId,
+      })
+      expect(body(`/api/saved-code-runs?`)).toMatchObject({ projectId })
+    }
+  })
+
   it('declares outputs and inputs from flags, and refuses several outputs without result', async () => {
     const api = server({
       'GET /api/files/doc_01m2k72d22fqe8ww472ycs3px3/content-descriptor': () =>
