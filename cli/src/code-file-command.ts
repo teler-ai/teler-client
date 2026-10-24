@@ -231,9 +231,14 @@ async function runNow(client: TelerApiClient, output: Output, args: string[]) {
   const { revisionId } = await describe(client, organizationId, fileId)
   const declaration = await declarationFor(client, organizationId, fileId, flags, 'runNow')
   const { tariffVersion } = await client.json(`/api/saved-code-runs/tariff?${query}`, tariffSchema)
+  // The quote names the run's project, so it is checked as the run will be.
   const quote = await client.json(`/api/saved-code-runs/preflight?${query}`, runQuoteSchema, {
     method: 'POST',
-    body: JSON.stringify({ maximumCredits: credits, tariffVersion }),
+    body: JSON.stringify({
+      maximumCredits: credits,
+      tariffVersion,
+      ...(declaration.projectId ? { projectId: declaration.projectId } : {}),
+    }),
   })
   if (
     quote.payer.organizationId !== organizationId ||
