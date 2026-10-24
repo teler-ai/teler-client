@@ -63,6 +63,9 @@ trailers=$(printf 'feat: x\n\nCo-Authored-By: %s\nCo-authored-by: %s' \
 trailer=$(commit "$base" "$NOREPLY" "$NOREPLY" "$trailers")
 expect 'attribution and noreply co-author lines pass' 0 "$base" "$trailer"
 
+versions=$(commit "$base" "$NOREPLY" "$NOREPLY" 'chore: pin @scope/tool@1.2.3 and actions/x@v5.0.0')
+expect 'package and action versions in the message pass' 0 "$base" "$versions"
+
 author=$(commit "$base" "$OTHER" "$NOREPLY" 'feat: other author')
 expect 'another author email fails' 1 "$base" "$author" "Commit ${author:0:10}: the author email"
 

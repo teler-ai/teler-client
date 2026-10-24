@@ -13,7 +13,8 @@ set -euo pipefail
 NOREPLY='^([0-9]+\+[A-Za-z0-9-]+(\[bot\])?@users\.noreply\.github\.com|noreply@github\.com)$'
 # AI-assistant attribution lines may also name this address.
 ATTRIBUTION='^noreply@anthropic\.com$'
-EMAIL_LIKE='[]A-Za-z0-9._%+[-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+'
+# The domain ends in letters, so versions such as tool@1.2.3 are not addresses.
+EMAIL_LIKE='[]A-Za-z0-9._%+[-]+@([A-Za-z0-9-]+\.)+[A-Za-z]{2,}'
 
 if [[ $# -ne 2 ]]; then
   echo 'Usage: scripts/check-commit-identity.sh <base> <head>' >&2
