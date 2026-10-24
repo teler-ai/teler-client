@@ -137,6 +137,23 @@ describe('a refusal the server explains', () => {
     expect(JSON.parse(nested.stderr).error.hint).toBe('Pick 1d or manual.')
   })
 
+  it("keeps the CLI's own next step where it has one, and fills in where it has none", async () => {
+    const hintFor = async (status: number, body: object) => {
+      const result = await run([...update, '--json'], () =>
+        Response.json({ hint: 'Just try again.', ...body }, { status })
+      )
+      return (JSON.parse(result.stderr) as { error: { hint?: string } }).error.hint
+    }
+    expect(await hintFor(429, {})).toContain('same --idempotency-key')
+    expect(await hintFor(503, { code: 'BUSY' })).toContain('same --idempotency-key')
+    expect(await hintFor(409, { code: 'RETRY_CONFLICT' })).toContain('nothing new ran')
+    expect(await hintFor(409, { code: 'SCHEDULE_REFUSED', reason: 'STALE_APPROVAL' })).toContain(
+      'teler schedule file quote'
+    )
+    expect(await hintFor(401, {})).toContain('teler auth login')
+    expect(await hintFor(400, { code: 'SOMETHING_NEW' })).toBe('Just try again.')
+  })
+
   it('falls back to its own hint when the body has none or an unprintable one', async () => {
     for (const hint of [undefined, '', 42, 'Pick \u001b[31m1d', 'Pick \u202e1d', 'x'.repeat(501)]) {
       const result = await run([...update, '--json'], refuse(hint === undefined ? {} : { hint }))

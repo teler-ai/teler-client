@@ -239,7 +239,9 @@ Artifact inspection omits physical storage details. Downloads are capped at
 With `--json`, failures emit `{ "error": { "code", "message", "retryable" } }`
 on stderr and return a nonzero exit code. When there is a clear next step, the
 error also has a `hint` (plain output prints it as a `hint:` line). When Teler's
-refusal explains what to do instead, the `hint` is the server's own. Transient errors include
+refusal explains what to do instead, the `hint` is the server's own, unless the
+CLI has its own next step for that error, such as retrying with the same
+idempotency key. Transient errors include
 `retrySafety: "read-or-idempotent-only"`: retry writes only with the same
 idempotency key. Exit code 2 denotes invalid command input; 1 denotes an
 operation failure. Successful inspection of a failed run remains exit code 0;

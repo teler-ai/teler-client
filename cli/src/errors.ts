@@ -46,19 +46,18 @@ const REASON_HINTS: Readonly<Record<string, string>> = {
     'An organization owner or admin holds this schedule; only they can release it in the Teler app.',
 }
 
+const PLAN_HINT =
+  "Your organization's plan does not allow this; an owner can change the plan in the Teler app."
 const RETRY_HINT =
   'Wait and retry; repeat a submission only with the same --idempotency-key, so it is not run twice.'
 
-/** The next step for a refusal whose code or status names one; none otherwise. */
-function apiHint(error: ApiError): string | undefined {
-  if (error.hint) return error.hint
+/** The CLI's own next step for a refusal's code, reason or status; none otherwise. */
+function ownHint(error: ApiError): string | undefined {
   const reasonHint = error.reason ? REASON_HINTS[error.reason] : undefined
   if (reasonHint) return reasonHint
   const code = error.code ?? ''
   if (code === 'CLIENT_UPDATE_REQUIRED' || error.status === 426)
     return 'Run `teler update`, then retry.'
-  if (code === 'PLAN_REQUIRED' || code === 'PLAN_LIMIT_EXCEEDED')
-    return "Your organization's plan does not allow this; an owner can change the plan in the Teler app."
   if (code === 'INSUFFICIENT_CREDITS' || code === 'BUDGET_EXCEEDED')
     return 'Lower --max-credits to what the organization has, or add credits in the Teler app.'
   if (code === 'IDEMPOTENCY_CONFLICT')
@@ -72,6 +71,16 @@ function apiHint(error: ApiError): string | undefined {
   if (error.status === 401) return 'Run `teler auth login`, or set TELER_TOKEN.'
   if (error.status === 429 || error.status === 503) return RETRY_HINT
   return undefined
+}
+
+/**
+ * The next step for a refusal: the CLI's own where it has one (so retry and approval guidance is
+ * never lost), else the refusal's own hint (the server's words, or one the CLI derived from it),
+ * else the generic plan hint.
+ */
+function apiHint(error: ApiError): string | undefined {
+  const plan = error.code === 'PLAN_REQUIRED' || error.code === 'PLAN_LIMIT_EXCEEDED'
+  return ownHint(error) ?? error.hint ?? (plan ? PLAN_HINT : undefined)
 }
 
 /** The next step a failure names, for `--json` errors and plain stderr. */
