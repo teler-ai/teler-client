@@ -122,6 +122,11 @@ export const runResponseSchema = z.object({
     .max(64 * 1024)
     .nullable()
     .optional(),
+  /** Which limit of the sandbox stopped the run, from servers that return it; passed through as sent. */
+  limit: z
+    .looseObject({ kind: z.string().max(128) })
+    .nullable()
+    .optional(),
   executionTimeMs: z.number().finite().min(0).nullable(),
   artifacts: z
     .array(

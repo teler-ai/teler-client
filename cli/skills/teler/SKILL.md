@@ -48,7 +48,8 @@ teler run python --file analysis.py --project <project-id> --max-credits 1 \
 
 - Exit code 2 is invalid input, 1 a failure. With `--json`, stderr holds
   `{"error":{"code","message","retryable","hint"}}`: follow `hint`.
-- A failed run has `errorCode`; `execution_failed` comes with the traceback in `errorDetail`.
+- A failed run has `errorCode`; `execution_failed` comes with the traceback in `errorDetail`. `memory_limit`, `time_limit` and `gpu_needed` mean the run needs more than the
+  sandbox allows: tell the person, and give them the receipt's `hint` (it names where to contact sales).
 - The same idempotency key returns the same run. Reuse it to recover after a network error or a
   timeout; after fixing code, submit with a new key.
 - `retryable: true`: wait `retryAfterMs`, then repeat reads, or writes with the same key.
