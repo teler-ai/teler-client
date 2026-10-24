@@ -86,3 +86,25 @@ jobs:
 
       - name: Build Teler Desktop bundles
         run: bun run --filter desktop build
+
+  commit-identity:
+    name: Commit identity
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Test the check
+        run: scripts/check-commit-identity.test.sh
+
+      # The repository and its CI logs are public: every commit in the pull
+      # request uses GitHub noreply addresses, and the check never prints one.
+      - name: Check commit authors, committers and messages
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: scripts/check-commit-identity.sh "$BASE_SHA" "$HEAD_SHA"
