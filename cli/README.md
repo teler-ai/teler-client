@@ -238,7 +238,8 @@ Artifact inspection omits physical storage details. Downloads are capped at
 
 With `--json`, failures emit `{ "error": { "code", "message", "retryable" } }`
 on stderr and return a nonzero exit code. When there is a clear next step, the
-error also has a `hint` (plain output prints it as a `hint:` line). Transient errors include
+error also has a `hint` (plain output prints it as a `hint:` line). When Teler's
+refusal explains what to do instead, the `hint` is the server's own. Transient errors include
 `retrySafety: "read-or-idempotent-only"`: retry writes only with the same
 idempotency key. Exit code 2 denotes invalid command input; 1 denotes an
 operation failure. Successful inspection of a failed run remains exit code 0;
@@ -251,10 +252,10 @@ by prior commands or `chat artifacts`; widgets keep the usual artifact access
 checks and the dashboard's four-column grid.
 
 ```sh
-teler dashboard create --name "Daily overview" --refresh-interval 5m --org <org-id> --json
+teler dashboard create --name "Daily overview" --refresh-interval 1h --org <org-id> --json
 teler dashboard add-widget <dashboard-id> --artifact <artifact-id> \
   --position '{"x":0,"y":0,"w":4,"h":3}' --idempotency-key overview.chart.1 --json
-teler dashboard update <dashboard-id> --refresh-interval 5m --json
+teler dashboard update <dashboard-id> --refresh-interval on_change --json
 teler dashboard list --org <org-id> --limit 20 --offset 0 --json
 teler dashboard get <dashboard-id> --org <org-id> --json
 teler dashboard archive <dashboard-id> --yes --json
@@ -262,8 +263,12 @@ teler dashboard archive <dashboard-id> --yes --json
 
 Create also accepts `--description`, `--project`, and
 `--visibility private|organization`. Omitted `--org` uses the active organization.
-Supported refresh intervals are `1m`, `5m`, `15m`, `30m`, `1h`, `4h`, and `1d`;
-Teler checks that the organization's plan allows the interval.
+`--refresh-interval` takes `manual` (refresh only when asked), `on_change`
+(refresh only after its data changes), or an interval:
+`15m`, `30m`, `1h`, `4h`, `5h` or `1d`. New dashboards are `manual` unless you
+choose otherwise. The organization's plan sets the shortest interval, and Teler
+refuses a faster one with `PLAN_LIMIT_EXCEEDED` and a `hint` naming the settings
+the plan allows. `dashboard refresh <id>` refreshes a dashboard now.
 
 Template creation is asynchronous:
 

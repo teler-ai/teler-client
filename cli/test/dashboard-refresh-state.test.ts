@@ -26,7 +26,7 @@ async function readWidget(refreshState?: Record<string, unknown>) {
           dashboardId,
           name: 'Automatic overview',
           description: null,
-          refreshInterval: '5m',
+          refreshInterval: '15m',
           lastRefreshedAt: attemptAt,
           createdAt: successAt,
           updatedAt: attemptAt,

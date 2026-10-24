@@ -1,4 +1,3 @@
-import { z } from 'zod'
 import type { TelerApiClient } from './api'
 import type { Output } from './chats'
 import { assertNoFlags, takeFlag, takeOption } from './command-args'
@@ -10,11 +9,27 @@ import {
   dashboardIdSchema,
   dashboardMutationResponseSchema,
   dashboardRefreshApprovalSchema,
+  REFRESH_CHOICES,
   refreshIntervalSchema,
   widgetMutationResponseSchema,
 } from './dashboard-contract'
 import { takeApprovedCapabilities } from './capability-approval'
 import { UsageError } from './errors'
+
+const REFRESH_USAGE = `--refresh-interval ${REFRESH_CHOICES.join('|')}`
+
+function takeRefreshSetting(args: string[]) {
+  const value = takeOption(args, '--refresh-interval')
+  if (value === undefined) return undefined
+  return parseControlInput(refreshIntervalSchema, value, `refresh setting; use ${REFRESH_USAGE}`)
+}
+
+/** When a dashboard refreshes, in words. */
+function refreshWords(setting: string): string {
+  if (setting === 'manual') return 'refreshes only when asked'
+  if (setting === 'on_change') return 'refreshes when its data changes'
+  return `refreshes every ${setting}`
+}
 
 export async function runDashboardCommand(
   client: TelerApiClient,
@@ -23,6 +38,7 @@ export async function runDashboardCommand(
   args: string[]
 ): Promise<void> {
   if (action === 'create') {
+    const refreshInterval = takeRefreshSetting(args)
     const input = parseControlInput(
       createDashboardSchema,
       {
@@ -31,7 +47,7 @@ export async function runDashboardCommand(
         name: takeOption(args, '--name'),
         description: takeOption(args, '--description'),
         visibility: takeOption(args, '--visibility'),
-        refreshInterval: takeOption(args, '--refresh-interval'),
+        refreshInterval,
       },
       'dashboard create options'
     )
@@ -68,23 +84,17 @@ export async function runDashboardCommand(
     return
   }
   if (action === 'update') {
-    const input = parseControlInput(
-      z.object({ refreshInterval: refreshIntervalSchema }),
-      {
-        refreshInterval: takeOption(args, '--refresh-interval'),
-      },
-      'dashboard interval; use --refresh-interval 1m|5m|15m|30m|1h|4h|1d'
-    )
+    const refreshInterval = takeRefreshSetting(args)
     assertNoFlags(args)
-    if (args.length !== 1)
-      throw new UsageError('Usage: teler dashboard update <id> --refresh-interval <interval>')
+    if (args.length !== 1 || refreshInterval === undefined)
+      throw new UsageError(`Usage: teler dashboard update <id> ${REFRESH_USAGE}`)
     const id = parseControlInput(dashboardIdSchema, args[0], 'dashboard ID')
     const result = await client.json(`/api/dashboard/${id}`, dashboardMutationResponseSchema, {
       method: 'PATCH',
-      body: JSON.stringify(input),
+      body: JSON.stringify({ refreshInterval }),
     })
     if (output.json) emitJson(output, result)
-    else output.write(`Updated ${result.dashboardId}: refresh every ${result.refreshInterval}\n`)
+    else output.write(`Updated ${result.dashboardId}: ${refreshWords(result.refreshInterval)}\n`)
     return
   }
   if (action === 'archive') {

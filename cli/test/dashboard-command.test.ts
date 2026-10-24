@@ -31,7 +31,7 @@ describe('dashboard controls', () => {
         id: dashboardId,
         name: 'Capacity',
         description: null,
-        refreshInterval: '5m',
+        refreshInterval: '15m',
         lastRefreshedAt: null,
         widgets: [],
         layout: { private: 'private-layout' },
@@ -47,7 +47,7 @@ describe('dashboard controls', () => {
         '--name',
         'Capacity',
         '--refresh-interval',
-        '5m',
+        '15m',
       ],
       [
         'dashboard',
@@ -60,7 +60,7 @@ describe('dashboard controls', () => {
         '--idempotency-key',
         'capacity.widget.1',
       ],
-      ['dashboard', 'update', dashboardId, '--refresh-interval', '5m'],
+      ['dashboard', 'update', dashboardId, '--refresh-interval', '15m'],
       ['dashboard', 'archive', dashboardId, '--yes'],
     ])
       expect(
@@ -79,7 +79,7 @@ describe('dashboard controls', () => {
         body: {
           organizationId,
           name: 'Capacity',
-          refreshInterval: '5m',
+          refreshInterval: '15m',
           visibility: 'private',
         },
       },
@@ -92,7 +92,7 @@ describe('dashboard controls', () => {
           idempotencyKey: 'capacity.widget.1',
         },
       },
-      { path: `/api/dashboard/${dashboardId}`, method: 'PATCH', body: { refreshInterval: '5m' } },
+      { path: `/api/dashboard/${dashboardId}`, method: 'PATCH', body: { refreshInterval: '15m' } },
       { path: `/api/dashboard/${dashboardId}`, method: 'DELETE', body: undefined },
     ])
     expect(output).toContain(dashboardId)
@@ -106,7 +106,7 @@ describe('dashboard controls', () => {
       dashboardId,
       name: 'Capacity',
       description: null,
-      refreshInterval: '5m',
+      refreshInterval: '15m',
       lastRefreshedAt: refreshed,
       createdAt: refreshed,
       updatedAt: refreshed,
@@ -130,7 +130,7 @@ describe('dashboard controls', () => {
             ),
         })
       ).toBe(0)
-      expect(output).toContain('"refreshInterval":"5m"')
+      expect(output).toContain('"refreshInterval":"15m"')
       expect(output).toContain(`"lastRefreshedAt":"${refreshed}"`)
     }
   })
@@ -185,7 +185,7 @@ describe('dashboard controls', () => {
   it('redacts normal API refusal bodies and query values', async () => {
     let stderr = ''
     expect(
-      await main(['dashboard', 'update', dashboardId, '--refresh-interval', '5m'], {
+      await main(['dashboard', 'update', dashboardId, '--refresh-interval', '15m'], {
         env,
         writeErr: (text) => {
           stderr += text

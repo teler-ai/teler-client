@@ -90,6 +90,8 @@ The `task.result` event holds the final answer; it replaces the streamed text.
 
 - Dashboard: `teler dashboard create --name "<name>" --json`, then
   `teler dashboard add-widget <dashboard-id> --artifact <artifact-id> --position '{"x":0,"y":0,"w":2,"h":2}' --json`.
+  New dashboards refresh only when asked; ask the person before
+  `teler dashboard update <dashboard-id> --refresh-interval <setting> --json` (settings: its schema).
 - Post: `teler post create --file post.json --json` (inputs: `teler schema post.create --json`).
 - Teler Agents: `teler agent list --json`; schedule one with
   `teler schedule create --agent <agent-id> --frequency daily --time-utc 09:00 --json`.

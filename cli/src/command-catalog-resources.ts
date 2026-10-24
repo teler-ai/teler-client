@@ -1,4 +1,8 @@
 import { command, type CliCommand } from './command-entry'
+import {
+  createDashboardInputJsonSchema,
+  updateDashboardRefreshInputJsonSchema,
+} from './dashboard-contract'
 
 /** Posts, dashboards, schedules and personal knowledge, for `teler schema`. */
 export const RESOURCE_COMMANDS: readonly CliCommand[] = [
@@ -13,11 +17,21 @@ export const RESOURCE_COMMANDS: readonly CliCommand[] = [
       `${kind} get <${kind}-id> [--include metadata|data|both]${kind === 'dashboard' ? ' [--widget-ids <csv>]' : ''} [--org <id>] [--json]`,
       `Read one ${kind} with its metadata and data.`
     ),
-    command(
-      `${kind}.update`,
-      `${kind} update <id> --file <json-file> [--org <id>] [--json]`,
-      `Change a ${kind} from a JSON file.`
-    ),
+    kind === 'post'
+      ? command(
+          'post.update',
+          'post update <id> --file <json-file> [--org <id>] [--json]',
+          'Change a post from a JSON file.'
+        )
+      : command(
+          'dashboard.update',
+          'dashboard update <id> (--refresh-interval <setting> | --file <json-file> [--org <id>]) [--json]',
+          'Change when a dashboard refreshes, or change it from a JSON file.',
+          {
+            inputSchema: updateDashboardRefreshInputJsonSchema,
+            flags: { refreshInterval: '--refresh-interval' },
+          }
+        ),
     command(
       `${kind}.delete`,
       `${kind} delete <id> --yes [--org <id>] [--json]`,
@@ -97,8 +111,19 @@ export const RESOURCE_COMMANDS: readonly CliCommand[] = [
   ),
   command(
     'dashboard.create',
-    'dashboard create (--name <name> [--refresh-interval <interval>] | --file <json-file>) [--org <id>] [--json]',
-    'Create a dashboard by name, or from a JSON file.'
+    'dashboard create (--name <name> [--description <text>] [--project <id>] [--visibility private|organization] [--refresh-interval <setting>] | --file <json-file>) [--org <id>] [--json]',
+    'Create a dashboard by name, or from a JSON file.',
+    {
+      inputSchema: createDashboardInputJsonSchema,
+      flags: {
+        organizationId: '--org',
+        projectId: '--project',
+        name: '--name',
+        description: '--description',
+        visibility: '--visibility',
+        refreshInterval: '--refresh-interval',
+      },
+    }
   ),
   command(
     'dashboard.refresh',
