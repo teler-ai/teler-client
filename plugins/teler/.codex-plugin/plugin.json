@@ -1,0 +1,43 @@
+{
+  "name": "teler",
+  "version": "0.1.5",
+  "description": "Work with your organization's data in Teler through the teler CLI: find projects and tables, run SQL and Python in Teler's sandbox, ask Teler's analyst agent, put results on dashboards and posts, and schedule tested Python.",
+  "author": {
+    "name": "Teler",
+    "url": "https://teler.ai"
+  },
+  "homepage": "https://teler.ai",
+  "repository": "https://github.com/teler-ai/teler-client",
+  "license": "Apache-2.0",
+  "keywords": [
+    "teler",
+    "data",
+    "analytics",
+    "sql",
+    "python",
+    "dashboards",
+    "business-intelligence"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Teler",
+    "shortDescription": "Analyze your data in Teler",
+    "longDescription": "Teler is a workspace where an organization's data is analyzed in natural language. With this plugin, Codex uses the teler CLI to find your projects and tables, run SQL and Python on them in Teler's sandbox, ask Teler's analyst agent, pin the resulting charts to dashboards, write posts, and put tested Python on a schedule with an approved monthly credit cap. It needs the teler CLI (from github.com/teler-ai/teler-client releases) and a Teler account; you sign in once with `teler auth login`. Runs spend your organization's Teler credits, always under a cap you set.",
+    "developerName": "Teler",
+    "category": "Data & Analytics",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "websiteURL": "https://teler.ai",
+    "supportURL": "https://teler.ai/contact",
+    "privacyPolicyURL": "https://teler.ai/privacy",
+    "termsOfServiceURL": "https://teler.ai/terms",
+    "defaultPrompt": [
+      "Which of our tables in Teler have last quarter's sales?",
+      "Ask Teler which regions grew fastest and chart it",
+      "Pin this chart to a Teler dashboard that refreshes daily"
+    ],
+    "brandColor": "#C49A4C",
+    "composerIcon": "./assets/composer-icon.svg",
+    "logo": "./assets/logo.png",
+    "screenshots": []
+  }
+}

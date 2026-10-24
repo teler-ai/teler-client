@@ -23,22 +23,45 @@ only with the versioned HTTP API selected by `TELER_URL`; production
 
 ## Commands
 
-- Agent Access: `teler agent-access show` and
-  `teler agent-access set --preset ask`, each with optional `--org <id>`.
-  `show` emits policy metadata; `set` changes only the authenticated member's
-  preset through the normal revision-checked API and preserves chat overrides.
-- Coding agents: `teler agent setup` installs the shipped Agent Skills file
-  `skills/teler/SKILL.md` (bundled as text) for Claude Code and Codex, offline.
-  Agents read that file whenever they use Teler: keep it short, public and in
-  step with the commands. `teler schema` lists every command from
-  `src/command-catalog*.ts`; its test fails when the usage text and the catalog differ.
-- Files: `teler files list|read|search|write|mkdir|move|copy`; code Files:
-  `teler files save-code|run|result|runs|output` and `teler schedule file create|show|quote|approve|pause|resume|re-pin|runs|latest|delete`
+Every command is in `src/command-catalog*.ts`, which `teler schema` prints; its test
+fails when the usage text (`src/usage.ts`) and the catalog differ. By area:
+
+- Sign-in and discovery: `auth login|status|logout`, `schema`, `--version`, `update`.
+- Coding agents: `agent setup` installs the skill folder `skills/teler/` (bundled
+  as text: `SKILL.md` and every guide in `references/`) for Claude Code and Codex,
+  offline. Agents read it whenever they use Teler: keep `SKILL.md` lean (core loop,
+  safety rules, links to the guides) and each guide short, public and in step with
+  the commands. A new guide must be imported in `src/agent-setup.ts`, linked from
+  `SKILL.md` and copied to `../plugins/teler/skills/teler/`; the tests check all
+  three. Reruns report `unchanged`.
+- Data and runs: `project list`, `data list|describe|query`, `run python|get|wait|cancel`,
+  `artifact create|get|source`.
+- Files: `files list|read|search|write|mkdir|move|copy`; code Files:
+  `files save-code|run|result|runs|output` and
+  `schedule file create|show|quote|approve|pause|resume|re-pin|runs|latest|delete`
   (approval takes the revision read, an explicit monthly cap and `--yes`).
-- Attention: `teler status`, `teler watch` (events as NDJSON with `--json`), `teler chat seen`,
-  `teler agent runs`, `teler notifications`; all read the public attention and inbox routes.
+- Uploads and sync: `upload <file>`, `upload list|status`, `sync <folder>`,
+  `sync list|status|pause|resume|retry|remove|stop|daemon`.
+- Chats: `send`, `steer`, `task watch`, `approval respond`,
+  `chat list|show|artifacts|seen|delete`.
+- Attention: `status`, `watch` (events as NDJSON with `--json`), `chat seen`,
+  `agent runs`, `notifications`; all read the public attention and inbox routes.
   `@teler-ai/cli/attention` exports the schema, the reader, the tracker and the watch loop.
-- Uploads: `teler upload <file>`, `teler upload list`, `teler upload status <job-id>`
+- Dashboards and posts: `dashboard …` and `post …` (list, get, create, update,
+  delete, move, visibility, sharing, public links, templates, comments, export);
+  `src/resource-actions.ts` holds the actions beyond the basic ones. Dashboard
+  refresh settings are `manual`, `on_change` or an interval; the server enforces
+  plan minimums and explains refusals in a `hint`.
+- Teler Agents and schedules: `agent list|get|create|update|delete`,
+  `schedule create|approve|list|update|pause|resume|history|delete`.
+- Knowledge: `skill …` and `memory …` (`src/resource-options.ts`).
+- Agent Access: `agent-access show` and `agent-access set --preset ask`, each with
+  optional `--org <id>`. `show` emits policy metadata; `set` changes only the
+  authenticated member's preset through the normal revision-checked API and
+  preserves chat overrides.
+- Errors: `--json` failures are `{"error":{"code","message",...,"hint"}}`. The CLI's
+  own hint for a code, reason or status wins; a refusal's plain-text `hint` fills in
+  or replaces the generic plan hint (`src/errors.ts`, `src/api.ts`).
 - Library entry (`@teler-ai/cli`): the API client, device sign-in, credential
   store, sending chat messages, watching tasks and uploads, for programs that drive Teler like the CLI does. The
   command itself is the `@teler-ai/cli/cli` entry.
@@ -46,6 +69,8 @@ only with the versioned HTTP API selected by `TELER_URL`; production
 - Updates: `teler update [--check]` installs only stable releases of this
   repository after verifying `SHA256SUMS.txt`; the daily startup check stays off
   for `--json`, CI, Teler Desktop's sidecar and `TELER_NO_UPDATE_CHECK`.
+- Version: a release bumps `version` in `package.json` and in both manifests in
+  `../plugins/teler/` (`test/plugin-listing.test.ts` checks they match).
 - Release executables: `bun scripts/compile.ts [target...]`; published by
   `.github/workflows/cli-release.yml` (manual, `main` only). On a Mac, macOS
   executables are re-signed (`scripts/mac-signature.ts`): ad hoc locally; in
