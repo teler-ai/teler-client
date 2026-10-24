@@ -22,8 +22,8 @@ print(df)
 - Charts the code makes come back as artifacts (IDs in the receipt); see [outputs](outputs.md).
 - `--execution-timeout <seconds>` (default 60, up to 3600 or the plan's limit) bounds the run.
   `--timeout` bounds only your waiting: the run goes on.
-- Runs cost credits, at most `--max-credits`, and the organization's plan must include them; a
-  refusal's `hint` says what to do.
+- Runs cost credits, at most `--max-credits`, and need a paid plan; a refusal's `hint` says what
+  to do.
 
 ## Receipts
 

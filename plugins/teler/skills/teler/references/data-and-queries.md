@@ -47,13 +47,15 @@ Access policy decides what may change without asking.
 ## Bring data in
 
 ```sh
-teler upload ./sales.csv --to /organization/imports --wait --timeout 120 --json
+teler upload ./sales.csv --wait --timeout 120 --json
 teler upload status <job-id> --wait --json
 teler upload list --json
 ```
 
-An upload is processed into tables or documents. The first NDJSON record has the `jobId`; if
-waiting times out, keep it and continue with `upload status`.
+An upload is processed into tables or documents. It is the person's own unless you pass
+`--scope organization` (do that only when asked); `--to <folder>` picks a folder in that scope
+and `--project <id>` a project. The first NDJSON record has the `jobId`; if waiting times out,
+keep it and continue with `upload status`.
 
 `teler sync <folder> --to <remote-path>` keeps uploading a local folder in the background
 (one way, local to Teler; it never deletes remote files). Preview first with `--dry-run --json`,

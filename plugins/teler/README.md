@@ -23,8 +23,9 @@ The skill tells your agent to run `teler` commands. The CLI talks only to the Te
 choose (`https://app.teler.ai` unless `TELER_URL` says otherwise), signed in as you, and sends
 what each command needs: your questions, the SQL or Python you run, files you upload, and the
 dashboards, posts and schedules you create. Your sign-in stays in your system keyring or a
-private file. Runs and dashboard refreshes spend your organization's Teler credits, always under
-a cap you set, and the skill asks your agent to agree any spend, sharing or deletion with you.
+private file. Each run spends your organization's Teler credits up to the cap your agent gives it
+(`--max-credits`). Dashboard refreshes and scheduled runs spend credits too; the skill asks your
+agent to agree any refresh schedule, monthly spend, sharing or deletion with you first.
 
 ## Without the plugin
 
