@@ -92,9 +92,10 @@ Usage:
   Template creation queues jobs; poll progress, then add completed artifacts with add-widget.
   Resource writes accept --file <json-file>; deletions/revocations require --yes.
   PDF export requires --file <html-request.json> --output <file.pdf>.
-  teler dashboard create --name <name> [--org <id>] [--refresh-interval <interval>] [--json]
+  teler dashboard create --name <name> [--org <id>] [--refresh-interval <setting>] [--json]
   teler dashboard add-widget <id> --artifact <id> --position <json> [--idempotency-key <key>] [--json]
-  teler dashboard update <id> --refresh-interval 1m|5m|15m|30m|1h|4h|1d [--json]
+  teler dashboard update <id> --refresh-interval manual|on_change|15m|30m|1h|4h|5h|1d [--json]
+  Your plan sets the shortest interval; a refusal's hint names the settings you can use.
   teler dashboard approve-refresh <id> [--approve <capability,...>] [--json]
   teler dashboard archive <id> --yes [--json]
   teler schedule create --agent <id> --frequency daily|weekly|monthly --time-utc <HH:MM> [--org <id>]

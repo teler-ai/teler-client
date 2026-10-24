@@ -27,6 +27,21 @@ const errorSchema = z.object({
 const nestedErrorSchema = z.object({ error: z.object({ code: errorCode }) })
 // Why a schedule was refused (`code` SCHEDULE_REFUSED), as a code only.
 const reasonSchema = z.object({ reason: errorCode })
+// A refusal's next step in the server's words, as one line of plain text; anything else is dropped.
+const hintSchema = z
+  .string()
+  .transform((hint) => hint.replace(/\s+/g, ' ').trim())
+  .pipe(
+    z
+      .string()
+      .min(1)
+      .max(500)
+      .regex(/^[^\p{Cc}\p{Cf}]+$/u)
+  )
+const hintBodySchema = z.union([
+  z.object({ hint: hintSchema }),
+  z.object({ error: z.object({ hint: hintSchema }) }).transform(({ error }) => error),
+])
 // The plan's run limit a TIME_LIMIT_EXCEEDED refusal states, as a number only.
 const limitSchema = z.object({ limitSeconds: z.number().int().positive().max(86_400) })
 // Only plain capability ids; a malformed list is dropped, never echoed.
@@ -107,10 +122,12 @@ export class TelerApiClient {
         const named = capabilitiesSchema.safeParse(body)
         capabilities = named.success ? named.data.capabilities : undefined
         const limit = limitSchema.safeParse(body)
+        const explained = hintBodySchema.safeParse(body)
         if (code === 'TIME_LIMIT_EXCEEDED' && limit.success)
           hint = `Your plan allows runs of up to ${limit.data.limitSeconds} seconds; lower --execution-timeout.`
+        else if (explained.success) hint = explained.data.hint
       } catch {
-        // Status is the safe fallback. Never echo an untrusted response body.
+        // Status is the safe fallback. Echo only the plain-text hint, never the rest of the body.
       }
       if (code === UPDATE_REQUIRED) {
         throw new ApiError(await updateRequiredMessage(response), response.status, code)
