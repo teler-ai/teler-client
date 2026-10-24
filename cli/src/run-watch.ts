@@ -19,8 +19,31 @@ const TERMINAL_CONTROL =
   // eslint-disable-next-line no-control-regex -- matching control text is the point
   /\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b\n]*(?:\x07|\x1b\\)?|[\x00-\x08\x0b-\x1f\x7f-\x9f]/g
 
+/** Where to ask when a run needs more than the sandbox allows; fixed, never taken from the server. */
+const CONTACT_SALES = 'Contact sales: https://teler.ai/contact?topic=sales'
+
+/**
+ * What a failed run needed, when the server says it stopped at a limit of the sandbox. Only the
+ * `limit` object counts: a run's own `--execution-timeout` also ends in `time_limit`.
+ */
+function limitNeed(run: RunResponse): string | undefined {
+  if (run.status !== 'failed') return undefined
+  switch (run.limit?.kind) {
+    case 'memory_limit':
+    case 'time_limit':
+      return 'needs more compute than is available here.'
+    case 'gpu_needed':
+      return 'needs a GPU.'
+    default:
+      return undefined
+  }
+}
+
 export function emitRunReceipt(output: Output, run: RunResponse): void {
-  if (output.json) return emitJson(output, run)
+  if (output.json) {
+    const need = limitNeed(run)
+    return emitJson(output, need ? { ...run, hint: `This request ${need} ${CONTACT_SALES}` } : run)
+  }
   output.write(
     `${run.id}\t${run.status}\t${run.language}\tcharged=${run.chargedCredits ?? 'pending'}\n`
   )
@@ -59,12 +82,16 @@ function failedRunHint(run: RunResponse): string | undefined {
 }
 
 export function assertRunSucceeded(run: RunResponse): void {
-  if (run.status === 'failed')
+  if (run.status === 'failed') {
+    const need = limitNeed(run)
     throw new CommandError(
       'RUN_FAILED',
-      `Run ${run.id} failed${run.errorCode ? ` (${run.errorCode})` : ''}`,
-      failedRunHint(run)
+      need
+        ? `Run ${run.id} ${need}\n${CONTACT_SALES}`
+        : `Run ${run.id} failed${run.errorCode ? ` (${run.errorCode})` : ''}`,
+      need ? undefined : failedRunHint(run)
     )
+  }
   if (run.status === 'cancelled')
     throw new CommandError('RUN_CANCELLED', `Run ${run.id} was cancelled`)
 }

@@ -200,6 +200,16 @@ servers that support it also return the traceback, with secrets redacted, as
 `errorDetail`; plain output prints it after the receipt. Fix the code and submit
 it with a new idempotency key: the same key returns the failed run.
 
+When the server reports that a run stopped at a limit of the sandbox (a `limit`
+object whose `kind` is `memory_limit`, `time_limit` or `gpu_needed`), the commands
+that submit a run or wait for it (`run python`, `data query`, `artifact create`,
+`run wait`) say in plain output that the run needs more compute or a GPU, and
+where to ask (`Contact sales: https://teler.ai/contact?topic=sales`), with the
+same exit status as any failed run. With `--json`, every receipt of that run,
+including `run get`, keeps `errorCode`, passes `limit` through, and adds a `hint`
+string with the same contact link. A run that only reached its own
+`--execution-timeout` has no `limit` and is reported as before.
+
 Create a chart from an explicit static data snapshot:
 
 ```json
