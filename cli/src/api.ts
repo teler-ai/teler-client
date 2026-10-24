@@ -18,12 +18,15 @@ async function updateRequiredMessage(response: Response): Promise<string> {
   return `This version of the teler CLI is no longer supported. Update the teler CLI${version}.`
 }
 
+const errorCode = z.string().regex(/^[A-Z0-9_]{1,64}$/)
+// A refusal's code, at the top level or inside `error` (File and code-run routes nest it).
 const errorSchema = z.object({
-  code: z
-    .string()
-    .regex(/^[A-Z0-9_]{1,64}$/)
-    .optional(),
+  code: errorCode.optional(),
+  error: z.unknown().optional(),
 })
+const nestedErrorSchema = z.object({ error: z.object({ code: errorCode }) })
+// Why a schedule was refused (`code` SCHEDULE_REFUSED), as a code only.
+const reasonSchema = z.object({ reason: errorCode })
 // The plan's run limit a TIME_LIMIT_EXCEEDED refusal states, as a number only.
 const limitSchema = z.object({ limitSeconds: z.number().int().positive().max(86_400) })
 // Only plain capability ids; a malformed list is dropped, never echoed.
@@ -91,10 +94,16 @@ export class TelerApiClient {
       let code: string | undefined
       let capabilities: string[] | undefined
       let hint: string | undefined
+      let reason: string | undefined
       try {
         const body = (await response.clone().json()) as unknown
         const parsed = errorSchema.safeParse(body)
-        code = parsed.success ? parsed.data.code : undefined
+        const nested = nestedErrorSchema.safeParse(body)
+        code = parsed.success
+          ? (parsed.data.code ?? (nested.success ? nested.data.error.code : undefined))
+          : undefined
+        const refused = reasonSchema.safeParse(body)
+        reason = refused.success ? refused.data.reason : undefined
         const named = capabilitiesSchema.safeParse(body)
         capabilities = named.success ? named.data.capabilities : undefined
         const limit = limitSchema.safeParse(body)
@@ -107,12 +116,13 @@ export class TelerApiClient {
         throw new ApiError(await updateRequiredMessage(response), response.status, code)
       }
       throw new ApiError(
-        `Teler API request failed (${response.status}${code ? ` ${code}` : ''})`,
+        `Teler API request failed (${response.status}${code ? ` ${code}` : ''}${reason ? ` ${reason}` : ''})`,
         response.status,
         code,
         retryAfterMilliseconds(response.headers.get('Retry-After')),
         capabilities,
-        hint
+        hint,
+        reason
       )
     }
     return response

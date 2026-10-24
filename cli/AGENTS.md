@@ -32,7 +32,9 @@ only with the versioned HTTP API selected by `TELER_URL`; production
   Agents read that file whenever they use Teler: keep it short, public and in
   step with the commands. `teler schema` lists every command from
   `src/command-catalog*.ts`; its test fails when the usage text and the catalog differ.
-- Files: `teler files list|read|search|write|mkdir|move|copy`
+- Files: `teler files list|read|search|write|mkdir|move|copy`; code Files:
+  `teler files save-code|run|result|runs|output` and `teler schedule file create|show|quote|approve|pause|resume|re-pin|runs|latest|delete`
+  (approval takes the revision read, an explicit monthly cap and `--yes`).
 - Attention: `teler status`, `teler watch` (events as NDJSON with `--json`), `teler chat seen`,
   `teler agent runs`, `teler notifications`; all read the public attention and inbox routes.
   `@teler-ai/cli/attention` exports the schema, the reader, the tracker and the watch loop.

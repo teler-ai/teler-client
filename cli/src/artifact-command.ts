@@ -52,10 +52,11 @@ const metadataSchema = z.object({
 const MAX_DOWNLOAD_BYTES = 32 * 1024 * 1024
 
 /** A private temporary file becomes visible atomically; an existing destination is never replaced. */
-async function downloadArtifact(
+export async function downloadArtifact(
   client: TelerApiClient,
   path: string,
-  destination: string
+  destination: string,
+  what = 'Artifact'
 ): Promise<string> {
   const target = resolve(destination)
   const temporary = join(dirname(target), `.teler-artifact-${randomUUID()}.part`)
@@ -65,7 +66,7 @@ async function downloadArtifact(
     const response = await client.request(path)
     const length = Number(response.headers.get('Content-Length'))
     if (Number.isFinite(length) && length > MAX_DOWNLOAD_BYTES)
-      throw new UsageError('Artifact download exceeds 32 MiB')
+      throw new UsageError(`${what} download exceeds 32 MiB`)
     if (!response.body) throw new ApiError('Teler API returned an empty artifact response', 502)
     const reader = response.body.getReader()
     closeStream = async () => {
@@ -78,7 +79,7 @@ async function downloadArtifact(
       const part = await reader.read()
       if (part.done) break
       total += part.value.byteLength
-      if (total > MAX_DOWNLOAD_BYTES) throw new UsageError('Artifact download exceeds 32 MiB')
+      if (total > MAX_DOWNLOAD_BYTES) throw new UsageError(`${what} download exceeds 32 MiB`)
       // FileHandle.write may be partial; write the complete chunk before reading more.
       let offset = 0
       while (offset < part.value.byteLength) {
@@ -94,7 +95,7 @@ async function downloadArtifact(
   } catch (error) {
     if (error instanceof ApiError || error instanceof UsageError) throw error
     throw new UsageError(
-      'Unable to save artifact; choose a writable destination that does not already exist'
+      `Unable to save ${what.toLowerCase()}; choose a writable destination that does not already exist`
     )
   } finally {
     await closeStream?.()

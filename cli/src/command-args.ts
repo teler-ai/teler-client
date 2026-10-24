@@ -16,6 +16,14 @@ export function takeOption(args: string[], name: string): string | undefined {
   return value
 }
 
+/** Every value of a repeatable option, in order. */
+export function takeOptions(args: string[], name: string): string[] {
+  const values: string[] = []
+  for (let value = takeOption(args, name); value !== undefined; value = takeOption(args, name))
+    values.push(value)
+  return values
+}
+
 export function assertNoFlags(args: string[]): void {
   if (args.some((arg) => arg.startsWith('-'))) throw new UsageError('Unknown option')
 }
