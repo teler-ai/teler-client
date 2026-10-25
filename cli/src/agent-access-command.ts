@@ -1,7 +1,13 @@
 import { z } from 'zod'
 import type { TelerApiClient } from './api'
 import type { Output } from './chats'
-import { assertNoFlags, takeOption } from './command-args'
+import {
+  MEMBER_PRESET_NAMES,
+  MEMBER_PRESETS,
+  presetOf,
+  type MemberPreset,
+} from './agent-access-presets'
+import { assertNoFlags, takeFlag, takeOption } from './command-args'
 import { emitJson, resolveOrganizationId } from './command-output'
 import { parseControlInput } from './control-args'
 import { ApiError, UsageError } from './errors'
@@ -43,8 +49,23 @@ function summary(data: z.infer<typeof responseSchema>['data']) {
     organizationId: data.organizationId,
     membershipId: data.membershipId,
     organizationPolicy: metadata(data.organization),
-    memberPolicy: metadata(data.member),
+    memberPolicy: { ...metadata(data.member), preset: presetOf(data.member.policy) },
   }
+}
+
+/** `--preset`: one the app offers; Allow everything also needs `--yes`, as the app confirms it. */
+function takePreset(args: string[]): MemberPreset {
+  const preset = takeOption(args, '--preset')
+  const confirmed = takeFlag(args, '--yes')
+  if (!MEMBER_PRESET_NAMES.includes(preset as MemberPreset))
+    throw new UsageError(
+      `teler agent-access set requires --preset ${MEMBER_PRESET_NAMES.join('|')}`
+    )
+  if (preset === 'allow-everything' && !confirmed)
+    throw new UsageError(
+      'allow-everything lets Agents act without asking you first; pass --yes to set it'
+    )
+  return preset as MemberPreset
 }
 
 export async function runAgentAccessCommand(
@@ -59,9 +80,7 @@ export async function runAgentAccessCommand(
   const suppliedOrganization = takeOption(args, '--org')
   if (suppliedOrganization)
     parseControlInput(organizationIdSchema, suppliedOrganization, 'organization ID')
-  if (action === 'set' && takeOption(args, '--preset') !== 'ask') {
-    throw new UsageError('teler agent-access set requires --preset ask')
-  }
+  const preset = action === 'set' ? takePreset(args) : undefined
   assertNoFlags(args)
   if (args.length) throw new UsageError('Unexpected Agent Access arguments')
   const organizationId = parseControlInput(
@@ -74,9 +93,7 @@ export async function runAgentAccessCommand(
   if (result.data.organizationId !== organizationId) {
     throw new ApiError('Teler API returned an invalid response', 502)
   }
-  const alreadyAsk =
-    result.data.member.policy.default === 'ask' && result.data.member.policy.rules.length === 0
-  if (action === 'set' && !alreadyAsk) {
+  if (preset !== undefined && presetOf(result.data.member.policy) !== preset) {
     const membershipId = result.data.membershipId
     result = await client.json(endpoint, responseSchema, {
       method: 'PATCH',
@@ -84,7 +101,7 @@ export async function runAgentAccessCommand(
         scope: 'member',
         expectedRevision: result.data.member.revision,
         existingChatOverrides: 'preserve',
-        policy: { formatVersion: 1, catalogVersion: 1, default: 'ask', rules: [] },
+        policy: { formatVersion: 1, catalogVersion: 1, ...MEMBER_PRESETS[preset] },
       }),
     })
     if (
@@ -98,6 +115,6 @@ export async function runAgentAccessCommand(
   if (output.json) emitJson(output, value)
   else
     output.write(
-      `Agent Access on ${organizationId}: member ${value.memberPolicy.default}, revision ${value.memberPolicy.revision}, ${value.memberPolicy.ruleCount} rules; organization ${value.organizationPolicy.default}.\n`
+      `Agent Access on ${organizationId}: member preset ${value.memberPolicy.preset}, default ${value.memberPolicy.default}, revision ${value.memberPolicy.revision}, ${value.memberPolicy.ruleCount} rules; organization ${value.organizationPolicy.default}.\n`
     )
 }

@@ -209,8 +209,8 @@ export const CLI_COMMANDS: readonly CliCommand[] = [
   ),
   command(
     'agent-access.set',
-    'agent-access set --preset ask [--org <id>] [--json]',
-    'Reset your Agent Access policy to the Ask preset.'
+    'agent-access set --preset standard|ask|read-only|allow-everything [--yes] [--org <id>] [--json]',
+    'Set your Agent Access policy to a preset, as the app does; allow-everything needs --yes.'
   ),
   command(
     'files.list',

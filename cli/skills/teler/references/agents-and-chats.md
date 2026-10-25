@@ -64,6 +64,17 @@ teler agent delete <agent-id> --yes --json
 `--output none|private_post`, `--capabilities <capability,...>` and, for create,
 `--scope personal|organization`.
 
+```sh
+teler agent run <agent-id> --prompt "<focus>" --json      # now; costs credits as in the app
+teler agent spend-cap <agent-id> --monthly-credits 50 --json   # File schedule spend it may approve
+teler agent allow-and-rerun <run-id> --json               # allow what a scheduled run skipped, rerun
+teler agent apply-skipped <run-id> <n> --json             # apply alert recipients a run kept
+```
+
+A scheduled run skips what asks first when nobody is there; `teler agent runs --json` lists it
+in `skippedActions` (`<n>` is its place, from 0) and `askSkipped`. Allowing, applying and caps
+act for the person: do them when they ask.
+
 Schedule a ready Agent at a UTC time:
 
 ```sh

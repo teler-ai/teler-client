@@ -27,11 +27,12 @@ Agent Access is the person's policy for what agents may do in Teler on their beh
 asking, such as changing tables or files.
 
 ```sh
-teler agent-access show --json
-teler agent-access set --preset ask --json   # back to asking before changes
+teler agent-access show --json               # its preset, or custom
+teler agent-access set --preset ask --json   # or standard, read-only, allow-everything --yes
 ```
 
-Read it when an action is refused for approval. Change it only when the person asks.
+Read it when an action is refused for approval. Change it only when the person asks, to the
+preset they name; `allow-everything` lets agents act without asking, so confirm it with them.
 
 ## Approvals that reach you
 
