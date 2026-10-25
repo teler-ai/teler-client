@@ -61,11 +61,11 @@ function state(schedule: FileSchedule): string {
 }
 
 function emitSchedule(output: Output, verb: string, schedule: FileSchedule): void {
-  if (output.json) emitJson(output, schedule)
-  else
-    output.write(
-      `${verb} ${schedule.id} (revision ${schedule.definitionRevision}): ${state(schedule)}\n`
-    )
+  if (output.json) return emitJson(output, schedule)
+  const alerts = schedule.alertRule ? `; alerts when ${schedule.alertRule}` : ''
+  output.write(
+    `${verb} ${schedule.id} (revision ${schedule.definitionRevision}): ${state(schedule)}${alerts}\n`
+  )
 }
 
 function emitQuote(

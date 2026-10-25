@@ -16,7 +16,12 @@ import {
   tariffSchema,
   type CodeRun,
 } from './code-file-contract'
-import { declarationFor, resolveBindings, takeDeclarationFlags } from './code-file-declaration'
+import {
+  declarationFor,
+  declaresRun,
+  resolveBindings,
+  takeDeclarationFlags,
+} from './code-file-declaration'
 import {
   codeRunListSchema,
   isJsonMedia,
@@ -76,12 +81,7 @@ async function saveCode(client: TelerApiClient, output: Output, args: string[]) 
   const organizationOption = takeOption(args, '--org')
   const flags = takeDeclarationFlags(args)
   assertNoFlags(args)
-  if (
-    args.length !== 1 ||
-    Boolean(to) === Boolean(fileOption) ||
-    flags.outputs.length > 0 ||
-    flags.parameters !== undefined
-  )
+  if (args.length !== 1 || Boolean(to) === Boolean(fileOption) || declaresRun(flags))
     throw new UsageError(
       'Usage: teler files save-code <local.py> (--to <path> | --file <file-id>) [--input <name>=<ref>]... [--params-schema <schema.json>]'
     )

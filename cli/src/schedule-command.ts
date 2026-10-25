@@ -9,6 +9,7 @@ import { UsageError } from './errors'
 import { runFileScheduleCommand } from './file-schedule-command'
 import {
   createScheduleSchema,
+  eventStartSchema,
   scheduleDefinitionSchema,
   scheduleHistorySchema,
   scheduleIdSchema,
@@ -21,12 +22,16 @@ type ScheduleDefinition = z.infer<typeof scheduleDefinitionSchema>
 
 /** "next run <time>" for a time schedule; an event start has none, so it says what starts it. */
 function startWords(definition: ScheduleDefinition): string {
-  if ('startKind' in definition) {
-    return definition.startKind === 'table_update'
-      ? 'starts when its table updates'
-      : 'starts when another Agent finishes'
-  }
-  return `next run ${definition.nextRunAt}`
+  if (!('startKind' in definition)) return `next run ${definition.nextRunAt}`
+  const parsed = eventStartSchema.safeParse(definition)
+  if (!parsed.success) return `starts on ${definition.startKind} (update teler to see more)`
+  const start = parsed.data
+  if (start.startKind === 'table_update') return 'starts when its table updates'
+  if (start.startKind === 'agent_finished') return 'starts when another Agent finishes'
+  const alert = start.startAlert
+  return alert
+    ? `starts when an alert opens on the ${alert.kind === 'agent' ? 'Agent' : 'File'} ${alert.label ?? alert.id}`
+    : 'starts when an alert opens'
 }
 
 const SCHEDULE_APPROVAL = {

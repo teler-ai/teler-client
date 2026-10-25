@@ -16,7 +16,9 @@ teler schedule file approve <schedule-id> --revision <n> --monthly-credits <cap>
 
 - Time: `--time-utc <HH:MM>`, or `--time <HH:MM> --timezone <zone>`. Weekly needs
   `--day-of-week 0-6` (0 is Sunday); monthly needs `--day-of-month 1-31`.
-- `create` takes the same `--input`, `--output` and `--params` as `files run`.
+- `create` takes the same `--input`, `--output`, `--params` and `--alert-rule` as `files run`.
+  A File that alerts keeps its rule when the schedule repeats your last run; with `--output`,
+  pass `--alert-rule "<rule>"` or the CLI refuses (`ALERT_RULE_REQUIRED`). `show` prints it.
 - `quote` shows, for the schedule's current `revision`, what one run may hold, the runs expected
   in a month and a suggested cap. `--max-run-minutes <1-30>` sets the run time it quotes.
 - Approving commits the person's credits: agree the cap with them first. Only the schedule's

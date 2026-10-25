@@ -66,13 +66,15 @@ export const scheduleSchema = z.object({
   lastRunStatus: z.enum(['success', 'failed', 'skipped']).nullable(),
 })
 
+const START_KINDS = ['table_update', 'agent_finished', 'alert_opened'] as const
+
 /**
- * A start that is not a time: a table's data updating or another Agent finishing. It has no
- * cadence or next run, so none is expected here.
+ * A start that is not a time: a table's data updating, another Agent finishing, or an alert
+ * opening on an Agent or a File. It has no cadence or next run, so none is expected here.
  */
 export const eventStartSchema = z.object({
   id: scheduleIdSchema,
-  startKind: z.enum(['table_update', 'agent_finished']),
+  startKind: z.enum(START_KINDS),
   projectId: z
     .string()
     .regex(new RegExp(`^prj_${idSuffix}$`))
@@ -95,6 +97,15 @@ export const eventStartSchema = z.object({
       label: z.string().nullable(),
     })
     .nullable(),
+  /** Whose alert opening starts it; older servers do not send the key. */
+  startAlert: z
+    .object({
+      kind: z.enum(['agent', 'file']),
+      id: z.string().regex(new RegExp(`^(?:agent|doc)_${idSuffix}$`)),
+      label: z.string().nullable(),
+    })
+    .nullable()
+    .optional(),
   deliveryMethod: z.enum(['chat', 'email']),
   isPaused: z.boolean(),
   lastRunAt: z.string().nullable(),
@@ -103,13 +114,41 @@ export const eventStartSchema = z.object({
   lastRunStatus: z.enum(['success', 'failed', 'skipped']).nullable(),
 })
 
-/** What an update or an approval returns: a time schedule, or an event start. */
-export const scheduleDefinitionSchema = z.union([scheduleSchema, eventStartSchema])
+/**
+ * A start of a kind a newer server added: only what a change to it reports, so its stored prompt
+ * and the rest stay out of `--json`. A start of a kind this version knows must read as one.
+ */
+export const laterStartSchema = z.object({
+  id: scheduleIdSchema,
+  startKind: z
+    .string()
+    .regex(/^[a-z][a-z0-9_]{0,63}$/)
+    .refine((kind) => !(START_KINDS as readonly string[]).includes(kind)),
+  isPaused: z.boolean(),
+})
+
+/** What an update or an approval returns: a time schedule, an event start, or a later start. */
+export const scheduleDefinitionSchema = z.union([
+  scheduleSchema,
+  eventStartSchema,
+  laterStartSchema,
+])
+
+/** The event starts of a list, without those of a kind this version does not know yet. */
+const knownEventStartsSchema = z
+  .array(z.unknown())
+  .transform((starts) =>
+    starts.filter((start) => {
+      const kind = z.object({ startKind: z.string() }).safeParse(start).data?.startKind
+      return kind === undefined || (START_KINDS as readonly string[]).includes(kind)
+    })
+  )
+  .pipe(z.array(eventStartSchema))
 
 export const scheduleListSchema = z.object({
   schedules: z.array(scheduleSchema),
   // Servers before event starts do not send the key.
-  eventStarts: z.array(eventStartSchema).default([]),
+  eventStarts: knownEventStartsSchema.default([]),
   // A saved code File on a schedule (`teler schedule file`); older servers do not send the key.
   fileSchedules: z.array(fileScheduleListItemSchema).default([]),
 })
