@@ -172,7 +172,13 @@ describe('a File that alerts', () => {
   })
 
   it('refuses a rule that is empty, too long or more than one line', async () => {
-    for (const rule of ['   ', 'x'.repeat(281), 'first line\nsecond line', 'tab\there']) {
+    for (const rule of [
+      '   ',
+      'x'.repeat(281),
+      'first line\nsecond line',
+      'tab\there',
+      'line\u2028separator',
+    ]) {
       const api = server(lastRun)
       const result = await cli([...create, '--output', 'result', '--alert-rule', rule], api.fetch)
       expect(result.exitCode).toBe(2)

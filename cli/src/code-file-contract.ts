@@ -23,7 +23,7 @@ export const alertRuleSchema = z
   .trim()
   .min(1)
   .refine((rule) => [...rule].length <= 280)
-  .regex(/^\P{Cc}+$/u)
+  .regex(/^[^\p{Cc}\u2028\u2029]+$/u)
 
 /** An input or output name the code reads with `teler.job`. */
 export const jobNameSchema = z.string().regex(/^[a-z][a-z0-9_]{0,63}$/)
