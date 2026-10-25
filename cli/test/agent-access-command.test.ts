@@ -48,7 +48,7 @@ describe('own member Agent Access controls', () => {
       organizationId,
       membershipId,
       organizationPolicy: { revision: 3, default: 'permitted', ruleCount: 0 },
-      memberPolicy: { revision: 7, default: 'allow', ruleCount: 1 },
+      memberPolicy: { revision: 7, default: 'allow', ruleCount: 1, preset: 'custom' },
     })
     for (const secret of ['private-token', 'private-response', 'private-rule']) {
       expect(output).not.toContain(secret)
@@ -96,7 +96,12 @@ describe('own member Agent Access controls', () => {
           },
         },
       ])
-      expect(JSON.parse(output).memberPolicy).toEqual({ revision: 8, default: 'ask', ruleCount: 0 })
+      expect(JSON.parse(output).memberPolicy).toEqual({
+        revision: 8,
+        default: 'ask',
+        ruleCount: 0,
+        preset: 'ask',
+      })
     }
   )
 
@@ -137,14 +142,19 @@ describe('own member Agent Access controls', () => {
       })
     ).toBe(0)
     expect(methods).toEqual(['GET'])
-    expect(JSON.parse(output).memberPolicy).toEqual({ revision: 7, default: 'ask', ruleCount: 0 })
+    expect(JSON.parse(output).memberPolicy).toEqual({
+      revision: 7,
+      default: 'ask',
+      ruleCount: 0,
+      preset: 'ask',
+    })
   })
 
   it('rejects unsupported presets, unsafe org IDs and extra scope flags before HTTP', async () => {
     let calls = 0
     for (const argv of [
       ['agent-access', 'set', '--org', organizationId],
-      ['agent-access', 'set', '--org', organizationId, '--preset', 'standard'],
+      ['agent-access', 'set', '--org', organizationId, '--preset', 'everything'],
       [
         'agent-access',
         'set',

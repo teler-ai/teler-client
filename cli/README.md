@@ -7,22 +7,22 @@ for typed commands, its input schema.
 
 ## What it can do
 
-| Area                             | Commands                                                                                                                                | Section                                                                                                    |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Sign-in, updates, discovery      | `auth login\|status\|logout`, `update`, `--version`, `schema`                                                                           | [Sign-in and organizations](#sign-in-and-organizations)                                                    |
-| Coding agents                    | `agent setup`                                                                                                                           | [Coding agents](#coding-agents)                                                                            |
-| Data and SQL                     | `project list`, `data list\|describe\|query`                                                                                            | [Data analysis from an agent](#data-analysis-from-an-agent)                                                |
-| Python runs and charts           | `run python\|get\|wait\|cancel`, `artifact create\|get\|source`                                                                         | [Data analysis from an agent](#data-analysis-from-an-agent)                                                |
-| Teler Files                      | `files list\|read\|search\|write\|mkdir\|move\|copy`                                                                                    | [Teler Files](#teler-files)                                                                                |
-| Uploads and folder sync          | `upload`, `upload list\|status`, `sync`, `sync list\|status\|pause\|resume\|retry\|remove\|stop\|daemon`                                | [Chat results and uploads](#chat-results-and-uploads), [Folder sync](#folder-sync)                         |
-| Teler's analyst and chats        | `send`, `steer`, `task watch`, `approval respond`, `chat list\|show\|artifacts\|seen\|delete`                                           | [Chat results and uploads](#chat-results-and-uploads), [Approvals and steering](#approvals-and-steering)   |
-| What runs and waits for you      | `status`, `watch`, `notifications`, `agent runs`                                                                                        | [What runs and what waits for you](#what-runs-and-what-waits-for-you)                                      |
-| Dashboards                       | `dashboard list\|get\|create\|add-widget\|update\|refresh\|approve-refresh\|archive\|delete\|move`, templates, sharing                  | [Dashboards and Agent schedules](#dashboards-and-agent-schedules), [Posts and sharing](#posts-and-sharing) |
-| Posts                            | `post list\|get\|create\|generate\|update\|delete\|move\|visibility`, comments, reactions, `post export`                                | [Posts and sharing](#posts-and-sharing)                                                                    |
-| Teler Agents and their schedules | `agent list\|get\|create\|update\|delete`, `schedule create\|approve\|list\|update\|pause\|resume\|history\|delete`                     | [Teler Agents](#teler-agents), [Dashboards and Agent schedules](#dashboards-and-agent-schedules)           |
-| Code Files and File schedules    | `files save-code\|run\|result\|runs\|output`, `schedule file create\|show\|quote\|approve\|pause\|resume\|re-pin\|runs\|latest\|delete` | [Code Files and File schedules](#code-files-and-file-schedules)                                            |
-| Personal knowledge               | `skill list\|get\|create\|update\|delete`, `memory list\|get\|create\|update\|delete`                                                   | [Personal Knowledge](#personal-knowledge)                                                                  |
-| Agent Access                     | `agent-access show\|set`                                                                                                                | [Sign-in and organizations](#sign-in-and-organizations)                                                    |
+| Area                             | Commands                                                                                                                                                            | Section                                                                                                    |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Sign-in, updates, discovery      | `auth login\|status\|logout`, `update`, `--version`, `schema`                                                                                                       | [Sign-in and organizations](#sign-in-and-organizations)                                                    |
+| Coding agents                    | `agent setup`                                                                                                                                                       | [Coding agents](#coding-agents)                                                                            |
+| Data and SQL                     | `project list`, `data list\|describe\|query`                                                                                                                        | [Data analysis from an agent](#data-analysis-from-an-agent)                                                |
+| Python runs and charts           | `run python\|get\|wait\|cancel`, `artifact create\|get\|source`                                                                                                     | [Data analysis from an agent](#data-analysis-from-an-agent)                                                |
+| Teler Files                      | `files list\|read\|search\|write\|mkdir\|move\|copy`                                                                                                                | [Teler Files](#teler-files)                                                                                |
+| Uploads and folder sync          | `upload`, `upload list\|status`, `sync`, `sync list\|status\|pause\|resume\|retry\|remove\|stop\|daemon`                                                            | [Chat results and uploads](#chat-results-and-uploads), [Folder sync](#folder-sync)                         |
+| Teler's analyst and chats        | `send`, `steer`, `task watch`, `approval respond`, `chat list\|show\|artifacts\|seen\|delete`                                                                       | [Chat results and uploads](#chat-results-and-uploads), [Approvals and steering](#approvals-and-steering)   |
+| What runs and waits for you      | `status`, `watch`, `notifications`, `agent runs`                                                                                                                    | [What runs and what waits for you](#what-runs-and-what-waits-for-you)                                      |
+| Dashboards                       | `dashboard list\|get\|create\|add-widget\|update\|refresh\|approve-refresh\|archive\|delete\|move`, templates, sharing                                              | [Dashboards and Agent schedules](#dashboards-and-agent-schedules), [Posts and sharing](#posts-and-sharing) |
+| Posts                            | `post list\|get\|create\|generate\|update\|delete\|move\|visibility`, comments, reactions, `post export`                                                            | [Posts and sharing](#posts-and-sharing)                                                                    |
+| Teler Agents and their schedules | `agent list\|get\|create\|update\|delete\|run\|spend-cap\|allow-and-rerun\|apply-skipped`, `schedule create\|approve\|list\|update\|pause\|resume\|history\|delete` | [Teler Agents](#teler-agents), [Dashboards and Agent schedules](#dashboards-and-agent-schedules)           |
+| Code Files and File schedules    | `files save-code\|run\|result\|runs\|output`, `schedule file create\|show\|quote\|approve\|pause\|resume\|re-pin\|runs\|latest\|delete`                             | [Code Files and File schedules](#code-files-and-file-schedules)                                            |
+| Personal knowledge               | `skill list\|get\|create\|update\|delete`, `memory list\|get\|create\|update\|delete`                                                                               | [Personal Knowledge](#personal-knowledge)                                                                  |
+| Agent Access                     | `agent-access show\|set`                                                                                                                                            | [Sign-in and organizations](#sign-in-and-organizations)                                                    |
 
 ## Install and update
 
@@ -83,9 +83,12 @@ to the origin that issued it. Commands use the session's active organization;
 `--org <org-id>` selects another for one command.
 
 Agent Access is your policy for what agents may do on your behalf without asking,
-such as changing tables or files. `teler agent-access show --json` reads it and
-`teler agent-access set --preset ask --json` resets it to asking first; chat
-overrides are kept.
+such as changing tables or files. `teler agent-access show --json` reads it,
+including which `preset` it is (or `custom`). `teler agent-access set --preset
+<preset> --json` sets one of the presets the app offers: `standard` (reads data,
+asks before web access and changes), `ask` (asks before everything),
+`read-only` (reads, never changes) or `allow-everything` (never asks; needs
+`--yes`). Chat overrides are kept.
 
 ## Coding agents
 
@@ -220,6 +223,29 @@ teler agent delete <agent-id> --yes --json
 `--output none|private_post`, `--quick-action`/`--no-quick-action` and
 `--capabilities <capability,...>`; `create` takes `--scope personal|organization`.
 Schedule an Agent with `teler schedule create` (below).
+
+```sh
+teler agent run <agent-id> --idempotency-key <key> --prompt "Only last week" --json
+teler agent spend-cap <agent-id> --monthly-credits 50 --yes --json
+teler agent runs --agent <agent-id> --json
+teler agent allow-and-rerun <run-id> --json
+teler agent apply-skipped <run-id> <n> --json
+```
+
+`agent run` starts an Agent now, as Run now in the app does, and costs credits
+the same way. It needs `--idempotency-key <key>` (16 to 128 characters): the same
+key sent again starts nothing new, so retry a lost answer with the same key. It
+takes `--project <id>` and `--approve <capability,...>` for what the Agent asks
+for. `agent spend-cap` reads, or with `--monthly-credits <n> --yes` or `--none`
+sets, how many credits a month of File schedule spend your personal Agent may
+approve for you.
+
+A scheduled run that needed something it asks for first, with nobody there,
+skips it and goes on. `agent runs --json` lists those in each run's
+`skippedActions` and `askSkipped`. `agent allow-and-rerun <run-id>` allows them
+(or only `--capabilities <capability,...>`) for that schedule's runs and starts
+a run now. `agent apply-skipped <run-id> <n>` applies the alert recipients a run
+kept for you, where `<n>` is the action's place in `skippedActions`, from 0.
 
 ## Personal Knowledge
 

@@ -33,7 +33,7 @@ Usage:
   teler auth logout
   teler agent setup [--claude] [--codex] [--project <dir>] [--print | --dry-run] [--force] [--json]
   teler agent-access show [--org <id>] [--json]
-  teler agent-access set --preset ask [--org <id>] [--json]
+  teler agent-access set --preset standard|ask|read-only|allow-everything [--yes] [--org <id>] [--json]
   teler status [--org <id>] [--json]
   teler watch [--org <id>] [--interval <seconds>] [--timeout <seconds>] [--json]
   teler notifications [--org <id>] [--all] [--limit <count>] [--json]
@@ -120,6 +120,11 @@ Usage:
   teler memory list|get|create|update|delete [options] [--json]
   teler agent  list|get|create|update|delete [options] [--json]
   teler agent  runs [--org <id>] [--agent <id>] [--active] [--limit <count>] [--json]
+  teler agent  run <agent-id> --idempotency-key <key> [--prompt <text>] [--project <id>]
+             [--approve <capability,...>] [--json]
+  teler agent  spend-cap <agent-id> [--monthly-credits <1-1000000> --yes | --none] [--json]
+  teler agent  allow-and-rerun <run-id> [--capabilities <capability,...>] [--json]
+  teler agent  apply-skipped <run-id> <n> [--json]
   teler send (--chat <chat-id-or-url> | --new) [--org <id>] [--model-set lite|pro]
              [--title <title>] [--wait] [--timeout <seconds>] [--json]
              [--metadata-only] "message"

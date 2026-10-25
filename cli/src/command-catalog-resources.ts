@@ -245,6 +245,26 @@ export const RESOURCE_COMMANDS: readonly CliCommand[] = [
   command(
     'agent.runs',
     'agent runs [--org <id>] [--agent <id>] [--active] [--limit <count>] [--json]',
-    'List your Teler Agent runs; --active shows the running ones.'
+    "List your Teler Agent runs; --active shows the running ones. --json includes each run's skippedActions and askSkipped."
+  ),
+  command(
+    'agent.run',
+    'agent run <agent-id> --idempotency-key <key> [--prompt <text>] [--project <id>] [--approve <capability,...>] [--json]',
+    'Run a Teler Agent now; --approve approves what it asks for. Costs credits, as in the app; the same key again starts nothing new.'
+  ),
+  command(
+    'agent.spend-cap',
+    'agent spend-cap <agent-id> [--monthly-credits <1-1000000> --yes | --none] [--json]',
+    'Read or set how many credits a month of File schedule spend your personal Agent may approve for you.'
+  ),
+  command(
+    'agent.allow-and-rerun',
+    'agent allow-and-rerun <run-id> [--capabilities <capability,...>] [--json]',
+    "Allow what a scheduled run skipped because it asks first (all of it, or --capabilities), for that schedule's runs, and run it again now."
+  ),
+  command(
+    'agent.apply-skipped',
+    'agent apply-skipped <run-id> <n> [--json]',
+    "Apply the alert recipients a run kept for you; <n> is the action's place in the run's skippedActions, from 0."
   ),
 ]

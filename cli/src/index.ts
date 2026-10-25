@@ -30,7 +30,7 @@ import { parseResourceCommand, type ResourceKind } from './resource-options'
 import { runResourceCommand } from './resources'
 import { runDashboardCommand } from './dashboard-command'
 import { runScheduleCommand } from './schedule-command'
-import { runAgentAccessCommand } from './agent-access-command'
+import { runAgentOwnerCommand } from './agent-owner-command'
 import { steerTurn } from './steer'
 import { runUpdateCommand } from './update'
 import { startUpdateNotice } from './update-check'
@@ -152,6 +152,7 @@ export async function main(argv: readonly string[], deps: MainDeps = {}): Promis
     const client = new TelerApiClient(baseUrl, token, fetchImpl)
     const output = { json, metadataOnly, write: writeOut }
     if (await runAttentionCommand(group, action, args, client, output)) return 0
+    if (await runAgentOwnerCommand(group, action, args, client, output)) return 0
     if (await runAnalysisCommand(group, action, args, client, output)) return 0
     if (await runArtifactCommand(group, action, args, client, output)) return 0
     if (await runDataCommand(group, action, args, client, output)) return 0
@@ -223,10 +224,6 @@ export async function main(argv: readonly string[], deps: MainDeps = {}): Promis
           signal,
         })
       )
-      return 0
-    }
-    if (group === 'agent-access') {
-      await runAgentAccessCommand(client, output, action, args)
       return 0
     }
     if (group === 'steer') {
