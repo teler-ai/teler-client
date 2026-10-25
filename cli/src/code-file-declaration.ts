@@ -99,6 +99,11 @@ export async function resolveBindings(
   return resolved.bindings
 }
 
+/** Whether the flags declare a run (only `files run` and `schedule file create` take them). */
+export function declaresRun(flags: DeclarationFlags): boolean {
+  return flags.outputs.length > 0 || flags.parameters !== undefined || flags.alertRule !== undefined
+}
+
 /** The member's own last declaration of the File's current version, and whether it may run. */
 async function readDeclaration(
   client: TelerApiClient,
@@ -127,9 +132,10 @@ export async function declarationFor(
     if (flags.outputs.length > 1 && !flags.outputs.includes('result'))
       throw new UsageError('With several --output slots, one must be named result')
     if (flags.alertRule === undefined) {
-      // Outputs named again would otherwise drop the rule the File's runs alert by.
-      const kept = (await readDeclaration(client, organizationId, fileId, flags.projectId))
-        .declaration?.alertRule
+      // Outputs named again would otherwise drop the rule the File's runs alert by, wherever
+      // they ran: the declaration is read in any project, not only the one this run names.
+      const kept = (await readDeclaration(client, organizationId, fileId, undefined)).declaration
+        ?.alertRule
       if (kept !== undefined)
         throw new CommandError(
           'ALERT_RULE_REQUIRED',

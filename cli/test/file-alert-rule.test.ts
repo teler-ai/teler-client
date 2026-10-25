@@ -42,6 +42,7 @@ const schedule = {
 interface Sent {
   method: string
   path: string
+  query: string
   body: unknown
 }
 
@@ -66,6 +67,7 @@ function server(declared: typeof lastRun | Omit<typeof lastRun, 'alertRule'>) {
     sent.push({
       method,
       path: parsed.pathname,
+      query: parsed.search,
       body: init?.body ? (JSON.parse(String(init.body)) as unknown) : undefined,
     })
     const route = routes[`${method} ${parsed.pathname}`]
@@ -150,6 +152,18 @@ describe('a File that alerts', () => {
     expect(api.sent.some((call) => call.path.startsWith('/api/saved-code-runs'))).toBe(false)
   })
 
+  it('finds the rule from a run in any project, not only the one --project names', async () => {
+    const api = server(lastRun)
+    const result = await cli(
+      [...create, '--output', 'result', '--project', `prj_${suffix}`],
+      api.fetch
+    )
+    expect(result.exitCode).toBe(1)
+    expect(result.stderr).toContain('--alert-rule')
+    const read = api.sent.find((call) => call.path === '/api/schedule/files/run-declaration')
+    expect(read?.query).not.toContain('projectId')
+  })
+
   it('schedules --output as before for a File that does not alert', async () => {
     const { alertRule: _none, ...quiet } = lastRun
     const api = server(quiet)
@@ -158,7 +172,7 @@ describe('a File that alerts', () => {
   })
 
   it('refuses a rule that is empty, too long or more than one line', async () => {
-    for (const rule of ['   ', 'x'.repeat(281), 'first line\nsecond line']) {
+    for (const rule of ['   ', 'x'.repeat(281), 'first line\nsecond line', 'tab\there']) {
       const api = server(lastRun)
       const result = await cli([...create, '--output', 'result', '--alert-rule', rule], api.fetch)
       expect(result.exitCode).toBe(2)

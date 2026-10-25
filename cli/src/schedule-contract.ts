@@ -114,10 +114,16 @@ export const eventStartSchema = z.object({
   lastRunStatus: z.enum(['success', 'failed', 'skipped']).nullable(),
 })
 
-/** A start of a kind a newer server added: only what a change to it reports. */
-export const laterStartSchema = z.looseObject({
+/**
+ * A start of a kind a newer server added: only what a change to it reports, so its stored prompt
+ * and the rest stay out of `--json`. A start of a kind this version knows must read as one.
+ */
+export const laterStartSchema = z.object({
   id: scheduleIdSchema,
-  startKind: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/),
+  startKind: z
+    .string()
+    .regex(/^[a-z][a-z0-9_]{0,63}$/)
+    .refine((kind) => !(START_KINDS as readonly string[]).includes(kind)),
   isPaused: z.boolean(),
 })
 

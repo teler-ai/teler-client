@@ -115,6 +115,25 @@ describe('alert-opened starts', () => {
     expect(paused.stdout).toBe(`Updated ${fileAlertStart.id}: paused\n`)
   })
 
+  it('keeps a later start’s stored prompt and member out of --json, and refuses a malformed known one', async () => {
+    const json = await cli(['schedule', 'pause', laterStart.id, '--json'], () =>
+      Response.json({
+        ...laterStart,
+        isPaused: true,
+        prompt: 'private prompt text',
+        membershipId: 'member_private',
+      })
+    )
+    expect(json.exitCode).toBe(0)
+    expect(json.stdout).not.toContain('private prompt text')
+    expect(json.stdout).not.toContain('member_private')
+    const { startAlert: _dropped, ...withoutSubject } = agentAlertStart
+    const malformed = await cli(['schedule', 'pause', agentAlertStart.id], () =>
+      Response.json({ ...withoutSubject, startAlert: 'x' })
+    )
+    expect(malformed.exitCode).toBe(1)
+  })
+
   it('reports a change to a start of a kind it does not know instead of failing after it', async () => {
     const result = await cli(['schedule', 'pause', laterStart.id], () =>
       Response.json({ ...laterStart, isPaused: true })
