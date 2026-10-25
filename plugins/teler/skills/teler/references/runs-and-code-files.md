@@ -78,6 +78,9 @@ teler files runs --json
 - `files run` refuses a repeated key (`RETRY_CONFLICT`) instead of running twice; a lost answer
   can hide a run that is already going, so check `files runs` before a new key.
 - `files save-code <local.py> --file <file-id>` saves a new version of the same File.
+- Code that calls `teler.job.alert(title, figure=None, findings=None)` alerts by a rule, one line
+  such as "weekly sales fall below 100 units". With `--output`, pass `--alert-rule "<rule>"`;
+  the CLI refuses to drop the rule your last run had (`ALERT_RULE_REQUIRED`).
 - A model saved with `teler.models` in `run python` becomes a model File only where Agent Access
   allows file changes without asking; otherwise train inside the job from its table inputs.
 

@@ -60,7 +60,8 @@ Usage:
   teler files save-code <local.py> (--to <path> | --file <file-id>) [--input <name>=<ref>]...
              [--params-schema <schema.json>] [--project <id>] [--org <id>] [--json]
   teler files run <file-id> --max-credits <amount> --idempotency-key <key> [--output <slot>]...
-             [--input <name>=<ref>]... [--params <json>] [--project <id>] [--org <id>] [--wait [--timeout <seconds>]] [--json]
+             [--input <name>=<ref>]... [--params <json>] [--alert-rule <rule>] [--project <id>] [--org <id>]
+             [--wait [--timeout <seconds>]] [--json]
   teler files result <run-id> [--org <id>] [--wait [--timeout <seconds>]] [--json]
   teler files runs [--limit <n>] [--cursor <cursor>] [--org <id>] [--json]
   teler files output <run-id> <slot> [--output <file>] [--org <id>] [--json]
@@ -102,12 +103,13 @@ Usage:
              [--project <id>] [--approve <capability,...>] [--json]
   teler schedule approve <id> [--approve <capability,...>] [--json]
   teler schedule list [--org <id>] [--json]
+  Lists time schedules, event starts (a table update, an Agent finishing, an alert opening) and File schedules.
   teler schedule update <id> [--project <id>] [--frequency <cadence>] [--time-utc <HH:MM>] [--json]
   teler schedule pause|resume|history <id> [--json]
   teler schedule delete <id> --yes [--json]
   teler schedule file create <file-id> --frequency daily|weekly|monthly (--time-utc <HH:MM> | --time <HH:MM> --timezone <zone>)
              --idempotency-key <key> [--day-of-week <0-6>] [--day-of-month <1-31>] [--output <slot>]...
-             [--input <name>=<ref>]... [--params <json>] [--project <id>] [--org <id>] [--json]
+             [--input <name>=<ref>]... [--params <json>] [--alert-rule <rule>] [--project <id>] [--org <id>] [--json]
   teler schedule file quote <id> [--max-run-minutes <minutes>] [--json]
   teler schedule file approve <id> --revision <n> --monthly-credits <amount> --yes [--max-run-minutes <minutes>] [--json]
   teler schedule file show|runs|pause|resume|re-pin <id> [--json]

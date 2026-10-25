@@ -420,6 +420,13 @@ returns at most ten occurrences with `scheduledFor`, dispatch `status`, linked
 dispatch can still have a running or failed Agent task. Missing historical links
 remain `null`; error text and stored prompts are excluded from CLI schedule JSON.
 
+`schedule list` also lists an Agent's event starts, which start a run without a
+time: its table updating (`table_update`), another Agent finishing
+(`agent_finished`), or an alert opening on an Agent or a File (`alert_opened`,
+with `startAlert` naming it). `update`, `pause`, `resume` and `approve` take
+their IDs too. A start of a kind this version does not know yet is left out of
+the list; `teler update` shows it.
+
 Tokens remain bound to their granted organizations on collection, mutation,
 widget, and history routes. Pause, archive and delete provide ordinary cleanup.
 
@@ -512,7 +519,15 @@ twice, so a lost answer can hide a run that is already going.
 schedule keeps the version it was made with until `teler schedule file re-pin`,
 which ends its approved spend: quote and approve it again. Without `--output`,
 `files run` and `schedule file create` repeat your own last run of the File's
-current version. With several outputs, one must be named `result`.
+current version, its alert rule included. With several outputs, one must be named
+`result`.
+
+A File whose code raises an alert (`teler.job.alert(...)`) alerts by a rule: one
+line of up to 280 characters, shown as "Alerts when …". Naming outputs with
+`--output` declares the run anew, so pass the rule with it:
+`--alert-rule "<rule>"`. Without it the CLI refuses (`ALERT_RULE_REQUIRED`) when
+your last run of the File had a rule, instead of dropping the rule. `schedule
+file show` prints the rule a schedule alerts by (`alertRule` in `--json`).
 
 A File schedule starts paused. `quote` shows, for the schedule's current
 `revision`, the most one run may hold (`--max-run-minutes`, 1 to 30, sets its run

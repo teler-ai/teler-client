@@ -1,7 +1,7 @@
 import { command, type CliCommand } from './command-entry'
 
 const DECLARATION =
-  '[--output <slot>]... [--input <name>=<ref>]... [--params <json>] [--project <id>]'
+  '[--output <slot>]... [--input <name>=<ref>]... [--params <json>] [--alert-rule <rule>] [--project <id>]'
 const WAIT = '[--wait [--timeout <seconds>]]'
 
 /** Code saved as a File, its runs, and File schedules, for `teler schema`. */
@@ -14,7 +14,7 @@ export const CODE_FILE_COMMANDS: readonly CliCommand[] = [
   command(
     'files.run',
     `files run <file-id> --max-credits <amount> --idempotency-key <key> ${DECLARATION} [--org <id>] ${WAIT} [--json]`,
-    'Run a code File now, as its schedule would; --wait prints its outputs. Without --output it repeats your last run of this version. Costs credits, at most --max-credits; paid plans only.'
+    'Run a code File now, as its schedule would; --wait prints its outputs. Without --output it repeats your last run of this version; a File that alerts needs --alert-rule with --output. Costs credits, at most --max-credits; paid plans only.'
   ),
   command(
     'files.result',
@@ -34,12 +34,12 @@ export const CODE_FILE_COMMANDS: readonly CliCommand[] = [
   command(
     'schedule.file.create',
     `schedule file create <file-id> --frequency daily|weekly|monthly (--time-utc <HH:MM> | --time <HH:MM> --timezone <zone>) --idempotency-key <key> [--day-of-week <0-6>] [--day-of-month <1-31>] ${DECLARATION} [--org <id>] [--json]`,
-    "Schedule a code File's current version. It starts paused until you approve its monthly spend; without --output it repeats your last run of that version. Paid plans only."
+    "Schedule a code File's current version. It starts paused until you approve its monthly spend; without --output it repeats your last run of that version, alert rule included; a File that alerts needs --alert-rule with --output. Paid plans only."
   ),
   command(
     'schedule.file.show',
     'schedule file show <id> [--json]',
-    'Show a File schedule: its File version, cadence, revision, state and approved spend.'
+    'Show a File schedule: its File version, cadence, revision, state, approved spend and the rule it alerts by.'
   ),
   command(
     'schedule.file.quote',

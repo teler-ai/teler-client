@@ -48,8 +48,21 @@ interface Sent {
   body: unknown
 }
 
-/** A fake Teler API answering each `METHOD /path` (query excluded), and the requests it got. */
-function server(routes: Record<string, () => Response>) {
+/**
+ * A fake Teler API answering each `METHOD /path` (query excluded), and the requests it got. By
+ * default the File's last run declared no alert rule.
+ */
+function server(overrides: Record<string, () => Response>) {
+  const routes: Record<string, () => Response> = {
+    'GET /api/schedule/files/run-declaration': () =>
+      Response.json({
+        revisionId,
+        declaration,
+        schedule: { available: true },
+        runNow: { available: true },
+      }),
+    ...overrides,
+  }
   const sent: Sent[] = []
   const fetch = async (url: string, init?: RequestInit) => {
     const parsed = new URL(url)
@@ -283,9 +296,8 @@ describe('teler files run and result', () => {
       api.fetch
     )
     expect(queued).toMatchObject({ exitCode: 0, stdout: `${runId}\tqueued\n` })
-    expect(
-      api.sent.some((sent) => sent.path.startsWith('/api/schedule/files/run-declaration'))
-    ).toBe(false)
+    // The last run is read only for its alert rule (none here); the flags declare the run.
+    expect(api.sent.at(-1)?.body).not.toHaveProperty('alertRule')
     expect(api.sent.at(-1)?.body).toMatchObject({
       parameters: { horizon: 4 },
       bindings: declaration.bindings,

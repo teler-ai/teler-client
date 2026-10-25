@@ -206,7 +206,11 @@ export const RESOURCE_COMMANDS: readonly CliCommand[] = [
     'schedule approve <id> [--approve <capability,...>] [--json]',
     "Approve what a schedule's runs may do."
   ),
-  command('schedule.list', 'schedule list [--org <id>] [--json]', 'List Agent schedules.'),
+  command(
+    'schedule.list',
+    'schedule list [--org <id>] [--json]',
+    'List Agent schedules and event starts (a table update, another Agent finishing, an alert opening on an Agent or a File), and File schedules.'
+  ),
   command(
     'schedule.update',
     'schedule update <id> [--project <id>] [--frequency <cadence>] [--time-utc <HH:MM>] [--json]',

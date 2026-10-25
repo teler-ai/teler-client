@@ -17,6 +17,14 @@ const reasonCode = z
   .regex(/^(?:[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*|[a-z][a-z0-9]*(?:_[a-z0-9]+)+)$/)
   .max(64)
 
+/** The rule a File alerts by, as the app shows it ("Alerts when …"): one line, up to 280 characters. */
+export const alertRuleSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(280)
+  .regex(/^[^\r\n]+$/)
+
 /** An input or output name the code reads with `teler.job`. */
 export const jobNameSchema = z.string().regex(/^[a-z][a-z0-9_]{0,63}$/)
 
@@ -131,6 +139,8 @@ export const fileScheduleSchema = z.object({
   needsSpendApproval: z.boolean(),
   spend: spendSchema.nullable(),
   heldByAdmin: z.boolean(),
+  /** The rule its runs alert by; null when it never alerts. Older servers do not send the key. */
+  alertRule: z.string().max(1024).nullable().optional(),
 })
 export type FileSchedule = z.infer<typeof fileScheduleSchema>
 

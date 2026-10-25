@@ -78,6 +78,8 @@ teler schedule delete <schedule-id> --yes --json
 
 `create` and `update` take `--prompt "<text>"` and `--delivery chat|email`. A schedule whose
 runs need permissions waits for `teler schedule approve <schedule-id> --approve <capability,...>`.
+`schedule list` also shows event starts (a table updating, another Agent finishing, an alert
+opening on an Agent or a File); `update`, `pause`, `resume` and `approve` take their IDs.
 
 ## Knowledge: skills and memories
 

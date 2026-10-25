@@ -80,7 +80,8 @@ async function saveCode(client: TelerApiClient, output: Output, args: string[]) 
     args.length !== 1 ||
     Boolean(to) === Boolean(fileOption) ||
     flags.outputs.length > 0 ||
-    flags.parameters !== undefined
+    flags.parameters !== undefined ||
+    flags.alertRule !== undefined
   )
     throw new UsageError(
       'Usage: teler files save-code <local.py> (--to <path> | --file <file-id>) [--input <name>=<ref>]... [--params-schema <schema.json>]'
