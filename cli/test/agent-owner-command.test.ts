@@ -86,14 +86,24 @@ describe('teler agent run', () => {
     ])
   })
 
-  it('says how to follow the run, and keys each run of its own', async () => {
+  it('says how to follow the run', async () => {
     const api = server(started)
-    const result = await cli(['agent', 'run', agentId], api.fetch)
+    const result = await cli(
+      ['agent', 'run', agentId, '--idempotency-key', 'weekly-check-0002'],
+      api.fetch
+    )
     expect(result.stdout).toBe(
       `Started ${newRunId}. Follow it: teler agent runs --agent ${agentId} --active\n`
     )
     expect(api.sent[0]?.body).toEqual({})
-    expect(api.sent[0]?.idempotencyKey).toMatch(/^[0-9a-f-]{36}$/)
+  })
+
+  it('needs a key, so a retry after a lost answer starts nothing new', async () => {
+    const api = server(started)
+    const result = await cli(['agent', 'run', agentId], api.fetch)
+    expect(result.exitCode).toBe(2)
+    expect(result.stderr).toContain('--idempotency-key')
+    expect(api.sent).toEqual([])
   })
 
   it('names what to approve when the Agent needs it', async () => {
@@ -107,7 +117,10 @@ describe('teler agent run', () => {
         { status: 409 }
       )
     )
-    const result = await cli(['agent', 'run', agentId], api.fetch)
+    const result = await cli(
+      ['agent', 'run', agentId, '--idempotency-key', 'weekly-check-0003'],
+      api.fetch
+    )
     expect(result.exitCode).toBe(1)
     expect(result.stderr).toContain('tables.rows.write')
     expect(result.stderr).toContain('--approve tables.rows.write')
@@ -116,8 +129,9 @@ describe('teler agent run', () => {
   it('refuses a bad Agent ID or an empty prompt before any request', async () => {
     const api = server(started)
     for (const argv of [
-      ['agent', 'run', 'agent_nope'],
-      ['agent', 'run', agentId, '--prompt', ''],
+      ['agent', 'run', 'agent_nope', '--idempotency-key', 'weekly-check-0004'],
+      ['agent', 'run', agentId, '--prompt', '', '--idempotency-key', 'weekly-check-0004'],
+      ['agent', 'run', agentId, '--idempotency-key', 'short'],
       ['agent', 'run'],
     ])
       expect((await cli(argv, api.fetch)).exitCode).toBe(2)
@@ -149,7 +163,10 @@ describe('teler agent spend-cap', () => {
         spendCapCreditsPerMonth: (sent.body as { creditsPerMonth: number | null }).creditsPerMonth,
       })
     )
-    const set = await cli(['agent', 'spend-cap', agentId, '--monthly-credits', '40'], api.fetch)
+    const set = await cli(
+      ['agent', 'spend-cap', agentId, '--monthly-credits', '40', '--yes'],
+      api.fetch
+    )
     expect(set.stdout).toBe(
       `${agentId} may approve up to 40 credits a month of File schedule spend for you\n`
     )
@@ -161,13 +178,14 @@ describe('teler agent spend-cap', () => {
     ])
   })
 
-  it('refuses a cap that is not a whole number from 1 to 1000000, or both flags', async () => {
+  it('refuses a cap that is not a whole number from 1 to 1000000, both flags, or no --yes', async () => {
     const api = server(() => Response.json({}))
     for (const flags of [
-      ['--monthly-credits', '0'],
-      ['--monthly-credits', '2.5'],
-      ['--monthly-credits', '1000001'],
-      ['--monthly-credits', '5', '--none'],
+      ['--monthly-credits', '0', '--yes'],
+      ['--monthly-credits', '2.5', '--yes'],
+      ['--monthly-credits', '1000001', '--yes'],
+      ['--monthly-credits', '5', '--none', '--yes'],
+      ['--monthly-credits', '5'],
     ])
       expect((await cli(['agent', 'spend-cap', agentId, ...flags], api.fetch)).exitCode).toBe(2)
     expect(api.sent).toEqual([])

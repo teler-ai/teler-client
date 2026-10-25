@@ -52,12 +52,15 @@ fails when the usage text (`src/usage.ts`) and the catalog differ. By area:
   `src/resource-actions.ts` holds the actions beyond the basic ones. Dashboard
   refresh settings are `manual`, `on_change` or an interval; the server enforces
   plan minimums and explains refusals in a `hint`.
-- Teler Agents and schedules: `agent list|get|create|update|delete`,
+- Teler Agents and schedules: `agent list|get|create|update|delete`, the owner's
+  `agent run|spend-cap|allow-and-rerun|apply-skipped` (`src/agent-owner-command.ts`; `run` needs
+  `--idempotency-key`, raising a spend cap needs `--yes`),
   `schedule create|approve|list|update|pause|resume|history|delete`. The list reads
   `alert_opened` starts and leaves out a start kind it does not know; `update|pause|resume|approve`
   report one instead of failing. A File that alerts keeps its rule: `--output` needs `--alert-rule`.
 - Knowledge: `skill …` and `memory …` (`src/resource-options.ts`).
-- Agent Access: `agent-access show` and `agent-access set --preset ask`, each with
+- Agent Access: `agent-access show` and `agent-access set --preset standard|ask|read-only|allow-everything`
+  (the app's presets, `src/agent-access-presets.ts`; `allow-everything` needs `--yes`), each with
   optional `--org <id>`. `show` emits policy metadata; `set` changes only the
   authenticated member's preset through the normal revision-checked API and
   preserves chat overrides.

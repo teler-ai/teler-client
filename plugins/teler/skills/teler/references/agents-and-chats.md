@@ -65,8 +65,8 @@ teler agent delete <agent-id> --yes --json
 `--scope personal|organization`.
 
 ```sh
-teler agent run <agent-id> --prompt "<focus>" --json      # now; costs credits as in the app
-teler agent spend-cap <agent-id> --monthly-credits 50 --json   # File schedule spend it may approve
+teler agent run <agent-id> --idempotency-key <key> --json      # now; costs credits as in the app
+teler agent spend-cap <agent-id> --monthly-credits 50 --yes --json   # File schedule spend it may approve
 teler agent allow-and-rerun <run-id> --json               # allow what a scheduled run skipped, rerun
 teler agent apply-skipped <run-id> <n> --json             # apply alert recipients a run kept
 ```

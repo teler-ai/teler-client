@@ -225,19 +225,20 @@ teler agent delete <agent-id> --yes --json
 Schedule an Agent with `teler schedule create` (below).
 
 ```sh
-teler agent run <agent-id> --prompt "Only last week" --json
-teler agent spend-cap <agent-id> --monthly-credits 50 --json
+teler agent run <agent-id> --idempotency-key <key> --prompt "Only last week" --json
+teler agent spend-cap <agent-id> --monthly-credits 50 --yes --json
 teler agent runs --agent <agent-id> --json
 teler agent allow-and-rerun <run-id> --json
 teler agent apply-skipped <run-id> <n> --json
 ```
 
 `agent run` starts an Agent now, as Run now in the app does, and costs credits
-the same way. It takes `--project <id>`, `--approve <capability,...>` for what
-the Agent asks for, and `--idempotency-key <key>`: the same key sent again starts
-nothing new. `agent spend-cap` reads, or with `--monthly-credits <n>` or
-`--none` sets, how many credits a month of File schedule spend your personal
-Agent may approve for you.
+the same way. It needs `--idempotency-key <key>` (16 to 128 characters): the same
+key sent again starts nothing new, so retry a lost answer with the same key. It
+takes `--project <id>` and `--approve <capability,...>` for what the Agent asks
+for. `agent spend-cap` reads, or with `--monthly-credits <n> --yes` or `--none`
+sets, how many credits a month of File schedule spend your personal Agent may
+approve for you.
 
 A scheduled run that needed something it asks for first, with nobody there,
 skips it and goes on. `agent runs --json` lists those in each run's

@@ -249,12 +249,12 @@ export const RESOURCE_COMMANDS: readonly CliCommand[] = [
   ),
   command(
     'agent.run',
-    'agent run <agent-id> [--prompt <text>] [--project <id>] [--approve <capability,...>] [--idempotency-key <key>] [--json]',
-    'Run a Teler Agent now; --approve approves what it asks for. Costs credits, as in the app.'
+    'agent run <agent-id> --idempotency-key <key> [--prompt <text>] [--project <id>] [--approve <capability,...>] [--json]',
+    'Run a Teler Agent now; --approve approves what it asks for. Costs credits, as in the app; the same key again starts nothing new.'
   ),
   command(
     'agent.spend-cap',
-    'agent spend-cap <agent-id> [--monthly-credits <1-1000000> | --none] [--json]',
+    'agent spend-cap <agent-id> [--monthly-credits <1-1000000> --yes | --none] [--json]',
     'Read or set how many credits a month of File schedule spend your personal Agent may approve for you.'
   ),
   command(

@@ -63,16 +63,19 @@ async function run(client: TelerApiClient, output: Output, args: string[]) {
   const key = takeOption(args, '--idempotency-key')
   const approvedCapabilities = takeApprovedCapabilities(args)
   const usage =
-    'run <agent-id> [--prompt <text>] [--project <id>] [--approve <capability,...>] [--idempotency-key <key>]'
+    'run <agent-id> --idempotency-key <key> [--prompt <text>] [--project <id>] [--approve <capability,...>]'
   const agentId = oneId(args, agentIdSchema, usage, 'Agent ID')
+  // A run costs credits: the same key sent again after a lost answer starts nothing new.
+  const idempotencyKey = parseControlInput(
+    keySchema,
+    key,
+    '--idempotency-key; use 16 to 128 letters, digits, ".", "_", ":" or "-"'
+  )
   const input = parseControlInput(
     runInputSchema,
     { prompt, projectId, approvedCapabilities },
     'agent run options'
   )
-  // The same key sent again starts nothing new; without one, each command is its own run.
-  const idempotencyKey =
-    key === undefined ? crypto.randomUUID() : parseControlInput(keySchema, key, '--idempotency-key')
   const started = await withApprovalGuidance(
     {
       command: `teler agent run ${agentId}`,
@@ -102,9 +105,13 @@ function capWords(agentId: string, cap: number | null): string {
 async function spendCap(client: TelerApiClient, output: Output, args: string[]) {
   const monthly = takeOption(args, '--monthly-credits')
   const none = takeFlag(args, '--none')
-  const usage = 'spend-cap <agent-id> [--monthly-credits <1-1000000> | --none]'
+  const confirmed = takeFlag(args, '--yes')
+  const usage = 'spend-cap <agent-id> [--monthly-credits <1-1000000> --yes | --none]'
   const agentId = oneId(args, agentIdSchema, usage, 'Agent ID')
   if (monthly !== undefined && none) throw new UsageError('Use --monthly-credits or --none')
+  // Raising the cap lets the Agent approve spend for you, as approving a File schedule does.
+  if (monthly !== undefined && !confirmed)
+    throw new UsageError('Setting a spend cap lets this Agent approve spend for you; pass --yes')
   const path = `/api/agent/${agentId}/spend-cap`
   if (monthly === undefined && !none) {
     const read = await client.json(path, spendCapSchema)
