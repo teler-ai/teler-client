@@ -68,6 +68,11 @@ function ownHint(error: ApiError): string | undefined {
     return 'It changed since you read it; read it again and retry with what it shows now.'
   if (code.endsWith('APPROVAL_REQUIRED') || code === 'SESSION_NEEDS_APPROVAL')
     return 'A person must approve this in the Teler app (or re-run with --approve where the command offers it); then retry.'
+  if (code === 'FOLDER_DELETE_IN_APP') return 'Delete folders in the Teler app.'
+  if (code === 'RECOVERY_EXPIRED')
+    return 'Its time in the trash has passed, so it can no longer be restored.'
+  if (code === 'PATH_CONFLICT_ON_RESTORE')
+    return 'Another File now has its path; move or rename that one, then restore again.'
   if (error.status === 401) return 'Sign in again with `teler auth login`, or set TELER_TOKEN.'
   if (error.status === 429 || error.status === 503) return RETRY_HINT
   return undefined

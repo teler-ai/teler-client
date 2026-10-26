@@ -13,7 +13,7 @@ for typed commands, its input schema.
 | Coding agents                    | `agent setup`                                                                                                                                                       | [Coding agents](#coding-agents)                                                                            |
 | Data and SQL                     | `project list`, `data list\|describe\|query`                                                                                                                        | [Data analysis from an agent](#data-analysis-from-an-agent)                                                |
 | Python runs and charts           | `run python\|get\|wait\|cancel`, `artifact create\|get\|source`                                                                                                     | [Data analysis from an agent](#data-analysis-from-an-agent)                                                |
-| Teler Files                      | `files list\|read\|search\|write\|mkdir\|move\|copy`                                                                                                                | [Teler Files](#teler-files)                                                                                |
+| Teler Files                      | `files list\|read\|search\|write\|mkdir\|move\|copy\|delete\|restore\|trash`                                                                                        | [Teler Files](#teler-files)                                                                                |
 | Uploads and folder sync          | `upload`, `upload list\|status`, `sync`, `sync list\|status\|pause\|resume\|retry\|remove\|stop\|daemon`                                                            | [Chat results and uploads](#chat-results-and-uploads), [Folder sync](#folder-sync)                         |
 | Teler's analyst and chats        | `send`, `steer`, `task watch`, `approval respond`, `chat list\|show\|artifacts\|seen\|delete`                                                                       | [Chat results and uploads](#chat-results-and-uploads), [Approvals and steering](#approvals-and-steering)   |
 | What runs and waits for you      | `status`, `watch`, `notifications`, `agent runs`                                                                                                                    | [What runs and what waits for you](#what-runs-and-what-waits-for-you)                                      |
@@ -200,12 +200,23 @@ teler files write /personal/notes/summary.md "Text" --json
 teler files mkdir /personal/notes --json
 teler files move <from> <to> --json
 teler files copy <from> <to> --json
+teler files delete /personal/notes/summary.md --yes
+teler files trash --json
+teler files restore <file-id>
 ```
 
 Teler Files holds personal (`/personal/…`) and organization (`/organization/…`)
 files. `list` filters with `--path`, `--query`, `--kind` and `--scope` and pages
 with `--limit`/`--offset`; `search` narrows with `--path`, `--scope` and `--limit`.
 Changes follow your Agent Access policy.
+
+`delete` takes a File's path or ID and moves it to the trash, as Delete does in
+the Teler app: it prints until when it can be restored, and `restore <file-id>`
+brings it back. `trash` lists what is there, with that time, paged with
+`--limit`/`--offset`. Who may delete a File is the same as in the app: its owner
+for a personal File, its uploader or an organization owner or admin for an
+organization File. The CLI never deletes permanently and never deletes a folder;
+both are done in the Teler app.
 
 ## Teler Agents
 

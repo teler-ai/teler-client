@@ -39,10 +39,15 @@ teler files write /personal/notes/summary.md "<text>" --json
 teler files mkdir /personal/notes --json
 teler files move <from> <to> --json
 teler files copy <from> <to> --json
+teler files delete /personal/notes/summary.md --yes --json
+teler files trash --json
+teler files restore <file-id> --json
 ```
 
-Writing, moving and copying change the person's files: do it only when asked. Their Agent
-Access policy decides what may change without asking.
+Writing, moving, copying and deleting change the person's files: do it only when asked. Their
+Agent Access policy decides what may change without asking. `delete` moves a File to the trash
+and answers `recoverableUntil`; tell the person, and that `teler files restore <file-id>` brings
+it back. The CLI never deletes permanently or deletes a folder: those stay in the Teler app.
 
 ## Bring data in
 

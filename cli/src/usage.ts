@@ -57,6 +57,9 @@ Usage:
   teler files mkdir <path> [--org <id>] [--json]
   teler files move <from> <to> [--org <id>] [--json]
   teler files copy <from> <to> [--org <id>] [--json]
+  teler files delete <path|file-id> --yes [--org <id>] [--json]
+  teler files restore <file-id> [--json]
+  teler files trash [--limit <count>] [--offset <count>] [--org <id>] [--json]
   teler files save-code <local.py> (--to <path> | --file <file-id>) [--input <name>=<ref>]...
              [--params-schema <schema.json>] [--project <id>] [--org <id>] [--json]
   teler files run <file-id> --max-credits <amount> --idempotency-key <key> [--output <slot>]...

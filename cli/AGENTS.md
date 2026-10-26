@@ -36,7 +36,8 @@ fails when the usage text (`src/usage.ts`) and the catalog differ. By area:
   three. Reruns report `unchanged`.
 - Data and runs: `project list`, `data list|describe|query`, `run python|get|wait|cancel`,
   `artifact create|get|source`.
-- Files: `files list|read|search|write|mkdir|move|copy`; code Files:
+- Files: `files list|read|search|write|mkdir|move|copy|delete|restore|trash` (`delete` moves
+  one File to the trash with `--yes`, never permanently and never a folder); code Files:
   `files save-code|run|result|runs|output` and
   `schedule file create|show|quote|approve|pause|resume|re-pin|runs|latest|delete`
   (approval takes the revision read, an explicit monthly cap and `--yes`).
