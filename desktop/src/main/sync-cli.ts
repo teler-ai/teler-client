@@ -71,7 +71,10 @@ export class SyncCliError extends Error {
 // The CLI prints fixed `teler: <message>` errors; map them to stable codes so
 // no raw command output reaches the UI.
 const ERROR_PATTERNS: Array<[RegExp, DesktopErrorCode]> = [
-  [/Not authenticated|authentication required|request failed \(40[13]\b/i, 'not-connected'],
+  [
+    /Not authenticated|authentication required|sign-in has ended|request failed \(40[13]\b/i,
+    'not-connected',
+  ],
   [/No active organization/i, 'no-organization'],
   [/must be a local directory|no such file|ENOENT|not a directory/i, 'invalid-folder'],
   [/destination must be inside/i, 'invalid-destination'],

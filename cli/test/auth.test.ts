@@ -173,6 +173,84 @@ describe('device login', () => {
   })
 })
 
+describe('a suspended account', () => {
+  const config = {
+    version: 1,
+    clientId: 'teler-cli',
+    deviceAuthorizationEndpoint: '/api/auth/device/code',
+    deviceTokenEndpoint: '/api/auth/device/token',
+    sessionEndpoint: '/api/teler-cli/me',
+  }
+  const suspended = () =>
+    Response.json({ code: 'BANNED_USER', message: 'Server words' }, { status: 403 })
+  const store: CredentialStore = {
+    get: async () => null,
+    set: async () => {
+      throw new Error('a suspended account stores no token')
+    },
+    delete: async () => undefined,
+  }
+  const words = {
+    code: 'ACCOUNT_SUSPENDED',
+    message: 'Your account is suspended. Contact us at teler.ai/contact',
+  }
+
+  it('reads that it is suspended at device login', async () => {
+    await expect(
+      login(new URL('https://app.teler.example'), {
+        store,
+        write: () => undefined,
+        wait: async () => undefined,
+        openBrowser: () => undefined,
+        fetch: async (input) => {
+          const path = new URL(input).pathname
+          if (path === '/api/teler-cli/config') return Response.json(config)
+          if (path.endsWith('/device/code'))
+            return Response.json({
+              device_code: 'device-secret',
+              user_code: 'ABCD1234',
+              verification_uri: 'https://auth.teler.example/device',
+              verification_uri_complete: 'https://auth.teler.example/device?user_code=ABCD-1234',
+              expires_in: 600,
+              interval: 1,
+            })
+          return suspended()
+        },
+      })
+    ).rejects.toMatchObject(words)
+  })
+
+  it('reads that it is suspended when redeeming a seeded device file', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'teler-cli-device-'))
+    const path = join(directory, 'device.json')
+    await writeFile(
+      path,
+      `${JSON.stringify({
+        version: 1,
+        clientId: 'teler-cli',
+        deviceCode: 'seeded-device-secret-0123456789abcdef',
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      })}\n`,
+      { mode: 0o600 }
+    )
+    await chmod(path, 0o600)
+    try {
+      await expect(
+        loginWithDeviceFile(new URL('https://app.teler.example'), path, {
+          store,
+          write: () => undefined,
+          fetch: async (input) =>
+            new URL(input).pathname === '/api/teler-cli/config'
+              ? Response.json(config)
+              : suspended(),
+        })
+      ).rejects.toMatchObject(words)
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+})
+
 describe('auth status', () => {
   it('reports the signed-in account and keeps fields this CLI does not model', async () => {
     const account = {
