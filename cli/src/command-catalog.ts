@@ -240,6 +240,17 @@ export const CLI_COMMANDS: readonly CliCommand[] = [
   ),
   command('files.copy', 'files copy <from> <to> [--org <id>] [--json]', 'Copy a file or folder.'),
   command(
+    'files.delete',
+    'files delete <path|file-id> --yes [--org <id>] [--json]',
+    'Move a File to the trash, from where it can be restored for a while; folders are deleted in the Teler app.'
+  ),
+  command('files.restore', 'files restore <file-id> [--json]', 'Restore a File from the trash.'),
+  command(
+    'files.trash',
+    'files trash [--limit <count>] [--offset <count>] [--org <id>] [--json]',
+    'List the Files in the trash and until when each can be restored.'
+  ),
+  command(
     'upload',
     'upload <local-file> [--org <id>] [--to <path>] [--scope personal|organization] [--project <id>] [--wait] [--timeout <seconds>] [--json]',
     'Upload a local file for Teler to process into tables or documents; --wait waits for processing.'

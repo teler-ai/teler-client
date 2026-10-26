@@ -1,9 +1,10 @@
 import type { TelerApiClient } from './api'
-import { assertNoFlags, parseLimit, takeOption } from './command-args'
+import { assertNoFlags, parseLimit, takeFlag, takeOption } from './command-args'
 import type { Output } from './chats'
 import { UsageError } from './errors'
 import { copyFile, listFiles, mkdir, moveFile, readFiles, searchFiles, writeFile } from './files'
 import { CODE_FILE_ACTIONS, runCodeFileCommand } from './code-file-command'
+import { listTrash, restoreFile, trashFile } from './file-trash'
 
 type FileScope = 'organization' | 'personal' | 'organization,personal'
 
@@ -77,7 +78,36 @@ export async function runFileCommand(
       limit,
     })
   }
+  if (action === 'trash') {
+    const limit = parseLimit(takeOption(args, '--limit'), 50, 200)
+    const rawOffset = takeOption(args, '--offset')
+    const offset = rawOffset === undefined ? 0 : Number(rawOffset)
+    if (!Number.isSafeInteger(offset) || offset < 0) {
+      throw new UsageError('--offset must be a non-negative safe integer')
+    }
+    assertNoFlags(args)
+    if (args.length > 0) {
+      throw new UsageError('Usage: teler files trash [--limit <count>] [--offset <count>]')
+    }
+    return await listTrash(client, output, { organizationId, limit, offset })
+  }
+  if (action === 'delete') {
+    const confirmed = takeFlag(args, '--yes')
+    assertNoFlags(args)
+    if (args.length !== 1) throw new UsageError('Usage: teler files delete <path|file-id> --yes')
+    // The File goes to the trash, never further: permanent deletion stays in the Teler app.
+    if (!confirmed) {
+      throw new UsageError(
+        'Moving a File to the trash needs --yes; restore it with `teler files restore`'
+      )
+    }
+    return await trashFile(client, output, { organizationId, target: args[0] ?? '' })
+  }
   assertNoFlags(args)
+  if (action === 'restore') {
+    if (args.length !== 1) throw new UsageError('Usage: teler files restore <file-id>')
+    return await restoreFile(client, output, { id: args[0] ?? '' })
+  }
   if (action === 'write') {
     if (args.length !== 2) throw new UsageError('Usage: teler files write <path> <content>')
     return await writeFile(client, output, {
