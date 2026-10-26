@@ -167,7 +167,9 @@ describe('JSON errors that have a next step', () => {
     expect(
       hintOf(new ApiError('failed', 403, 'CAPABILITY_APPROVAL_REQUIRED', undefined, ['web.search']))
     ).toContain('approve')
-    expect(hintOf(new ApiError('failed', 401))).toContain('teler auth login')
+    expect(hintOf(new ApiError('failed', 401))).toBe(
+      'Sign in again with `teler auth login`, or set TELER_TOKEN.'
+    )
     expect(hintOf(new ApiError('failed', 409, 'IDEMPOTENCY_CONFLICT'))).toContain(
       'new --idempotency-key'
     )

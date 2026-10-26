@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { readFile, stat, unlink } from 'node:fs/promises'
 import { resolveApiUrl, TelerApiClient, type FetchLike } from './api'
 import type { CredentialStore } from './credentials'
+import { CommandError } from './errors'
 import { clientHeaders } from './version'
 
 const configSchema = z.object({
@@ -38,6 +39,18 @@ const seededDeviceFileSchema = z.object({
   deviceCode: z.string().min(32),
   expiresAt: z.iso.datetime(),
 })
+
+// A suspended account cannot sign in. Only the fixed code is inspected; the server's text is
+// never printed.
+const suspendedSchema = z.object({ code: z.literal('BANNED_USER') })
+
+function assertNotSuspended(status: number, payload: unknown) {
+  if (status === 403 && suspendedSchema.safeParse(payload).success)
+    throw new CommandError(
+      'ACCOUNT_SUSPENDED',
+      'Your account is suspended. Contact us at teler.ai/contact'
+    )
+}
 
 // `auth status --json` reports the server's account answer as is, including
 // fields this CLI does not use.
@@ -146,6 +159,7 @@ export async function login(baseUrl: URL, deps: LoginDeps): Promise<void> {
       return
     }
 
+    assertNotSuspended(response.status, payload)
     // RFC 8628 polling errors are control flow. Only a fixed enum is inspected;
     // no untrusted response text is printed.
     const pending = pendingSchema.safeParse(payload)
@@ -195,7 +209,10 @@ export async function loginWithDeviceFile(
   if (response.status >= 300 && response.status < 400) {
     throw new Error('Teler API refused an authentication redirect')
   }
-  if (!response.ok) throw new Error('Seeded CLI device authorization was denied or expired')
+  if (!response.ok) {
+    assertNotSuspended(response.status, await response.json().catch(() => null))
+    throw new Error('Seeded CLI device authorization was denied or expired')
+  }
 
   const token = tokenSchema.parse((await response.json()) as unknown)
   await deps.store.set(baseUrl.origin, token.access_token)

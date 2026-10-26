@@ -235,6 +235,11 @@ describe('CLI client', () => {
     expect(errorCodeFor('teler: Teler API request could not be completed')).toBe('network')
     expect(errorCodeFor('teler: Teler API request failed (503)')).toBe('network')
     expect(errorCodeFor('teler: Teler API request failed (401)')).toBe('not-connected')
+    expect(
+      errorCodeFor(
+        '{"error":{"code":"API_ERROR","message":"Your Teler sign-in has ended or is no longer valid","status":401}}'
+      )
+    ).toBe('not-connected')
     expect(errorCodeFor('teler: Teler API request failed (4013 X)')).toBe('sync-failed')
     expect(errorCodeFor('teler: something unexpected')).toBe('sync-failed')
   })

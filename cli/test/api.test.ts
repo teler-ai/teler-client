@@ -72,6 +72,17 @@ describe('TelerApiClient', () => {
     })
   })
 
+  it('says an ended sign-in has ended, not that the request failed', async () => {
+    const client = new TelerApiClient(new URL('https://app.teler.ai'), 'secret', async () =>
+      Response.json({ error: 'Unauthorized' }, { status: 401 })
+    )
+
+    await expect(client.request('/api/teler-cli/me')).rejects.toMatchObject({
+      status: 401,
+      message: 'Your Teler sign-in has ended or is no longer valid',
+    })
+  })
+
   it('rejects absolute and protocol-relative paths before sending credentials', async () => {
     let called = false
     const client = new TelerApiClient(new URL('https://app.teler.ai'), 'secret-token', async () => {

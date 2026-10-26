@@ -133,7 +133,10 @@ export class TelerApiClient {
         throw new ApiError(await updateRequiredMessage(response), response.status, code)
       }
       throw new ApiError(
-        `Teler API request failed (${response.status}${code ? ` ${code}` : ''}${reason ? ` ${reason}` : ''})`,
+        // An expired or revoked sign-in is not a failed request: the person signs in again.
+        response.status === 401
+          ? 'Your Teler sign-in has ended or is no longer valid'
+          : `Teler API request failed (${response.status}${code ? ` ${code}` : ''}${reason ? ` ${reason}` : ''})`,
         response.status,
         code,
         retryAfterMilliseconds(response.headers.get('Retry-After')),
