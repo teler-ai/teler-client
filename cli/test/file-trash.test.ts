@@ -143,7 +143,7 @@ describe('teler files trash', () => {
       offset: '0',
     })
     expect(h.written()).toBe(
-      `${FILE_ID}  reports/q3.csv  restore until 2026-11-25 11:08 UTC\n2 more; use --offset 1.\n`
+      `${FILE_ID}  /organization/reports/q3.csv  restore until 2026-11-25 11:08 UTC\n2 more; use --offset 1.\n`
     )
   })
 

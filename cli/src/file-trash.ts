@@ -57,7 +57,7 @@ async function fileIdOf(
     organizationId,
     path: slash > 0 ? path.slice(0, slash) : '/',
     glob: path,
-    limit: '50',
+    limit: '500',
     offset: '0',
   })
   const tree = await client.json(`/api/files/tree?${query}`, fileDiscoveryTreeSchema, {
@@ -128,8 +128,10 @@ export async function listTrash(
   if (output.json) return emitJson(output, result)
   if (result.items.length === 0) return output.write('The trash is empty.\n')
   for (const item of result.items) {
+    // The path as `files` commands take it: /personal/… or /organization/….
+    const path = `/${item.scope}/${(item.path ?? item.name).replace(/^\/+/, '')}`
     const until = item.recoverableUntil ? `restore until ${minute(item.recoverableUntil)}` : ''
-    output.write(`${item.id}  ${item.path ?? item.name}  ${until}`.trimEnd() + '\n')
+    output.write(`${item.id}  ${path}  ${until}`.trimEnd() + '\n')
   }
   const shown = options.offset + result.items.length
   if (shown < result.total) {

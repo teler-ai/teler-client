@@ -213,9 +213,10 @@ Changes follow your Agent Access policy.
 `delete` takes a File's path or ID and moves it to the trash, as Delete does in
 the Teler app: it prints until when it can be restored, and `restore <file-id>`
 brings it back. `trash` lists what is there, with that time, paged with
-`--limit`/`--offset`. Deleting an organization File needs an organization owner or
-admin. The CLI never deletes permanently and never deletes a folder; both are
-done in the Teler app.
+`--limit`/`--offset`. Who may delete a File is the same as in the app: its owner
+for a personal File, its uploader or an organization owner or admin for an
+organization File. The CLI never deletes permanently and never deletes a folder;
+both are done in the Teler app.
 
 ## Teler Agents
 
