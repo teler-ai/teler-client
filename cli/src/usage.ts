@@ -89,6 +89,7 @@ Usage:
   teler post|dashboard move <id> --file <json-file> [--org <id>] [--json]
   teler dashboard refresh <id> [--org <id>] [--json]
   teler post generate <id> --file <json-file> [--org <id>] [--json]
+  teler post translate <id> --languages <list> [--org <id>] [--json]
   teler artifact source <artifact-id> [--org <id>] [--json]
   teler artifact get <artifact-id> --chat <chat-id-or-url> [--slug <slug>] [--download --output <file>] [--json]
   teler post artifact <post-id> <artifact-id> [--download --output <file>] [--org <id>] [--json]

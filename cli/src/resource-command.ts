@@ -1,5 +1,6 @@
 import { readSse } from './sse'
 import { runResourceAction } from './resource-actions'
+import { runPostTranslateCommand } from './post-translate-command'
 import { readFile } from 'node:fs/promises'
 import { z } from 'zod'
 import { takeFlag } from './command-args'
@@ -80,6 +81,10 @@ export async function runResourceCommand(
   }
   if (group !== 'post' && group !== 'dashboard') return false
   const organizationId = takeOption(args, '--org')
+  if (group === 'post' && action === 'translate') {
+    await runPostTranslateCommand(client, output, args, organizationId)
+    return true
+  }
   if (await runResourceAction(group, action, args, client, output, organizationId)) return true
   if (action === 'list') {
     const projectId = takeOption(args, '--project')
@@ -200,6 +205,6 @@ export async function runResourceCommand(
     return true
   }
   throw new UsageError(
-    `Unknown ${group} command. Use list, get, create, update, delete, move, or ${group === 'dashboard' ? 'refresh' : 'generate'}.`
+    `Unknown ${group} command. Use list, get, create, update, delete, move, ${group === 'dashboard' ? 'or refresh' : 'generate, or translate'}.`
   )
 }
