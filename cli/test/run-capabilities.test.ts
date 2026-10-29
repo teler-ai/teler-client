@@ -173,6 +173,18 @@ describe('run --capabilities', () => {
     )
   })
 
+  test('a capability id a later server adds still parses', async () => {
+    const later = {
+      ...waiting,
+      approval: { ...approval, asks: [{ capability: 'files.create_v2' }] },
+    }
+    const h = harness([quote, later])
+    await h.invoke(submitArgs('--capabilities', 'files.create'))
+    expect(h.receipts()[0]).toMatchObject({
+      approval: { asks: [{ capability: 'files.create_v2' }] },
+    })
+  })
+
   test('--wait waits for the approval, past the run limit, then for the run', async () => {
     // Approved ten minutes in: longer than a run's own default wait of three minutes.
     const h = harness([quote, waiting], (elapsed) => (elapsed < 600_000 ? waiting : completed))
@@ -189,7 +201,7 @@ describe('run --capabilities', () => {
     await expect(failure).rejects.toBeInstanceOf(CommandError)
     await expect(failure).rejects.toMatchObject({
       code: 'RUN_CANCELLED',
-      hint: expect.stringContaining('not approved'),
+      hint: expect.stringContaining('waited for approval'),
     })
   })
 

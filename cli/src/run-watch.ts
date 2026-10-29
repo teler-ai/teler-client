@@ -115,7 +115,9 @@ export function assertRunSucceeded(run: RunResponse, context: RunContext = {}): 
       'RUN_CANCELLED',
       `Run ${run.id} was cancelled`,
       context.awaitedApproval
-        ? `It was not approved in the Teler app: denied, or the request expired. To ask again, ${RESUBMIT}.`
+        ? 'It ended while it waited for approval in the Teler app: the person denied it, the ' +
+            'request expired, their Agent Access changed, or the run was cancelled. Ask the ' +
+            `person before you ${RESUBMIT}.`
         : undefined
     )
 }

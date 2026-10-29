@@ -357,7 +357,7 @@ can name are:
   `files.delete`, `tables.create`, `tables.rows.write`, `tables.schema.update`,
   `tables.copy`, `tables.move` and `tables.delete`.
 
-A copy or move also needs what it reads and creates.
+A copy also needs what it reads and creates; a move, what it creates.
 
 What your settings deny refuses the run (`CAPABILITY_DENIED`). What they ask
 about holds it as `needs_approval`, with no sandbox started, until you answer
@@ -365,11 +365,13 @@ in the Teler app:
 
 - **The approval link.** The receipt has an `approval` object (`requestId`,
   `expiresAt`, the capabilities it asks about) and, from the CLI, `approvalUrl`
-  and a `hint`. Plain output prints `Approve <capabilities> in the Teler app:
-<url>`. The request also reaches your notifications.
+  and a `hint`. Plain output prints one line,
+  `Approve <capabilities> in the Teler app: <url> (by <time>)`. The request also
+  reaches your notifications.
 - **Approving.** Only a browser signed in as you can approve it, never the CLI.
-  Approve this run once or, where your organization allows it, always; always
-  saves an allow rule in your Agent Access.
+  Approve this run once, or always, which saves an allow rule in your Agent
+  Access. A high-risk change, or one your organization wants approved each time,
+  can only be approved once.
 - **Waiting.** With `--wait`, the CLI keeps reading the run while it waits (every
   five seconds). Without `--timeout`, it waits up to 15 more minutes for your
   answer; `run wait` does the same.

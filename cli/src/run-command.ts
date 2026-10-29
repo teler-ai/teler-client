@@ -159,9 +159,10 @@ async function submitRun(
   let leftOut: string[] = []
   if (preflight.run !== null) run = preflight.run
   else {
-    leftOut = (preflight.capabilities?.excluded ?? [])
-      .filter((entry) => entry.state === 'ask')
-      .map((entry) => entry.capability)
+    if (!capabilities)
+      leftOut = (preflight.capabilities?.excluded ?? [])
+        .filter((entry) => entry.state === 'ask')
+        .map((entry) => entry.capability)
     if (
       preflight.payer.organizationId !== org ||
       creditNano(preflight.maximumCredits) !== creditNano(input.maximumCredits)
