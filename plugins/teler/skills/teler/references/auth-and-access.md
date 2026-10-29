@@ -37,8 +37,10 @@ preset they name; `allow-everything` lets agents act without asking, so confirm 
 ## Approvals that reach you
 
 A refusal whose code ends in `APPROVAL_REQUIRED` needs a person's approval in the Teler app,
-or `--approve <capability,...>` where the command offers it. Ask the person; do not approve on
-their behalf without their say.
+or `--approve <capability,...>` where the command offers it. A run waiting as `needs_approval`
+gives the link in its `approvalUrl` (see
+[changes that need approval](runs-and-code-files.md#changes-that-need-approval)). Ask the
+person; do not approve on their behalf without their say.
 
 ## Updates
 

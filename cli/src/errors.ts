@@ -66,6 +66,8 @@ function ownHint(error: ApiError): string | undefined {
     return 'That --idempotency-key was already used, so nothing new ran. If an earlier answer was lost, its run may be going; use a new key only to run it again.'
   if (code === 'STALE_REVISION')
     return 'It changed since you read it; read it again and retry with what it shows now.'
+  if (code === 'CAPABILITY_APPROVAL_REQUIRED')
+    return 'Submit it again with --capabilities naming what this refusal lists; the person approves it in the Teler app.'
   if (code.endsWith('APPROVAL_REQUIRED') || code === 'SESSION_NEEDS_APPROVAL')
     return 'A person must approve this in the Teler app (or re-run with --approve where the command offers it); then retry.'
   if (code === 'FOLDER_DELETE_IN_APP') return 'Delete folders in the Teler app.'

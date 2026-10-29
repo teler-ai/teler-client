@@ -331,9 +331,61 @@ print(df.head())
 ```
 
 `get_connection()` is for reading. `teler.execute(sql)` only runs `INSERT`,
-`UPDATE` or `DELETE` on an organization table, and like any change to tables or
-files it works only where your Agent Access settings allow it without asking.
-Runs cannot reach the web.
+`UPDATE` or `DELETE` on an organization table. Runs cannot reach the web.
+
+### Capabilities and approval
+
+Without `--capabilities`, a run holds what your Agent Access settings allow
+without asking, and leaves out what they ask about first. Under the default
+Standard settings, reading data is allowed and every change asks, so code that
+saves a File (for example a model with `teler.models.save`) or changes a table
+needs `--capabilities`:
+
+```sh
+teler run python --file train.py --project <project-id> --max-credits 1 \
+  --idempotency-key churn-model-000001 \
+  --capabilities tables.metadata.read,tables.rows.read,files.create --wait --json
+```
+
+`--capabilities` (also on `data query` and `artifact create`) lists exactly what
+the run may use, so it includes the reads the code needs. The capabilities a run
+can name are:
+
+- reads: `tables.metadata.read`, `tables.rows.read`, `files.metadata.read`,
+  `files.content.read`, `connectors.discover` and `connectors.query`;
+- changes: `files.create`, `files.update`, `files.copy`, `files.move`,
+  `files.delete`, `tables.create`, `tables.rows.write`, `tables.schema.update`,
+  `tables.copy`, `tables.move` and `tables.delete`.
+
+A copy also needs what it reads and creates; a move, what it creates.
+
+What your settings deny refuses the run (`CAPABILITY_DENIED`). What they ask
+about holds it as `needs_approval`, with no sandbox started, until you answer
+in the Teler app:
+
+- **The approval link.** The receipt has an `approval` object (`requestId`,
+  `expiresAt`, the capabilities it asks about) and, from the CLI, `approvalUrl`
+  and a `hint`. Plain output prints one line,
+  `Approve <capabilities> in the Teler app: <url> (by <time>)`. The request also
+  reaches your notifications.
+- **Approving.** Only a browser signed in as you can approve it, never the CLI.
+  Approve this run once, or always, which saves an allow rule in your Agent
+  Access. A high-risk change, or one your organization wants approved each time,
+  can only be approved once.
+- **Waiting.** With `--wait`, the CLI keeps reading the run while it waits (every
+  five seconds). Without `--timeout`, it waits up to 15 more minutes for your
+  answer; `run wait` does the same.
+- **After your answer.** An approved run starts. One you deny, or whose request
+  expires, ends `cancelled`.
+
+Changing your settings between the request and your answer replaces the
+request, or ends the run when a capability becomes denied.
+
+A failed run without `--capabilities` names, in its `hint`, what it left out
+because your settings ask about it first. A SQL query whose row reads ask first
+is refused with `CAPABILITY_APPROVAL_REQUIRED`; send it again with
+`--capabilities tables.rows.read`. These need a server that supports run
+capabilities; older servers refuse the field.
 
 A failed run reports `errorCode`. When your own code raised (`execution_failed`),
 servers that support it also return the traceback, with secrets redacted, as

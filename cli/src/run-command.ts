@@ -17,6 +17,11 @@ import {
   runSubmitInputSchema,
 } from './run-contract'
 import {
+  APPROVAL_WAIT_SECONDS,
+  takeRunCapabilities,
+  withRunCapabilityGuidance,
+} from './run-capabilities'
+import {
   assertRunSucceeded,
   emitRunReceipt,
   isTerminalRun,
@@ -85,6 +90,7 @@ async function submitRun(
   const executionTimeout = takeOption(args, '--execution-timeout')
   const watchTimeout = takeOption(args, '--timeout')
   const rowLimit = kind === 'sql' ? takeOption(args, '--row-limit') : undefined
+  const capabilities = takeRunCapabilities(args)
   const wait = takeFlag(args, '--wait')
   assertNoFlags(args)
   if (args.length || (!wait && watchTimeout !== undefined))
@@ -129,6 +135,7 @@ async function submitRun(
       idempotencyKey: options.idempotencyKey,
       timeoutSeconds: options.timeoutSeconds,
       task,
+      ...(capabilities ? { capabilities } : {}),
     },
     'run task'
   )
@@ -141,29 +148,39 @@ async function submitRun(
   )
   const { organizationId: _organizationId, ...intent } = input
   const query = new URLSearchParams({ organizationId: org })
-  const preflight = await client.json(`/api/runs/preflight?${query}`, runPreflightResponseSchema, {
-    method: 'POST',
-    body: JSON.stringify(intent),
-  })
+  const preflight = await withRunCapabilityGuidance(() =>
+    client.json(`/api/runs/preflight?${query}`, runPreflightResponseSchema, {
+      method: 'POST',
+      body: JSON.stringify(intent),
+    })
+  )
   let run
+  // What a run without --capabilities leaves out because Agent Access asks about it first.
+  let leftOut: string[] = []
   if (preflight.run !== null) run = preflight.run
   else {
+    if (!capabilities)
+      leftOut = (preflight.capabilities?.excluded ?? [])
+        .filter((entry) => entry.state === 'ask')
+        .map((entry) => entry.capability)
     if (
       preflight.payer.organizationId !== org ||
       creditNano(preflight.maximumCredits) !== creditNano(input.maximumCredits)
     )
       throw new ApiError('Teler API returned a mismatched quote', 502)
-    run = await client.json(`/api/runs?${query}`, runResponseSchema, {
-      method: 'POST',
-      body: JSON.stringify({
-        ...intent,
-        maximumCredits: preflight.maximumCredits,
-        tariffVersion: preflight.tariffVersion,
-        approvedPayer: preflight.payer,
-        approvedFunding: preflight.funding,
-        approvedReservedMemoryMiB: preflight.reservedMemoryMiB,
-      }),
-    })
+    run = await withRunCapabilityGuidance(() =>
+      client.json(`/api/runs?${query}`, runResponseSchema, {
+        method: 'POST',
+        body: JSON.stringify({
+          ...intent,
+          maximumCredits: preflight.maximumCredits,
+          tariffVersion: preflight.tariffVersion,
+          approvedPayer: preflight.payer,
+          approvedFunding: preflight.funding,
+          approvedReservedMemoryMiB: preflight.reservedMemoryMiB,
+        }),
+      })
+    )
   }
   if (
     run.idempotencyKey !== intent.idempotencyKey ||
@@ -173,8 +190,8 @@ async function submitRun(
     creditNano(run.maximumCredits) !== creditNano(intent.maximumCredits)
   )
     throw new ApiError('Teler API returned a mismatched run receipt', 502)
-  emitRunReceipt(output, run)
-  if (isTerminalRun(run)) return assertRunSucceeded(run)
+  emitRunReceipt(output, run, client.baseUrl)
+  if (isTerminalRun(run)) return assertRunSucceeded(run, { leftOut })
   if (wait)
     await watchRun(
       client,
@@ -184,6 +201,9 @@ async function submitRun(
         organizationId: org,
         timeoutSeconds: options.watchTimeout ?? defaultWatchSeconds(input.timeoutSeconds),
         lastKnown: run,
+        // Without --timeout, waiting also covers the time the person has to approve the run.
+        ...(options.watchTimeout === undefined ? { approvalSeconds: APPROVAL_WAIT_SECONDS } : {}),
+        leftOut,
       },
       dependencies
     )
@@ -235,7 +255,12 @@ export async function runAnalysisCommand(
     await watchRun(
       client,
       output,
-      { id: selection.id, organizationId: org, timeoutSeconds },
+      {
+        id: selection.id,
+        organizationId: org,
+        timeoutSeconds,
+        ...(timeout === undefined ? { approvalSeconds: APPROVAL_WAIT_SECONDS } : {}),
+      },
       dependencies
     )
   else {
@@ -249,7 +274,7 @@ export async function runAnalysisCommand(
     )
     if (run.id !== selection.id)
       throw new ApiError('Teler API returned a mismatched run receipt', 502)
-    emitRunReceipt(output, run)
+    emitRunReceipt(output, run, client.baseUrl)
   }
   return true
 }

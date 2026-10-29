@@ -16,9 +16,10 @@ const RUN_FLAGS = {
   maximumCredits: '--max-credits',
   idempotencyKey: '--idempotency-key',
   timeoutSeconds: '--execution-timeout',
+  capabilities: '--capabilities',
 }
 const SUBMIT =
-  '--project <id> --max-credits <amount> --idempotency-key <key> [--chat <id>] [--org <id>] [--execution-timeout <seconds>] [--wait [--timeout <seconds>]] [--json]'
+  '--project <id> --max-credits <amount> --idempotency-key <key> [--chat <id>] [--org <id>] [--execution-timeout <seconds>] [--capabilities <capability,...>] [--wait [--timeout <seconds>]] [--json]'
 const RUN_SELECTION = {
   inputSchema: runSelectionInputJsonSchema,
   flags: { id: '<run-id>', organizationId: '--org' },
