@@ -132,8 +132,8 @@ export const RESOURCE_COMMANDS: readonly CliCommand[] = [
   ),
   command(
     'dashboard.add-widget',
-    'dashboard add-widget <id> --artifact <id> --position <json> [--idempotency-key <key>] [--json]',
-    'Pin a chart or table to a dashboard at a position on its four-column grid.'
+    'dashboard add-widget <id> --artifact <id> --position <json> [--idempotency-key <key>] [--json] | dashboard add-widget <id> --schedule <id> --slot <slot> --chart line|bar|scatter|pie|table|number [--x <column>] [--y <column>] [--color <column>] [--title <title>] [--org <id>] [--json]',
+    "Pin a chart or table to a dashboard at a position on its four-column grid, or add one that follows a scheduled File's output: each successful run of the schedule redraws it."
   ),
   command(
     'dashboard.approve-refresh',

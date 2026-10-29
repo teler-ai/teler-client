@@ -73,6 +73,55 @@ export const dashboardMutationResponseSchema = z
   })
   .transform(({ id, ...dashboard }) => ({ dashboardId: id, ...dashboard }))
 
+/** The chart kinds a widget that follows a File schedule can draw. */
+export const FOLLOW_CHARTS = ['line', 'bar', 'scatter', 'pie', 'table', 'number'] as const
+
+const columnSchema = z.string().trim().min(1).max(255)
+
+/**
+ * A widget that follows a scheduled File's output slot: each successful run of the schedule, or
+ * its owner's Run now, redraws the chart. Only the schedule's owner can connect it, to a
+ * dashboard in the schedule's project.
+ */
+export const followDashboardWidgetSchema = z
+  .object({
+    scheduleId: z.string().regex(new RegExp(`^sched_${idSuffix}$`)),
+    slot: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/),
+    chart: z.enum(FOLLOW_CHARTS),
+    x: columnSchema.optional(),
+    y: columnSchema.optional(),
+    color: columnSchema.optional(),
+    title: z.string().trim().min(1).max(255).optional(),
+  })
+  .refine(
+    ({ chart, x, y }) =>
+      chart === 'table' || chart === 'number' || (x !== undefined && y !== undefined),
+    'A line, bar, scatter or pie chart needs --x and --y'
+  )
+  .refine(({ chart, color }) => color === undefined || ['line', 'bar', 'scatter'].includes(chart))
+
+/** The renderer binding the server reads a followed output with. */
+export function followBinding(input: z.infer<typeof followDashboardWidgetSchema>) {
+  const base = { schemaVersion: 1 as const, slot: input.slot }
+  if (input.chart === 'table') return { ...base, renderer: 'table' as const, config: {} }
+  if (input.chart === 'number')
+    return {
+      ...base,
+      renderer: 'metric' as const,
+      config: input.y === undefined ? {} : { valueField: input.y },
+    }
+  const encoding =
+    input.chart === 'pie'
+      ? { names: input.x, values: input.y }
+      : { x: input.x, y: input.y, ...(input.color ? { color: input.color } : {}) }
+  return { ...base, renderer: 'chart' as const, config: { type: input.chart, encoding } }
+}
+
+export const followMutationResponseSchema = z.object({
+  widgetId: z.string().regex(new RegExp(`^dwgt_${idSuffix}$`)),
+  dashboardId: dashboardIdSchema,
+})
+
 export const widgetMutationResponseSchema = z
   .object({
     id: z.string().regex(new RegExp(`^dwgt_${idSuffix}$`)),

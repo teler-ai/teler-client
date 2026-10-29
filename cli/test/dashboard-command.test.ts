@@ -182,6 +182,89 @@ describe('dashboard controls', () => {
     expect(calls).toBe(0)
   })
 
+  it('adds a widget that follows a schedule with the binding its output is drawn with', async () => {
+    const scheduleId = `sched_${suffix}`
+    const requests: Array<{ path: string; method: string; body: unknown }> = []
+    let output = ''
+    const fetch = async (url: string, init?: RequestInit) => {
+      const path = new URL(url).pathname
+      const method = init?.method ?? 'GET'
+      requests.push({
+        path,
+        method,
+        body: init?.body ? (JSON.parse(String(init.body)) as unknown) : undefined,
+      })
+      return Response.json({ widgetId, dashboardId }, { status: 201 })
+    }
+    expect(
+      await main(
+        [
+          'dashboard',
+          'add-widget',
+          dashboardId,
+          '--schedule',
+          scheduleId,
+          '--slot',
+          'result',
+          '--chart',
+          'line',
+          '--x',
+          'date',
+          '--y',
+          'yhat',
+          '--color',
+          'category',
+          '--org',
+          organizationId,
+          '--json',
+        ],
+        { env, fetch, writeOut: (text) => (output += text) }
+      )
+    ).toBe(0)
+    expect(requests).toEqual([
+      {
+        path: '/api/dashboard-follows',
+        method: 'POST',
+        body: {
+          organizationId,
+          scheduleId,
+          dashboardId,
+          binding: {
+            schemaVersion: 1,
+            slot: 'result',
+            renderer: 'chart',
+            config: { type: 'line', encoding: { x: 'date', y: 'yhat', color: 'category' } },
+          },
+          title: 'result',
+        },
+      },
+    ])
+    expect(JSON.parse(output)).toEqual({ widgetId, dashboardId })
+    // A chart without its fields, or a split on a pie, is refused before any request.
+    for (const extra of [
+      ['--chart', 'bar', '--x', 'date'],
+      ['--chart', 'pie', '--x', 'category', '--y', 'yhat', '--color', 'date'],
+    ])
+      expect(
+        await main(
+          [
+            'dashboard',
+            'add-widget',
+            dashboardId,
+            '--schedule',
+            scheduleId,
+            '--slot',
+            'result',
+            '--org',
+            organizationId,
+            ...extra,
+          ],
+          { env, fetch, writeErr: () => undefined }
+        )
+      ).toBe(2)
+    expect(requests).toHaveLength(1)
+  })
+
   it('redacts normal API refusal bodies and query values', async () => {
     let stderr = ''
     expect(
