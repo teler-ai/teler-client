@@ -5,7 +5,7 @@ export type ResourceKind = 'skill' | 'memory' | 'agent'
 export type ResourceAction = 'list' | 'get' | 'create' | 'update' | 'delete'
 
 export const RESOURCE_USAGE = `
-Resource commands:
+Resource commands (skill manages Knowledge entries, memory manages memories):
   teler skill  list [--org <id>] [--json]
   teler skill  get <id> [--json]
   teler skill  create --name <slug> --label <label> --description <text>
@@ -155,7 +155,7 @@ async function createBody(kind: ResourceKind, args: string[]): Promise<Record<st
 
   if (kind === 'skill' && body.scope === 'organization') {
     throw new UsageError(
-      'Organization skills require a reviewed copy. Create a personal skill, then submit it for review from Knowledge in the Teler app.'
+      'Organization Knowledge entries require a reviewed copy. Create a personal Knowledge entry, then submit it for review from Knowledge in the Teler app.'
     )
   }
 

@@ -264,10 +264,11 @@ Every `memory` command accepts `--org <org-id>` to select the organization.
 Omission uses the login session's active organization. Explicit selection requires
 a server supporting the `organizationId` query on memory endpoints.
 
-`skill create` creates personal skills (`--scope personal`). Organization skills
-require a reviewed copy: create a personal skill, then submit it for review from
-Knowledge in the Teler app. Existing organization skills remain available to
-the read and update commands according to the member's permissions.
+The `skill` commands manage Knowledge entries: how to do a kind of task. `skill create`
+creates personal Knowledge entries (`--scope personal`). Organization Knowledge
+entries require a reviewed copy: create a personal entry, then submit it for
+review from Knowledge in the Teler app. Existing organization entries remain
+available to the read and update commands according to the member's permissions.
 
 ## Data analysis from an agent
 
@@ -302,7 +303,7 @@ never cancels a dispatched run. Without it, `--wait` waits for the execution lim
 plus two minutes (at least 180 seconds).
 `--wait --json` emits an initial receipt and a terminal receipt as NDJSON. Keep
 the run ID for `run get`, `run wait`, or `run cancel`. Receipts include the chat,
-status, charged credits, bounded output, and artifact IDs/slugs. A `reconciling`
+status, charged credits, bounded output, and the IDs and slugs of the charts, tables and files it made. A `reconciling`
 run is still being settled and can still hold credits.
 
 SQL returns bounded JSON rows with `truncated`; data metadata uses `nextOffset`.
@@ -341,6 +342,9 @@ including `run get`, keeps `errorCode`, passes `limit` through, and adds a `hint
 string with the same contact link. A run that only reached its own
 `--execution-timeout` has no `limit` and is reported as before.
 
+The `artifact` commands work on what a run or chat made: charts, tables, models
+and data files. `teler chat artifacts` lists them with their IDs and slugs.
+
 Create a chart from an explicit static data snapshot:
 
 ```json
@@ -362,9 +366,9 @@ teler artifact get <artifact-id> --chat <chat-id> --slug <slug> \
 ```
 
 Imported types are `bar`, `line`, `table`, and `metric`; the schema describes
-their required fields. Imported artifacts retain their supplied snapshot when
-rerun. Existing dashboard commands can pin the returned chart artifact.
-Artifact inspection omits physical storage details. Downloads are capped at
+their required fields. Imported charts retain their supplied snapshot when
+rerun. Existing dashboard commands can pin the returned chart.
+Inspecting a chart or file omits physical storage details. Downloads are capped at
 32 MiB and never overwrite an existing destination.
 
 With `--json`, failures emit `{ "error": { "code", "message", "retryable" } }`
@@ -381,8 +385,8 @@ waiting for a failed or cancelled run returns exit code 1.
 ## Dashboards and Agent schedules
 
 Dashboard commands use the same API as the Teler web app. Use exact IDs returned
-by prior commands or `chat artifacts`; widgets keep the usual artifact access
-checks and the dashboard's four-column grid.
+by prior commands or `chat artifacts`; widgets keep the usual access
+checks on the chart or table they show and the dashboard's four-column grid.
 
 ```sh
 teler dashboard create --name "Daily overview" --refresh-interval 1h --org <org-id> --json
@@ -415,10 +419,10 @@ teler dashboard template-progress --chat <returned-chat-id> --org <org-id> --jso
 `projectId`. The creation receipt contains `dashboard`, `chatId`, and `pending`
 jobs with their planned positions; it does not mean the widgets are ready.
 Poll `template-progress` until each job settles. For each completed job with an
-`artifactId`, use `dashboard add-widget` with the returned dashboard ID, artifact
-ID, and corresponding pending job's position. Inspect failed or timed-out jobs
-before proceeding; a failure placeholder artifact is not a successful result.
-The CLI does not automatically wait for jobs or pin their artifacts.
+`artifactId`, use `dashboard add-widget` with the returned dashboard ID, the chart's
+ID (`artifactId`), and corresponding pending job's position. Inspect failed or timed-out jobs
+before proceeding; a failure placeholder chart is not a successful result.
+The CLI does not automatically wait for jobs or pin their charts.
 
 List/get JSON includes `refreshInterval` and `lastRefreshedAt`. Get also includes
 each widget's `refreshState`: `status`, `lastAttemptAt`, `lastSuccessAt`, and a
@@ -478,8 +482,8 @@ teler post comments <post-id> --json
 teler post delete <post-id> --yes --json
 ```
 
-`post.json` holds the chat the post comes from, its Markdown and the artifacts it
-shows: `{"chatId":"<chat-id>","title":"Q3 revenue","content":"…","artifactIds":["<artifact-id>"]}`.
+`post.json` holds the chat the post comes from, its Markdown and the charts and
+files it shows (`artifactIds`): `{"chatId":"<chat-id>","title":"Q3 revenue","content":"…","artifactIds":["<artifact-id>"]}`.
 `post generate <id> --file <json-file>` has Teler's agent draft a post's content.
 Posts also have `update`, `move`, `visibility`, `artifact`, `document`, `comment`,
 `delete-comment`, `mark-comments-seen`, `react`, `unreact`, `hide`, `unhide` and

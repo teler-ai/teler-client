@@ -56,7 +56,7 @@ export async function downloadArtifact(
   client: TelerApiClient,
   path: string,
   destination: string,
-  what = 'Artifact'
+  what = 'Result'
 ): Promise<string> {
   const target = resolve(destination)
   const temporary = join(dirname(target), `.teler-artifact-${randomUUID()}.part`)
@@ -67,7 +67,7 @@ export async function downloadArtifact(
     const length = Number(response.headers.get('Content-Length'))
     if (Number.isFinite(length) && length > MAX_DOWNLOAD_BYTES)
       throw new UsageError(`${what} download exceeds 32 MiB`)
-    if (!response.body) throw new ApiError('Teler API returned an empty artifact response', 502)
+    if (!response.body) throw new ApiError('Teler API returned an empty result response', 502)
     const reader = response.body.getReader()
     closeStream = async () => {
       await reader.cancel().catch(() => undefined)
@@ -139,8 +139,8 @@ export async function runArtifactCommand(
     selectedSlug = list.artifacts.find((item) => item.id === input.id)?.slug
     if (!selectedSlug) {
       if (list.truncated)
-        throw new UsageError('Artifact list is truncated; supply --slug from the run receipt')
-      throw new ApiError('Artifact is unavailable in this chat', 404, 'NOT_FOUND')
+        throw new UsageError('The list of results is truncated; supply --slug from the run receipt')
+      throw new ApiError('This chart or file is not available in this chat', 404, 'NOT_FOUND')
     }
   }
   const path = `${base}/${encodeURIComponent(selectedSlug)}`
@@ -150,7 +150,7 @@ export async function runArtifactCommand(
     metadata.chatId !== input.chatId ||
     metadata.slug !== selectedSlug
   )
-    throw new ApiError('Teler API returned mismatched artifact metadata', 502)
+    throw new ApiError('Teler API returned mismatched result metadata', 502)
   const downloadedTo = input.download
     ? await downloadArtifact(client, `${path}/data`, input.output!)
     : undefined

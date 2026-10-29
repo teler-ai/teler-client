@@ -24,6 +24,7 @@ Usage:
              [--chat <id>] [--org <id>] [--execution-timeout <seconds>] [--wait --timeout <seconds>] [--json]
   teler run get|cancel <run-id> [--org <id>] [--json]
   teler run wait <run-id> [--org <id>] [--timeout <seconds>] [--json]
+  An artifact is what a run or chat makes: a chart, table, model or data file. chat artifacts lists them with their IDs and slugs.
   Run submissions require a stable 16–128 character idempotency key. Reuse it only for the same task.
   --execution-timeout bounds sandbox execution (default 60s, up to 3600s or your plan's limit);
   --timeout only bounds local waiting.
@@ -93,7 +94,7 @@ Usage:
   teler dashboard templates [--project <id>] [--org <id>] [--json]
   teler dashboard from-template --file <json-file> [--org <id>] [--json]
   teler dashboard template-progress --chat <chat-id> [--org <id>] [--json]
-  Template creation queues jobs; poll progress, then add completed artifacts with add-widget.
+  Template creation queues jobs; poll progress, then add the completed charts and tables with add-widget.
   Resource writes accept --file <json-file>; deletions/revocations require --yes.
   PDF export requires --file <html-request.json> --output <file.pdf>.
   teler dashboard create --name <name> [--org <id>] [--refresh-interval <setting>] [--json]

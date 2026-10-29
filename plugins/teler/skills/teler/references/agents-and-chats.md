@@ -92,14 +92,14 @@ runs need permissions waits for `teler schedule approve <schedule-id> --approve 
 `schedule list` also shows event starts (a table updating, another Agent finishing, an alert
 opening on an Agent or a File); `update`, `pause`, `resume` and `approve` take their IDs.
 
-## Knowledge: skills and memories
+## Knowledge: entries and memories
 
-Teler's analyst also reads the person's skills (how to do a kind of task) and memories (facts and
-preferences). Add one only when the person asks.
+Teler's analyst also reads the person's Knowledge entries (how to do a kind of task; the
+`skill` commands) and memories (facts and preferences). Add one only when the person asks.
 
 ```sh
 teler skill list --json
-teler skill create --name <slug> --label "<label>" --description "<when to use it>" --content-file skill.md --json
+teler skill create --name <slug> --label "<label>" --description "<when to use it>" --content-file entry.md --json
 teler memory list --json
 teler memory create --name <slug> --label "<label>" --description "<what it is>" \
   --content-file memory.md --type preference --json   # or domain, feedback, reference

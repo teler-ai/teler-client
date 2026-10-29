@@ -61,7 +61,7 @@ export const RESOURCE_COMMANDS: readonly CliCommand[] = [
   command(
     'post.artifact',
     'post artifact <post-id> <artifact-id> [--download --output <file>] [--org <id>] [--json]',
-    'Read, or download, an artifact shown in a post.'
+    'Read, or download, a chart or file shown in a post.'
   ),
   command(
     'post.document',
@@ -133,7 +133,7 @@ export const RESOURCE_COMMANDS: readonly CliCommand[] = [
   command(
     'dashboard.add-widget',
     'dashboard add-widget <id> --artifact <id> --position <json> [--idempotency-key <key>] [--json]',
-    'Pin an artifact to a dashboard at a position on its four-column grid.'
+    'Pin a chart or table to a dashboard at a position on its four-column grid.'
   ),
   command(
     'dashboard.approve-refresh',
@@ -225,13 +225,10 @@ export const RESOURCE_COMMANDS: readonly CliCommand[] = [
   ),
   command('schedule.delete', 'schedule delete <id> --yes [--json]', 'Delete a schedule.'),
   ...(['skill', 'memory', 'agent'] as const).flatMap((kind) => {
-    const noun = { skill: 'skill', memory: 'memory', agent: 'Teler Agent' }[kind]
+    const noun = { skill: 'Knowledge entry', memory: 'memory', agent: 'Teler Agent' }[kind]
+    const plural = { skill: 'Knowledge entries', memory: 'memories', agent: 'Teler Agents' }[kind]
     return [
-      command(
-        `${kind}.list`,
-        `${kind} list [--org <id>] [--json]`,
-        `List your ${kind === 'memory' ? 'memories' : `${noun}s`}.`
-      ),
+      command(`${kind}.list`, `${kind} list [--org <id>] [--json]`, `List your ${plural}.`),
       command(`${kind}.get`, `${kind} get <id> [--json]`, `Read one ${noun}.`),
       command(
         `${kind}.create`,

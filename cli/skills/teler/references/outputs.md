@@ -1,8 +1,9 @@
-# Outputs: artifacts, dashboards and posts
+# Outputs: charts, tables, dashboards and posts
 
-## Artifacts
+## Charts, tables and other results
 
-Charts and tables that runs and Teler's analyst make are artifacts.
+What runs and Teler's analyst make (charts, tables, models and data files) is listed by
+`chat artifacts` and read with the `artifact` commands.
 
 ```sh
 teler chat artifacts <chat-id> --json                 # IDs and slugs
@@ -37,7 +38,7 @@ teler dashboard archive <dashboard-id> --yes --json
 - The grid has four columns: `x` 0–3, `w` 1–4, `x + w` at most 4.
 - To change what a dashboard shows (new or reworked charts, filters, analyses), ask Teler's
   analyst with `teler send`, naming the dashboard. The commands here create a dashboard, pin
-  artifacts you already have, set its refresh and share it.
+  charts you already have, set its refresh and share it.
 - New dashboards refresh only when asked. Refreshes cost credits, so agree a schedule with the
   person, then `teler dashboard update <dashboard-id> --refresh-interval <setting> --json`:
   `manual`, `on_change` (only after its data changes), or `15m`, `30m`, `1h`, `4h`, `5h`, `1d`.
@@ -48,7 +49,7 @@ teler dashboard archive <dashboard-id> --yes --json
   means refreshes wait for credits; `lastRefreshedAt` alone does not prove a refresh succeeded.
 - Templates: `dashboard templates`, then `dashboard from-template --file template.json`
   (`{"templateId":"<id>"}`), then poll `dashboard template-progress --chat <chat-id>` and pin
-  each finished artifact with `add-widget`. Nothing is pinned for you.
+  each finished chart with `add-widget`. Nothing is pinned for you.
 
 ## Sharing
 

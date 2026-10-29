@@ -43,7 +43,7 @@ describe('post generation stream errors', () => {
     ['CANCELLED', 'Post draft generation was cancelled'],
     ['INSUFFICIENT_CREDITS', 'Not enough credits to generate a post draft'],
     ['POST_NOT_FOUND', 'Post not found'],
-    ['ARTIFACT_NOT_IN_CHAT', 'A selected artifact is not available in this post’s chat'],
+    ['ARTIFACT_NOT_IN_CHAT', 'A selected chart or file is not available in this post’s chat'],
   ])('preserves supported %s errors with a safe message', async (code, message) => {
     const result = await generate([
       { type: 'error', code, message: 'private upstream text', content: 'private data' },

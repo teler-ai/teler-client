@@ -28,7 +28,7 @@ const POST_DRAFT_ERROR_MESSAGES = {
   GENERATION_FAILED: 'Post draft generation failed',
   INSUFFICIENT_CREDITS: 'Not enough credits to generate a post draft',
   POST_NOT_FOUND: 'Post not found',
-  ARTIFACT_NOT_IN_CHAT: 'A selected artifact is not available in this post’s chat',
+  ARTIFACT_NOT_IN_CHAT: 'A selected chart or file is not available in this post’s chat',
 }
 
 function takeOption(args: string[], name: string): string | undefined {
