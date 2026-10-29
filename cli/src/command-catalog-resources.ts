@@ -59,6 +59,11 @@ export const RESOURCE_COMMANDS: readonly CliCommand[] = [
     "Draft a post's content with Teler's agent; streams progress."
   ),
   command(
+    'post.translate',
+    'post translate <id> --languages <list> [--org <id>] [--json]',
+    'Translate a saved post into other languages (en, ca, es, fr, it, de, pt).'
+  ),
+  command(
     'post.artifact',
     'post artifact <post-id> <artifact-id> [--download --output <file>] [--org <id>] [--json]',
     'Read, or download, a chart or file shown in a post.'

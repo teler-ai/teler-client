@@ -552,6 +552,14 @@ teler post delete <post-id> --yes --json
 `post.json` holds the chat the post comes from, its Markdown and the charts and
 files it shows (`artifactIds`): `{"chatId":"<chat-id>","title":"Q3 revenue","content":"…","artifactIds":["<artifact-id>"]}`.
 `post generate <id> --file <json-file>` has Teler's agent draft a post's content.
+`post translate <id> --languages fr,de` has Teler translate your own post's saved text
+into other languages: `en`, `ca`, `es`, `fr`, `it`, `de` or `pt`, up to six at a time.
+It reports each language as translated, failed with a code (`INSUFFICIENT_CREDITS`,
+`TRANSLATION_FAILED`, `ALREADY_IN_LANGUAGE`) or skipped (the post's main language), and
+exits non-zero when none was translated. Each language costs credits; translating a
+language again replaces its earlier translation, hand edits included. `post get <id>
+--include metadata` shows every translation and whether it is out of date. This needs a
+server that translates posts; older servers refuse it.
 Posts also have `update`, `move`, `visibility`, `artifact`, `document`, `comment`,
 `delete-comment`, `mark-comments-seen`, `react`, `unreact`, `hide`, `unhide` and
 `export` (a PDF); `teler schema post.<action>` shows each one's usage.
