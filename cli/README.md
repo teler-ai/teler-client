@@ -119,6 +119,14 @@ version does not, and keeps a copy you changed (any of its files) unless you pas
 `--force`. Files you add to the folder yourself are left alone. `teler auth login`
 suggests it after you sign in; nothing is installed for you.
 
+The skill in your user folders stays current by itself. After you update the
+CLI, the next `teler` command refreshes a copy an older `teler agent setup`
+wrote, offline and without output, once per CLI version. A copy you changed is
+kept; run in a terminal without `--json`, `teler` says so once on stderr, and
+`teler agent setup --force` replaces it. A copy installed with `--project` is
+not tracked; re-run `teler agent setup --project <dir>` there after an update.
+`TELER_NO_SKILL_SYNC=1` turns the refresh off.
+
 The same skill is also packaged as a Claude Code and Codex plugin in
 [`plugins/teler`](../plugins/teler/). Use the plugin or `teler agent setup`, not
 both.

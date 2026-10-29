@@ -70,6 +70,8 @@ async function fixture() {
     XDG_STATE_HOME: join(root, 'state'),
     TELER_URL: server.url.origin,
     TELER_TOKEN: 'test-only-token',
+    // These runs keep the real HOME; leave its installed Teler skills alone.
+    TELER_NO_SKILL_SYNC: '1',
   }
   const store = () => new SyncStore(join(root, 'state', 'teler', 'sync', 'sync.db'))
   cleanups.push(async () => {

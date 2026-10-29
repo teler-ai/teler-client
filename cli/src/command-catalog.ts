@@ -61,7 +61,7 @@ export const CLI_COMMANDS: readonly CliCommand[] = [
   command(
     'agent.setup',
     'agent setup [--claude] [--codex] [--project <dir>] [--print | --dry-run] [--force] [--json]',
-    'Install the Teler skill for Claude Code and Codex in your user folders or a project. Offline; keeps a skill file you changed unless --force.'
+    'Install the Teler skill for Claude Code and Codex in your user folders or a project. Offline; keeps a skill file you changed unless --force. Later CLI versions refresh the user-folder copy it wrote.'
   ),
   command(
     'project.list',
