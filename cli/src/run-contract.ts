@@ -13,6 +13,11 @@ export function creditNano(value: string): bigint {
   return BigInt(whole!) * 1_000_000_000n + BigInt(fraction.padEnd(9, '0'))
 }
 const title = z.string().max(200).optional()
+/** A plain capability id, such as `tables.rows.read` or `files.create`. */
+const capability = z
+  .string()
+  .max(64)
+  .regex(/^[a-z]+(?:\.[a-z]+)+$/)
 const column = z.string().min(1).max(2048)
 const rows = z.array(z.record(z.string(), z.json())).min(1).max(1000)
 function source(maximum: number) {
@@ -80,6 +85,14 @@ export const runSubmitInputSchema = z.strictObject({
     .describe(
       "Sandbox execution limit in seconds (--execution-timeout). The organization's plan sets the actual maximum."
     ),
+  capabilities: z
+    .array(capability)
+    .min(1)
+    .max(32)
+    .optional()
+    .describe(
+      'Exactly what the run may use (--capabilities), such as tables.rows.read,files.create. Without it a run holds what your Agent Access allows without asking; with it, what Agent Access asks about waits for your approval in the Teler app.'
+    ),
 })
 
 export const runSelectionInputSchema = z.strictObject({
@@ -100,7 +113,28 @@ export const runResponseSchema = z.object({
   id: runIdSchema,
   chatId: typedId('chat'),
   projectId: dataProjectIdSchema,
-  status: z.enum(['queued', 'running', 'reconciling', 'completed', 'failed', 'cancelled']),
+  status: z.enum([
+    'needs_approval',
+    'queued',
+    'running',
+    'reconciling',
+    'completed',
+    'failed',
+    'cancelled',
+  ]),
+  /** What the run holds once it may start, from servers that return it. */
+  capabilities: z.array(capability).max(64).nullable().optional(),
+  /** What a `needs_approval` run waits for the person to approve, and where. */
+  approval: z
+    .object({
+      requestId: typedId('clireq'),
+      path: z.string().regex(new RegExp(`^/cli-requests/clireq_${typeIdSuffix}$`)),
+      expiresAt: z.string().datetime(),
+      asks: z.array(z.object({ capability })).max(64),
+      scopes: z.array(z.string().max(32)).max(8),
+    })
+    .nullable()
+    .optional(),
   language: z.enum(['python', 'sql', 'artifact']),
   idempotencyKey: z.string().regex(/^[a-zA-Z0-9._:-]{16,128}$/),
   maximumCredits: credits,
@@ -165,6 +199,12 @@ export const runPreflightResponseSchema = z.union([
     }),
     tariffVersion: z.string().min(1).max(128),
     reservedMemoryMiB: z.number().int().positive(),
+    /** What a run without --capabilities leaves out, from servers that return it. */
+    capabilities: z
+      .object({
+        excluded: z.array(z.object({ capability, state: z.enum(['ask', 'deny']) })).max(64),
+      })
+      .optional(),
   }),
 ])
 

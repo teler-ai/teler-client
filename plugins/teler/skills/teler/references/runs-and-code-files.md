@@ -17,13 +17,43 @@ print(df)
 ```
 
 - `get_connection()` reads through DuckDB. `teler.execute(sql)` runs only `INSERT`, `UPDATE`
-  or `DELETE` on organization tables, and only where the person's Agent Access allows changes
-  without asking.
+  or `DELETE` on organization tables.
+- A run holds only what the person's Agent Access allows without asking. To save a File or
+  change a table where it asks first, see [changes that need approval](#changes-that-need-approval).
 - Charts the code makes come back as results (IDs in the receipt's `artifacts`); see [outputs](outputs.md).
 - `--execution-timeout <seconds>` (default 60, up to 3600 or the plan's limit) bounds the run.
   `--timeout` bounds only your waiting: the run goes on.
 - Runs cost credits, at most `--max-credits`, and need a paid plan; a refusal's `hint` says what
   to do.
+
+## Changes that need approval
+
+Under the default Standard Agent Access, reading data is allowed and every change asks first, so
+code that saves a File (`teler.models.save`, `teler.files`) or changes a table is refused unless
+the run asks for it. Name everything the code uses with `--capabilities`:
+
+```sh
+teler run python --file train.py --project <project-id> --max-credits 1 --idempotency-key <key> \
+  --capabilities tables.metadata.read,tables.rows.read,files.create --wait --json
+```
+
+- The list is exact: the run holds only what it names, so include the reads too.
+  - Read tables: `tables.metadata.read,tables.rows.read`; read Files:
+    `files.metadata.read,files.content.read`.
+  - Save a new File: `files.create`; a new version of one (`replace=True`): `files.update`.
+  - Tables: `tables.create`, `tables.rows.write`, `tables.schema.update`; also `files.copy`,
+    `files.move`, `files.delete`, `tables.copy`, `tables.move`, `tables.delete`.
+- What Agent Access asks about makes the run wait as `needs_approval`, with no charge. Its
+  receipt has `approvalUrl`, where the person approves it in the Teler app, and a `hint`. Send
+  them the link and say what the run will change. Never approve for them, and never change their
+  Agent Access to get around it.
+- `--wait` keeps waiting while they decide (up to 15 more minutes without `--timeout`); then the
+  run starts. Denied or expired, it ends `cancelled`: ask before you submit it again.
+- `CAPABILITY_DENIED` means Agent Access does not allow it: tell the person.
+  `CAPABILITY_REQUIRED` names what to add to the list.
+
+Ask for this only when the code changes something; a run that only reads needs no
+`--capabilities`.
 
 ## Receipts
 
@@ -42,7 +72,8 @@ A `reconciling` run is still being settled and can still hold credits.
 
 - A failed run has `errorCode`. For `execution_failed` (the code raised), `errorDetail` holds the
   traceback. Fix the code and submit it with a new idempotency key: the old key returns the
-  failed run.
+  failed run. A save or change refused there means the run needs
+  [`--capabilities`](#changes-that-need-approval); the `hint` names what it left out.
 - A receipt with a `limit` object (`kind` `memory_limit`, `time_limit` or `gpu_needed`) means
   the run needs more than the sandbox gives. Tell the person, and pass on the receipt's `hint`.
 - Reached your own `--execution-timeout`? Raise it, or make the code faster.
@@ -81,7 +112,8 @@ teler files runs --json
 - Code that calls `teler.job.alert(title, figure=None, findings=None)` alerts by a rule, one line
   such as "weekly sales fall below 100 units". With `--output`, pass `--alert-rule "<rule>"`;
   the CLI refuses to drop the rule your last run had (`ALERT_RULE_REQUIRED`).
-- A model saved with `teler.models` in `run python` becomes a model File only where Agent Access
-  allows file changes without asking; otherwise train inside the job from its table inputs.
+- A model saved with `teler.models.save` in `run python` becomes a model File; where Agent
+  Access asks first, the run needs [`--capabilities`](#changes-that-need-approval) and the
+  person's approval.
 
 To run it on a schedule, see [File schedules](file-schedules.md).

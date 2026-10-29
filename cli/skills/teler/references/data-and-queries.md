@@ -26,6 +26,9 @@ teler data query --file query.sql --project <project-id> --row-limit 100 \
   [runs and code Files](runs-and-code-files.md).
 - Each run without `--chat <chat-id>` creates a chat. Reuse one chat for related runs in the
   same project.
+- Where Agent Access asks before reading rows, a query is refused with
+  `CAPABILITY_APPROVAL_REQUIRED`: submit it again with `--capabilities tables.rows.read`, and the
+  person approves it ([changes that need approval](runs-and-code-files.md#changes-that-need-approval)).
 
 ## Teler Files
 

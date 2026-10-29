@@ -19,17 +19,22 @@ Usage:
   teler data list --project <id> [--query <text>] [--limit <n>] [--offset <n>] [--org <id>] [--json]
   teler data describe <ref> --project <id> [--limit <n>] [--offset <n>] [--org <id>] [--json]
   teler run python --file <code.py> --project <id> --max-credits <amount> --idempotency-key <key>
-             [--chat <id>] [--org <id>] [--execution-timeout <seconds>] [--wait --timeout <seconds>] [--json]
+             [--chat <id>] [--org <id>] [--execution-timeout <seconds>] [--capabilities <capability,...>]
+             [--wait --timeout <seconds>] [--json]
   teler data query --file <query.sql> --project <id> --max-credits <amount> --idempotency-key <key>
-             [--row-limit <n>] [--chat <id>] [--org <id>] [--execution-timeout <seconds>] [--wait --timeout <seconds>] [--json]
+             [--row-limit <n>] [--chat <id>] [--org <id>] [--execution-timeout <seconds>]
+             [--capabilities <capability,...>] [--wait --timeout <seconds>] [--json]
   teler artifact create --file <chart.json> --project <id> --max-credits <amount> --idempotency-key <key>
-             [--chat <id>] [--org <id>] [--execution-timeout <seconds>] [--wait --timeout <seconds>] [--json]
+             [--chat <id>] [--org <id>] [--execution-timeout <seconds>] [--capabilities <capability,...>]
+             [--wait --timeout <seconds>] [--json]
   teler run get|cancel <run-id> [--org <id>] [--json]
   teler run wait <run-id> [--org <id>] [--timeout <seconds>] [--json]
   An artifact is what a run or chat makes: a chart, table, model or data file. chat artifacts lists them with their IDs and slugs.
   Run submissions require a stable 16–128 character idempotency key. Reuse it only for the same task.
   --execution-timeout bounds sandbox execution (default 60s, up to 3600s or your plan's limit);
   --timeout only bounds local waiting.
+  --capabilities lists exactly what a run may use (such as tables.rows.read,files.create); what your
+  Agent Access asks about waits for your approval in the Teler app, and --wait waits for it too.
   --wait --json emits an accepted receipt and a terminal receipt as newline-delimited JSON.
   teler auth login [--device-file <absolute-path>]
   teler auth status [--json]
