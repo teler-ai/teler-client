@@ -452,11 +452,18 @@ checks on the chart or table they show and the dashboard's four-column grid.
 teler dashboard create --name "Daily overview" --refresh-interval 1h --org <org-id> --json
 teler dashboard add-widget <dashboard-id> --artifact <artifact-id> \
   --position '{"x":0,"y":0,"w":4,"h":3}' --idempotency-key overview.chart.1 --json
+teler dashboard add-widget <dashboard-id> --schedule <schedule-id> --slot result \
+  --chart line --x date --y yhat --color category --json   # follows a scheduled File
 teler dashboard update <dashboard-id> --refresh-interval on_change --json
 teler dashboard list --org <org-id> --limit 20 --json   # next page: --cursor <nextCursor>
 teler dashboard get <dashboard-id> --org <org-id> --json
 teler dashboard archive <dashboard-id> --yes --json
 ```
+
+A widget added with `--schedule` follows a scheduled code File: each successful run of the
+schedule, or its owner's Run now, redraws its chart. Only the schedule's owner can add one, to
+a dashboard in the schedule's project. It takes no idempotency key, so after a lost answer
+check `dashboard get` before adding it again.
 
 Create also accepts `--description`, `--project`, and
 `--visibility private|organization`. Omitted `--org` uses the active organization.

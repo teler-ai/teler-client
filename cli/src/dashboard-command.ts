@@ -9,6 +9,10 @@ import {
   dashboardIdSchema,
   dashboardMutationResponseSchema,
   dashboardRefreshApprovalSchema,
+  followBinding,
+  followDashboardWidgetSchema,
+  followFieldsProblem,
+  followMutationResponseSchema,
   REFRESH_CHOICES,
   refreshIntervalSchema,
   widgetMutationResponseSchema,
@@ -17,6 +21,8 @@ import { takeApprovedCapabilities } from './capability-approval'
 import { UsageError } from './errors'
 
 const REFRESH_USAGE = `--refresh-interval ${REFRESH_CHOICES.join('|')}`
+const FOLLOW_USAGE =
+  'dashboard add-widget <id> --schedule <id> --slot <slot> --chart line|bar|scatter|pie|table|number [--x <column>] [--y <column>] [--color <column>] [--title <title>] [--org <id>] [--json]'
 
 function takeRefreshSetting(args: string[]) {
   const value = takeOption(args, '--refresh-interval')
@@ -60,6 +66,43 @@ export async function runDashboardCommand(
     })
     if (output.json) emitJson(output, result)
     else output.write(`Created ${result.dashboardId}: ${result.name}\n`)
+    return
+  }
+  if (action === 'add-widget' && args.includes('--schedule')) {
+    const input = parseControlInput(
+      followDashboardWidgetSchema,
+      {
+        scheduleId: takeOption(args, '--schedule'),
+        slot: takeOption(args, '--slot'),
+        chart: takeOption(args, '--chart'),
+        x: takeOption(args, '--x'),
+        y: takeOption(args, '--y'),
+        color: takeOption(args, '--color'),
+        title: takeOption(args, '--title'),
+      },
+      'dashboard follow options'
+    )
+    const problem = followFieldsProblem(input)
+    if (problem) throw new UsageError(problem)
+    const organizationId = await resolveOrganizationId(client, takeOption(args, '--org'))
+    assertNoFlags(args)
+    if (args.length !== 1) throw new UsageError(`Usage: teler ${FOLLOW_USAGE}`)
+    const dashboardId = parseControlInput(dashboardIdSchema, args[0], 'dashboard ID')
+    const result = await client.json('/api/dashboard-follows', followMutationResponseSchema, {
+      method: 'POST',
+      body: JSON.stringify({
+        organizationId,
+        scheduleId: input.scheduleId,
+        dashboardId,
+        binding: followBinding(input),
+        title: input.title ?? input.slot,
+      }),
+    })
+    if (output.json) emitJson(output, result)
+    else
+      output.write(
+        `Added ${result.widgetId} to ${result.dashboardId}; each successful run of the schedule redraws it\n`
+      )
     return
   }
   if (action === 'add-widget') {

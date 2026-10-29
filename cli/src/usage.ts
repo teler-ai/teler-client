@@ -106,6 +106,8 @@ Usage:
   PDF export requires --file <html-request.json> --output <file.pdf>.
   teler dashboard create --name <name> [--org <id>] [--refresh-interval <setting>] [--json]
   teler dashboard add-widget <id> --artifact <id> --position <json> [--idempotency-key <key>] [--json]
+  teler dashboard add-widget <id> --schedule <id> --slot <slot> --chart line|bar|scatter|pie|table|number [--x <column>] [--y <column>] [--color <column>] [--title <title>] [--org <id>] [--json]
+  A widget added with --schedule follows the schedule's File: each successful run, or Run now, redraws it.
   teler dashboard update <id> --refresh-interval manual|on_change|15m|30m|1h|4h|5h|1d [--json]
   Your plan sets the shortest interval; a refusal's hint names the settings you can use.
   teler dashboard approve-refresh <id> [--approve <capability,...>] [--json]

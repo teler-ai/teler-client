@@ -182,6 +182,97 @@ describe('dashboard controls', () => {
     expect(calls).toBe(0)
   })
 
+  it('adds a widget that follows a schedule with the binding its output is drawn with', async () => {
+    const scheduleId = `sched_${suffix}`
+    const requests: Array<{ path: string; method: string; body: unknown }> = []
+    let output = ''
+    const fetch = async (url: string, init?: RequestInit) => {
+      const path = new URL(url).pathname
+      const method = init?.method ?? 'GET'
+      requests.push({
+        path,
+        method,
+        body: init?.body ? (JSON.parse(String(init.body)) as unknown) : undefined,
+      })
+      return Response.json({ widgetId, dashboardId }, { status: 201 })
+    }
+    expect(
+      await main(
+        [
+          'dashboard',
+          'add-widget',
+          dashboardId,
+          '--schedule',
+          scheduleId,
+          '--slot',
+          'result',
+          '--chart',
+          'line',
+          '--x',
+          'date',
+          '--y',
+          'yhat',
+          '--color',
+          'category',
+          '--org',
+          organizationId,
+          '--json',
+        ],
+        { env, fetch, writeOut: (text) => (output += text) }
+      )
+    ).toBe(0)
+    expect(requests).toEqual([
+      {
+        path: '/api/dashboard-follows',
+        method: 'POST',
+        body: {
+          organizationId,
+          scheduleId,
+          dashboardId,
+          binding: {
+            schemaVersion: 1,
+            slot: 'result',
+            renderer: 'chart',
+            config: { type: 'line', encoding: { x: 'date', y: 'yhat', color: 'category' } },
+          },
+          title: 'result',
+        },
+      },
+    ])
+    expect(JSON.parse(output)).toEqual({ widgetId, dashboardId })
+    // A field a chart lacks or can't use is refused, by name, before any request.
+    for (const [extra, message] of [
+      [['--chart', 'bar', '--x', 'date'], 'A bar chart needs --x and --y'],
+      [
+        ['--chart', 'pie', '--x', 'category', '--y', 'yhat', '--color', 'date'],
+        'Only a line, bar or scatter chart takes --color',
+      ],
+      [['--chart', 'table', '--x', 'date'], 'A table takes no --x, --y or --color'],
+      [['--chart', 'number', '--x', 'date'], 'A number takes only --y'],
+    ] as const) {
+      let stderr = ''
+      expect(
+        await main(
+          [
+            'dashboard',
+            'add-widget',
+            dashboardId,
+            '--schedule',
+            scheduleId,
+            '--slot',
+            'result',
+            '--org',
+            organizationId,
+            ...extra,
+          ],
+          { env, fetch, writeErr: (text) => (stderr += text) }
+        )
+      ).toBe(2)
+      expect(stderr).toContain(message)
+    }
+    expect(requests).toHaveLength(1)
+  })
+
   it('redacts normal API refusal bodies and query values', async () => {
     let stderr = ''
     expect(
