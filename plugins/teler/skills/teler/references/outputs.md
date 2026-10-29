@@ -85,4 +85,6 @@ A post is a written report with its charts, shared in the organization's feed.
 - Read them with `post list|get` and `post comments <post-id>`; `post delete <post-id> --yes`
   deletes one.
 - `teler post translate <post-id> --languages fr,de --json` translates your saved post into other
-  languages (`en`, `ca`, `es`, `fr`, `it`, `de`, `pt`); each language costs credits.
+  languages (`en`, `ca`, `es`, `fr`, `it`, `de`, `pt`); each language costs credits. Its result
+  lists `translated`, `failed` (with a code), `already` (the post was already in that language,
+  which is now its main one; do not retry) and `skipped` (its main language).

@@ -554,9 +554,10 @@ files it shows (`artifactIds`): `{"chatId":"<chat-id>","title":"Q3 revenue","con
 `post generate <id> --file <json-file>` has Teler's agent draft a post's content.
 `post translate <id> --languages fr,de` has Teler translate your own post's saved text
 into other languages: `en`, `ca`, `es`, `fr`, `it`, `de` or `pt`, up to six at a time.
-It reports each language as translated, failed with a code (`INSUFFICIENT_CREDITS`,
-`TRANSLATION_FAILED`, `ALREADY_IN_LANGUAGE`) or skipped (the post's main language), and
-exits non-zero when none was translated. Each language costs credits; translating a
+It reports each language as translated, failed with a code (`INSUFFICIENT_CREDITS` or
+`TRANSLATION_FAILED`), already in that language (the text was read, and that language is
+now the post's main one) or skipped (the post's main language, at no cost). It exits
+non-zero when a language failed and none was translated. Each language costs credits; translating a
 language again replaces its earlier translation, hand edits included. `post get <id>
 --include metadata` shows every translation and whether it is out of date. This needs a
 server that translates posts; older servers refuse it.

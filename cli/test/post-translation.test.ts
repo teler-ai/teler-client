@@ -66,6 +66,7 @@ describe('post translate', () => {
       language: 'en',
       translated: ['fr', 'de'],
       failed: [],
+      already: [],
       skipped: [],
       translations: [translation('fr'), translation('de'), translation('it', 'out_of_date')],
     })
@@ -108,10 +109,8 @@ describe('post translate', () => {
     expect(result.exitCode).toBe(1)
     expect(JSON.parse(result.stdout)).toMatchObject({
       translated: [],
-      failed: [
-        { language: 'fr', code: 'TRANSLATION_FAILED' },
-        { language: 'de', code: 'ALREADY_IN_LANGUAGE' },
-      ],
+      failed: [{ language: 'fr', code: 'TRANSLATION_FAILED' }],
+      already: ['de'],
     })
     expect(JSON.parse(result.stderr)).toEqual({
       error: {
@@ -120,6 +119,27 @@ describe('post translate', () => {
         retryable: false,
       },
     })
+  })
+
+  it('reports a post already in the asked language as a notice, not a failure', async () => {
+    const result = await translate([POST, '--languages', 'fr', '--org', ORG], () =>
+      Response.json({
+        language: 'fr',
+        translations: [],
+        failed: [{ language: 'fr', code: 'ALREADY_IN_LANGUAGE' }],
+      })
+    )
+    // The server read the text and charged for it: retrying would charge again.
+    expect(result.exitCode).toBe(0)
+    expect(JSON.parse(result.stdout)).toMatchObject({ translated: [], failed: [], already: ['fr'] })
+  })
+
+  it('succeeds with nothing to do when only the main language is asked for', async () => {
+    const result = await translate([POST, '--languages', 'en', '--org', ORG], () =>
+      Response.json({ language: 'en', translations: [] })
+    )
+    expect(result.exitCode).toBe(0)
+    expect(JSON.parse(result.stdout)).toMatchObject({ translated: [], failed: [], skipped: ['en'] })
   })
 
   it('never repeats an unknown failure code', async () => {

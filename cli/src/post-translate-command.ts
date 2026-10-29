@@ -6,7 +6,10 @@ import { emitJson } from './command-output'
 import { ApiError, CommandError, UsageError } from './errors'
 import { resourceIdSchema, resourcePath } from './read-resources'
 
-/** The languages a post can be in; a post translates into the others, a few at a time. */
+/**
+ * The languages a post can be in; a post translates into the others, a few at a time. This mirrors
+ * the server's list: a language it adds later is refused here until the CLI lists it.
+ */
 export const POST_LANGUAGES = ['en', 'ca', 'es', 'fr', 'it', 'de', 'pt'] as const
 const MAX_LANGUAGES = POST_LANGUAGES.length - 1
 
@@ -87,8 +90,14 @@ export async function runPostTranslateCommand(
   const languages = parseLanguages(raw)
   const path = await resourcePath(client, `post/${postId}/translations`, organizationId)
   const result = await requestTranslations(client, path, languages)
-  const failed = (result.failed ?? []).filter(({ language }) => languages.includes(language))
-  const failedLanguages = new Set(failed.map(({ language }) => language))
+  const asked = (result.failed ?? []).filter(({ language }) => languages.includes(language))
+  // Already in that language: the text was read (and charged) and that language is now the post's
+  // main one. Nothing to retry, so it is reported apart from the failures.
+  const already = asked
+    .filter(({ code }) => code === 'ALREADY_IN_LANGUAGE')
+    .map(({ language }) => language)
+  const failed = asked.filter(({ code }) => code !== 'ALREADY_IN_LANGUAGE')
+  const failedLanguages = new Set(asked.map(({ language }) => language))
   const made = new Set(result.translations.map(({ language }) => language))
   const translated = languages.filter(
     (code) => !failedLanguages.has(code) && code !== result.language && made.has(code)
@@ -102,6 +111,7 @@ export async function runPostTranslateCommand(
       language: result.language,
       translated,
       failed,
+      already,
       skipped,
       translations: result.translations,
     })
@@ -111,6 +121,8 @@ export async function runPostTranslateCommand(
       output.write(
         `Not translated: ${failed.map(({ language, code }) => `${language} (${code})`).join(', ')}.\n`
       )
+    for (const code of already)
+      output.write(`Already in ${code}: that is now the post's main language.\n`)
     for (const code of skipped)
       output.write(
         code === result.language
