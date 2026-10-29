@@ -149,11 +149,26 @@ describe('keeping the installed Teler skill current', () => {
     await expect(stat(join(home, '.local', 'state', 'teler'))).rejects.toThrow()
   })
 
-  it('never fails or slows a command it cannot check', async () => {
+  it('never fails a command it cannot check', async () => {
     const home = await temporary()
     await mkdir(join(home, '.claude', 'skills', 'teler', 'SKILL.md'), { recursive: true })
     await writeFile(join(home, '.local'), 'not a folder')
     expect(await sync(['chat', 'list'], home)).toBe('')
+  })
+
+  it('tries again on the next command when a copy could not be checked', async () => {
+    const home = await temporary()
+    const claude = join(home, '.claude', 'skills', 'teler')
+    const codex = join(home, '.agents', 'skills', 'teler')
+    await mkdir(join(claude, 'SKILL.md'), { recursive: true })
+    await installAs(codex, '0.1.0')
+    expect(await sync(['chat', 'list'], home)).toBe('')
+    expect(await readFile(join(codex, 'SKILL.md'), 'utf8')).toBe(renderTelerSkill('0.2.0'))
+
+    await rm(join(claude, 'SKILL.md'), { recursive: true })
+    await installAs(claude, '0.1.0')
+    expect(await sync(['chat', 'list'], home)).toBe('')
+    expect(await readFile(join(claude, 'SKILL.md'), 'utf8')).toBe(renderTelerSkill('0.2.0'))
   })
 
   it('runs before an ordinary command without touching its output', async () => {

@@ -55,9 +55,16 @@ export async function syncInstalledSkills(
     // A hint owed from a quiet command is checked again: the copy may be current by now.
     if (marker?.version === current && !(marker.hint && forPerson)) return
     const kept: string[] = []
-    for (const agent of ['claude', 'codex'] as const)
-      if ((await updateOlderSkill(agent, deps.env, current).catch(() => null)) === 'kept')
-        kept.push(AGENTS[agent])
+    let failed = false
+    for (const agent of ['claude', 'codex'] as const) {
+      const result = await updateOlderSkill(agent, deps.env, current).catch(() => {
+        failed = true
+        return null
+      })
+      if (result === 'kept') kept.push(AGENTS[agent])
+    }
+    // Without a marker, the next command checks again.
+    if (failed) return
     const hint = kept.length > 0 && forPerson
     await mkdir(dirname(path), { recursive: true, mode: 0o700 })
     await writeFile(path, JSON.stringify({ version: current, hint: kept.length > 0 && !hint }), {
@@ -68,6 +75,6 @@ export async function syncInstalledSkills(
         `teler: Kept your changed Teler skill for ${kept.join(' and ')}. Run \`teler agent setup --force\` to replace it with this version.\n`
       )
   } catch {
-    // An unreadable skill folder or state file leaves the skill for `teler agent setup`.
+    // Without a writable state folder the next command checks again; this one goes on.
   }
 }
