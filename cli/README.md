@@ -303,7 +303,7 @@ never cancels a dispatched run. Without it, `--wait` waits for the execution lim
 plus two minutes (at least 180 seconds).
 `--wait --json` emits an initial receipt and a terminal receipt as NDJSON. Keep
 the run ID for `run get`, `run wait`, or `run cancel`. Receipts include the chat,
-status, charged credits, bounded output, and the IDs and slugs of the charts, tables and files it made. A `reconciling`
+status, charged credits, bounded output, and the IDs and slugs of the charts, tables and files it made (`artifacts`). A `reconciling`
 run is still being settled and can still hold credits.
 
 SQL returns bounded JSON rows with `truncated`; data metadata uses `nextOffset`.

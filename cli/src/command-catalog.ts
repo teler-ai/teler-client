@@ -111,7 +111,7 @@ export const CLI_COMMANDS: readonly CliCommand[] = [
   command(
     'run.get',
     'run get <run-id> [--org <id>] [--json]',
-    "Read a run's receipt: status, output, charged credits, the charts, tables and files it made and, when it failed, errorCode and errorDetail.",
+    "Read a run's receipt: status, output, charged credits, the charts, tables and files it made (artifacts) and, when it failed, errorCode and errorDetail.",
     RUN_SELECTION
   ),
   command(

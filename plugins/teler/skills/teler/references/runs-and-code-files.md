@@ -19,7 +19,7 @@ print(df)
 - `get_connection()` reads through DuckDB. `teler.execute(sql)` runs only `INSERT`, `UPDATE`
   or `DELETE` on organization tables, and only where the person's Agent Access allows changes
   without asking.
-- Charts the code makes come back as results (IDs in the receipt); see [outputs](outputs.md).
+- Charts the code makes come back as results (IDs in the receipt's `artifacts`); see [outputs](outputs.md).
 - `--execution-timeout <seconds>` (default 60, up to 3600 or the plan's limit) bounds the run.
   `--timeout` bounds only your waiting: the run goes on.
 - Runs cost credits, at most `--max-credits`, and need a paid plan; a refusal's `hint` says what
