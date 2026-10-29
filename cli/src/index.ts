@@ -32,6 +32,7 @@ import { runDashboardCommand } from './dashboard-command'
 import { runScheduleCommand } from './schedule-command'
 import { runAgentOwnerCommand } from './agent-owner-command'
 import { steerTurn } from './steer'
+import { syncInstalledSkills } from './skill-sync'
 import { runUpdateCommand } from './update'
 import { startUpdateNotice } from './update-check'
 import { writeInfo } from './usage'
@@ -289,6 +290,9 @@ export async function main(argv: readonly string[], deps: MainDeps = {}): Promis
 }
 
 if (import.meta.main) {
+  await syncInstalledSkills(process.argv.slice(2), { env: process.env }, (text) =>
+    process.stderr.write(text)
+  )
   const notice = startUpdateNotice(process.argv.slice(2), { env: process.env })
   process.exitCode = await main(process.argv.slice(2))
   await notice.finish((text) => process.stderr.write(text))

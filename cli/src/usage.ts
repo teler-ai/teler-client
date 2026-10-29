@@ -8,6 +8,8 @@ TELER_TOKEN may provide a token without storing it in the OS credential store.
 TELER_CREDENTIAL_STORE=file enables a private file store for headless hosts.
 TELER_ACCESS_TOKEN passes Cloudflare Access on TELER_URL (sent only there).
 Release builds check for updates once a day; TELER_NO_UPDATE_CHECK=1 turns that off.
+After an update, the Teler skill \`agent setup\` wrote in your user folders is refreshed
+on the next command; TELER_NO_SKILL_SYNC=1 turns that off.
 
 Usage:
   teler --version

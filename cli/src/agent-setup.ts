@@ -14,6 +14,7 @@ import type { Output } from './chats'
 import { assertNoFlags, takeFlag, takeOption } from './command-args'
 import { emitJson } from './command-output'
 import { CommandError, UsageError } from './errors'
+import { isNewer } from './releases'
 
 /** The Agent Skills file this package ships in `skills/teler/SKILL.md`. */
 export const TELER_SKILL: string = skill
@@ -29,11 +30,12 @@ export const TELER_SKILL_GUIDES: Readonly<Record<string, string>> = {
 
 const USAGE =
   'Usage: teler agent setup [--claude] [--codex] [--project <dir>] [--print | --dry-run] [--force] [--json]'
-const AGENTS = { claude: 'Claude Code', codex: 'Codex' } as const
-type Agent = keyof typeof AGENTS
+export const AGENTS = { claude: 'Claude Code', codex: 'Codex' } as const
+export type Agent = keyof typeof AGENTS
 type Action = 'installed' | 'updated' | 'unchanged' | 'kept' | 'replaced'
 
 const DIGEST_LINE = /^ {2}sha256: ([0-9a-f]{64})\n/m
+const GENERATOR_LINE = /^ {2}generator: teler agent setup (\S+)\n/m
 const GUIDE_LINK = /\]\((references\/[a-z0-9-]+\.md)\)/g
 const sha256 = (text: string) => createHash('sha256').update(text).digest('hex')
 // A checkout with Windows line endings must render the same files.
@@ -166,6 +168,24 @@ async function install(
   const current = new Set(files.map(([path]) => path))
   for (const [path] of installed.guides)
     if (!current.has(path)) await unlink(join(folder, path)).catch(() => undefined)
+}
+
+/**
+ * Brings the user-folder copy an older setup wrote up to `cliVersion`; a copy changed since is
+ * `kept` as it is. Copies setup did not write, and current or newer ones, are left alone (null).
+ */
+export async function updateOlderSkill(
+  agent: Agent,
+  env: NodeJS.ProcessEnv,
+  cliVersion: string = version
+): Promise<'updated' | 'kept' | null> {
+  const folder = skillFolder(agent, env, undefined)
+  const installed = await readInstalled(folder)
+  const writtenBy = installed && GENERATOR_LINE.exec(installed.skill)?.[1]
+  if (!installed || !writtenBy || !isNewer(cliVersion, writtenBy)) return null
+  if (!isOwnCopy(installed)) return 'kept'
+  await install(folder, renderTelerSkillFiles(cliVersion), installed, 'updated')
+  return 'updated'
 }
 
 const PLAIN: Record<Action, (agent: string) => string> = {

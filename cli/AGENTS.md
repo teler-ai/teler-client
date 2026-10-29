@@ -33,7 +33,10 @@ fails when the usage text (`src/usage.ts`) and the catalog differ. By area:
   safety rules, links to the guides) and each guide short, public and in step with
   the commands. A new guide must be imported in `src/agent-setup.ts`, linked from
   `SKILL.md` and copied to `../plugins/teler/skills/teler/`; the tests check all
-  three. Reruns report `unchanged`.
+  three. Reruns report `unchanged`. After an update, `src/skill-sync.ts` refreshes the
+  user-folder copies an older setup wrote before the next command, once per version (a
+  marker in the state folder), silently; it keeps changed copies and hints once on a
+  terminal without `--json`. Project copies are not recorded. `TELER_NO_SKILL_SYNC` turns it off.
 - Data and runs: `project list`, `data list|describe|query`, `run python|get|wait|cancel`,
   `artifact create|get|source`.
 - Files: `files list|read|search|write|mkdir|move|copy|delete|restore|trash` (`delete` moves

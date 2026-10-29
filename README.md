@@ -30,9 +30,10 @@ running. The [CLI guide](cli/README.md#what-it-can-do) maps every command, and
 ## Use Teler from a coding agent
 
 `teler agent setup` installs the Teler skill for Claude Code and Codex, offline:
-a short `SKILL.md` with the core loop and safety rules, and a guide per area. The
-same skill is packaged as a plugin in [`plugins/teler/`](plugins/teler/). See
-[Coding agents](cli/README.md#coding-agents).
+a short `SKILL.md` with the core loop and safety rules, and a guide per area.
+After a CLI update, the next `teler` command refreshes the skill it installed in
+your user folders. The same skill is packaged as a plugin in
+[`plugins/teler/`](plugins/teler/). See [Coding agents](cli/README.md#coding-agents).
 
 ## Getting started
 
