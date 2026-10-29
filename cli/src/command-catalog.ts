@@ -102,7 +102,7 @@ export const CLI_COMMANDS: readonly CliCommand[] = [
   command(
     'artifact.create',
     `artifact create --file <chart.json> ${SUBMIT}`,
-    'Import a static bar, line, table or metric chart from a JSON file as an artifact. Costs credits, at most --max-credits.',
+    'Import a static bar, line, table or metric chart from a JSON file; it becomes a chart or table in a chat. Costs credits, at most --max-credits.',
     {
       inputSchema: runSubmitInputJsonSchemas.artifact,
       flags: { ...RUN_FLAGS, 'task.artifact': '--file' },
@@ -111,7 +111,7 @@ export const CLI_COMMANDS: readonly CliCommand[] = [
   command(
     'run.get',
     'run get <run-id> [--org <id>] [--json]',
-    "Read a run's receipt: status, output, charged credits, artifacts and, when it failed, errorCode and errorDetail.",
+    "Read a run's receipt: status, output, charged credits, the charts, tables and files it made (artifacts) and, when it failed, errorCode and errorDetail.",
     RUN_SELECTION
   ),
   command(
@@ -129,7 +129,7 @@ export const CLI_COMMANDS: readonly CliCommand[] = [
   command(
     'artifact.get',
     'artifact get <artifact-id> --chat <chat-id-or-url> [--slug <slug>] [--download --output <file>] [--json]',
-    "Show an artifact's metadata, or download its bytes to a new local file.",
+    'Show the metadata of one chart, table, model or data file a chat made, or download its bytes to a new local file.',
     {
       inputSchema: artifactGetInputJsonSchema,
       flags: {
@@ -144,7 +144,7 @@ export const CLI_COMMANDS: readonly CliCommand[] = [
   command(
     'artifact.source',
     'artifact source <artifact-id> [--org <id>] [--json]',
-    'Show the source recorded for an artifact and when it was produced.'
+    'Show the source recorded for a chart, table or model and when it was produced.'
   ),
   command(
     'chat.list',
@@ -155,7 +155,7 @@ export const CLI_COMMANDS: readonly CliCommand[] = [
   command(
     'chat.artifacts',
     'chat artifacts <chat-id-or-url> [--json]',
-    "List a chat's artifacts with their IDs and slugs."
+    'List what a chat made (charts, tables, models and data files) with their IDs and slugs.'
   ),
   command(
     'chat.seen',

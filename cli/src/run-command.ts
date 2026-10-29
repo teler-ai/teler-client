@@ -110,7 +110,7 @@ async function submitRun(
     try {
       artifact = JSON.parse(source) as unknown
     } catch {
-      throw new UsageError('--file must contain a valid artifact JSON object')
+      throw new UsageError('--file must contain a valid chart JSON object')
     }
   }
   const task =

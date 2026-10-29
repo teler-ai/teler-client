@@ -60,6 +60,6 @@ Read the one the task needs:
 - [Data and queries](references/data-and-queries.md): projects, tables, SQL, Files, uploads and folder sync.
 - [Runs and code Files](references/runs-and-code-files.md): Python runs, receipts and failures; saving tested code as a code File.
 - [File schedules](references/file-schedules.md): run a code File daily, weekly or monthly under an approved monthly cap.
-- [Outputs](references/outputs.md): artifacts, dashboards and posts.
+- [Outputs](references/outputs.md): charts, tables and other results, dashboards and posts.
 - [Agents and chats](references/agents-and-chats.md): Teler's analyst, approvals, Teler Agents and their schedules, knowledge.
 - [Auth and access](references/auth-and-access.md): sign-in, origins, organizations, Agent Access and updates.

@@ -48,7 +48,7 @@ test('artifact metadata resolves exact identity and strips storage details', asy
   expect(output).not.toContain('storageKey')
 })
 
-test('invalid input never fetches and mismatched artifact metadata is rejected', async () => {
+test('invalid input never fetches and mismatched metadata is rejected', async () => {
   let calls = 0
   const client = new TelerApiClient(new URL('https://app.example.test'), 'token', async () => {
     calls++
@@ -76,7 +76,7 @@ test('invalid input never fetches and mismatched artifact metadata is rejected',
   ).rejects.toMatchObject({ status: 502 })
 })
 
-test('a truncated list provides a recovery path instead of claiming the artifact is missing', async () => {
+test('a truncated list provides a recovery path instead of claiming the chart or file is missing', async () => {
   const client = new TelerApiClient(new URL('https://app.example.test'), 'token', async () =>
     Response.json({ artifacts: [], truncated: true })
   )

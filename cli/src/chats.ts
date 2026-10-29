@@ -158,7 +158,7 @@ export async function sendMessage(
         organizationId,
         mindsetName: 'default',
         ...(options.title ? { title: options.title } : {}),
-        // Omission preserves the Profile default; an explicit selection freezes the new chat.
+        // Omission preserves the answer setup default; an explicit selection freezes the new chat.
         ...(options.modelSet ? { modelSetOverride: options.modelSet } : {}),
       }),
       signal: options.signal,
