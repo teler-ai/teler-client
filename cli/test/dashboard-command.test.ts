@@ -240,11 +240,17 @@ describe('dashboard controls', () => {
       },
     ])
     expect(JSON.parse(output)).toEqual({ widgetId, dashboardId })
-    // A chart without its fields, or a split on a pie, is refused before any request.
-    for (const extra of [
-      ['--chart', 'bar', '--x', 'date'],
-      ['--chart', 'pie', '--x', 'category', '--y', 'yhat', '--color', 'date'],
-    ])
+    // A field a chart lacks or can't use is refused, by name, before any request.
+    for (const [extra, message] of [
+      [['--chart', 'bar', '--x', 'date'], 'A bar chart needs --x and --y'],
+      [
+        ['--chart', 'pie', '--x', 'category', '--y', 'yhat', '--color', 'date'],
+        'Only a line, bar or scatter chart takes --color',
+      ],
+      [['--chart', 'table', '--x', 'date'], 'A table takes no --x, --y or --color'],
+      [['--chart', 'number', '--x', 'date'], 'A number takes only --y'],
+    ] as const) {
+      let stderr = ''
       expect(
         await main(
           [
@@ -259,9 +265,11 @@ describe('dashboard controls', () => {
             organizationId,
             ...extra,
           ],
-          { env, fetch, writeErr: () => undefined }
+          { env, fetch, writeErr: (text) => (stderr += text) }
         )
       ).toBe(2)
+      expect(stderr).toContain(message)
+    }
     expect(requests).toHaveLength(1)
   })
 

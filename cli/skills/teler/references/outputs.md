@@ -41,7 +41,8 @@ teler dashboard archive <dashboard-id> --yes --json
   Each successful run of the schedule, or Run now, redraws it at no cost; test runs never do. Only
   the schedule's owner can add it, to a dashboard in the schedule's project, and the File needs one
   successful run first. Charts: `line`, `bar`, `scatter`, `pie` (`--x` names, `--y` values),
-  `table`, `number` (`--y` picks the value). `get` shows the widget's `follow` state.
+  `table`, `number` (`--y` picks the value). It takes no idempotency key: after a lost answer,
+  check `dashboard get` before adding it again.
 - To change what a dashboard shows (new or reworked charts, filters, analyses), ask Teler's
   analyst with `teler send`, naming the dashboard. The commands here create a dashboard, pin
   charts you already have, set its refresh and share it.

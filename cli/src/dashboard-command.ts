@@ -11,6 +11,7 @@ import {
   dashboardRefreshApprovalSchema,
   followBinding,
   followDashboardWidgetSchema,
+  followFieldsProblem,
   followMutationResponseSchema,
   REFRESH_CHOICES,
   refreshIntervalSchema,
@@ -81,6 +82,8 @@ export async function runDashboardCommand(
       },
       'dashboard follow options'
     )
+    const problem = followFieldsProblem(input)
+    if (problem) throw new UsageError(problem)
     const organizationId = await resolveOrganizationId(client, takeOption(args, '--org'))
     assertNoFlags(args)
     if (args.length !== 1) throw new UsageError(`Usage: teler ${FOLLOW_USAGE}`)

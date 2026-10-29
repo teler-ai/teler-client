@@ -83,22 +83,35 @@ const columnSchema = z.string().trim().min(1).max(255)
  * its owner's Run now, redraws the chart. Only the schedule's owner can connect it, to a
  * dashboard in the schedule's project.
  */
-export const followDashboardWidgetSchema = z
-  .object({
-    scheduleId: z.string().regex(new RegExp(`^sched_${idSuffix}$`)),
-    slot: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/),
-    chart: z.enum(FOLLOW_CHARTS),
-    x: columnSchema.optional(),
-    y: columnSchema.optional(),
-    color: columnSchema.optional(),
-    title: z.string().trim().min(1).max(255).optional(),
-  })
-  .refine(
-    ({ chart, x, y }) =>
-      chart === 'table' || chart === 'number' || (x !== undefined && y !== undefined),
-    'A line, bar, scatter or pie chart needs --x and --y'
-  )
-  .refine(({ chart, color }) => color === undefined || ['line', 'bar', 'scatter'].includes(chart))
+export const followDashboardWidgetSchema = z.object({
+  scheduleId: z.string().regex(new RegExp(`^sched_${idSuffix}$`)),
+  slot: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/),
+  chart: z.enum(FOLLOW_CHARTS),
+  x: columnSchema.optional(),
+  y: columnSchema.optional(),
+  color: columnSchema.optional(),
+  title: z.string().trim().min(1).max(255).optional(),
+})
+
+/** Why these fields don't make this chart, in words a person can act on; null when they do. */
+export function followFieldsProblem(input: z.infer<typeof followDashboardWidgetSchema>) {
+  const { chart, x, y, color } = input
+  if (chart === 'table')
+    return x !== undefined || y !== undefined || color !== undefined
+      ? 'A table takes no --x, --y or --color: it shows every column.'
+      : null
+  if (chart === 'number')
+    return x !== undefined || color !== undefined
+      ? 'A number takes only --y, the value to show.'
+      : null
+  if (x === undefined || y === undefined)
+    return chart === 'pie'
+      ? 'A pie chart needs --x (names) and --y (values).'
+      : `A ${chart} chart needs --x and --y.`
+  if (color !== undefined && chart === 'pie')
+    return 'Only a line, bar or scatter chart takes --color.'
+  return null
+}
 
 /** The renderer binding the server reads a followed output with. */
 export function followBinding(input: z.infer<typeof followDashboardWidgetSchema>) {
