@@ -365,12 +365,12 @@ describe('teler status, watch, chat seen, agent runs and notifications', () => {
     expect(output).toBe(
       line('agent_run_1') +
         '\tSkipped for safety: 2 actions after it read your data. A run started by hand never ' +
-        "does these after reading data. The Agent's scheduled runs may still make and change " +
-        'Files and tables after a read, as approved for the schedule (teler schedule create ' +
+        "does these after reading data. After a read, only the Agent's scheduled runs may still " +
+        'create or update Files and tables, as approved for the schedule (teler schedule create ' +
         `--agent ${AGENT}); for anything else, ask in a chat, where each step is approved.\n` +
         line('agent_run_2') +
         '\tSkipped for safety: 1 action after it read your data. A run on its own never does ' +
-        "these after reading data, except making and changing Files and tables its schedule's " +
+        "these after reading data, except creating or updating Files and tables its schedule's " +
         'approval covers; for anything else, ask in a chat, where each step is approved.\n' +
         line('agent_run_3') +
         line('agent_run_4') +

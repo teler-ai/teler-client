@@ -258,10 +258,11 @@ key. It takes `--project <id>`, the project the run works in (without it, the
 run sees no project's tables), and `--approve <capability,...>` for what the
 Agent asks for. After it reads data, a run started this way skips anything that
 would need someone's approval, saving a File or table included, because what it
-read could steer it. The Agent's scheduled runs may still make and change Files
-and tables after a read, as approved for the schedule. `agent spend-cap` reads,
-or with `--monthly-credits <n> --yes` or `--none` sets, how many credits a month
-of File schedule spend your personal Agent may approve for you.
+read could steer it. After a read, only the Agent's scheduled runs may still
+create or update Files and tables, as approved for the schedule.
+`agent spend-cap` reads, or with `--monthly-credits <n> --yes` or `--none` sets,
+how many credits a month of File schedule spend your personal Agent may approve
+for you.
 
 A scheduled run that needed something it asks for first, with nobody there,
 skips it and goes on. `agent runs --json` lists those in each run's

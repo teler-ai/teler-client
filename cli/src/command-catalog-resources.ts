@@ -252,7 +252,7 @@ export const RESOURCE_COMMANDS: readonly CliCommand[] = [
   command(
     'agent.run',
     'agent run <agent-id> --idempotency-key <key> [--prompt <text>] [--project <id>] [--approve <capability,...>] [--json]',
-    "Run a Teler Agent now; --approve approves what it asks for, and --project picks the project it runs in (without it, it sees no project's tables). After reading data, a run started now skips what would need someone's approval, saving included; its scheduled runs may still make and change Files and tables. Costs credits, as in the app; the same key again starts nothing new."
+    "Run a Teler Agent now; --approve approves what it asks for, and --project picks the project it runs in (without it, it sees no project's tables). After reading data, a run started now skips what would need someone's approval, saving included; only its scheduled runs may still create or update Files and tables then. Costs credits, as in the app; the same key again starts nothing new."
   ),
   command(
     'agent.spend-cap',

@@ -43,7 +43,7 @@ const ASK_IN_CHAT = 'for anything else, ask in a chat, where each step is approv
 
 /**
  * What a run skipped for safety after it read data (what it read could steer it), and what to do
- * instead. Only a schedule's approval covers making and changing Files and tables after a read.
+ * instead. Only a schedule's approval covers creating or updating Files and tables after a read.
  */
 function skippedForSafety(run: AgentRun): string | undefined {
   const count = run.skippedActions?.filter((action) => action.reason === 'untrusted').length ?? 0
@@ -52,15 +52,15 @@ function skippedForSafety(run: AgentRun): string | undefined {
   // Run now and a chat's runAgent start by hand; schedules and event starts run on their own.
   if (run.triggerType === 'manual' || run.triggerType === 'chat')
     return (
-      `${lead} A run started by hand never does these after reading data. The Agent's ` +
-      'scheduled runs may still make and change Files and tables after a read, as approved ' +
+      `${lead} A run started by hand never does these after reading data. After a read, only ` +
+      "the Agent's scheduled runs may still create or update Files and tables, as approved " +
       `for the schedule (teler schedule create --agent ${run.agentId ?? '<agent-id>'}); ` +
       `${ASK_IN_CHAT}.`
     )
   if (run.triggerType === 'schedule')
     return (
-      `${lead} A run on its own never does these after reading data, except making and ` +
-      `changing Files and tables its schedule's approval covers; ${ASK_IN_CHAT}.`
+      `${lead} A run on its own never does these after reading data, except creating or ` +
+      `updating Files and tables its schedule's approval covers; ${ASK_IN_CHAT}.`
     )
   // A run another run started holds no more than it, and never a schedule's approval.
   return `${lead} A run on its own never does these after reading data; ask for them in a chat, where each step is approved.`
