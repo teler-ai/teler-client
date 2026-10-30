@@ -57,10 +57,13 @@ function skippedForSafety(run: AgentRun): string | undefined {
       `for the schedule (teler schedule create --agent ${run.agentId ?? '<agent-id>'}); ` +
       `${ASK_IN_CHAT}.`
     )
-  return (
-    `${lead} A run on its own never does these after reading data, except making and ` +
-    `changing Files and tables its schedule's approval covers; ${ASK_IN_CHAT}.`
-  )
+  if (run.triggerType === 'schedule')
+    return (
+      `${lead} A run on its own never does these after reading data, except making and ` +
+      `changing Files and tables its schedule's approval covers; ${ASK_IN_CHAT}.`
+    )
+  // A run another run started holds no more than it, and never a schedule's approval.
+  return `${lead} A run on its own never does these after reading data; ask for them in a chat, where each step is approved.`
 }
 
 const notificationsSchema = z.object({

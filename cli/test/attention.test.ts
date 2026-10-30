@@ -349,6 +349,7 @@ describe('teler status, watch, chat seen, agent runs and notifications', () => {
       run('agent_run_1', 'manual', [skipped('untrusted'), skipped('untrusted')]),
       run('agent_run_2', 'schedule', [skipped('untrusted')]),
       run('agent_run_3', 'manual', [skipped('cap')]),
+      run('agent_run_4', 'parent', [skipped('untrusted')]),
     ]
     const deps = {
       store,
@@ -371,7 +372,10 @@ describe('teler status, watch, chat seen, agent runs and notifications', () => {
         '\tSkipped for safety: 1 action after it read your data. A run on its own never does ' +
         "these after reading data, except making and changing Files and tables its schedule's " +
         'approval covers; for anything else, ask in a chat, where each step is approved.\n' +
-        line('agent_run_3')
+        line('agent_run_3') +
+        line('agent_run_4') +
+        '\tSkipped for safety: 1 action after it read your data. A run on its own never does ' +
+        'these after reading data; ask for them in a chat, where each step is approved.\n'
     )
 
     output = ''
