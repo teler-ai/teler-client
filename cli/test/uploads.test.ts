@@ -136,6 +136,7 @@ describe('upload commands', () => {
       const filePath = join(directory, 'sample.csv')
       await writeFile(filePath, new Uint8Array(size))
       const parts: Array<{
+        inMemory: boolean
         size: number
         contentLength: string | null
         contentType: string | null
@@ -155,7 +156,9 @@ describe('upload commands', () => {
           }
           if (init?.method === 'PUT') {
             parts.push({
-              size: (init.body as Blob).size,
+              // Compiled executables crash sending a file-backed Blob body.
+              inMemory: init.body instanceof Uint8Array,
+              size: (init.body as Uint8Array).byteLength,
               contentLength: new Headers(init.headers).get('content-length'),
               contentType: new Headers(init.headers).get('content-type'),
             })
@@ -173,6 +176,7 @@ describe('upload commands', () => {
       })
 
       const expectedSizes = size > partSize ? [partSize, 1] : [size]
+      expect(parts.every((part) => part.inMemory)).toBe(true)
       expect(parts.map((part) => part.size)).toEqual(expectedSizes)
       expect(parts.map((part) => part.contentLength)).toEqual(expectedSizes.map(String))
       expect(parts.every((part) => part.contentType === 'application/octet-stream')).toBe(true)
