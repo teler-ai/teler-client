@@ -453,7 +453,8 @@ teler dashboard create --name "Daily overview" --refresh-interval 1h --org <org-
 teler dashboard add-widget <dashboard-id> --artifact <artifact-id> \
   --position '{"x":0,"y":0,"w":4,"h":3}' --idempotency-key overview.chart.1 --json
 teler dashboard add-widget <dashboard-id> --schedule <schedule-id> --slot result \
-  --chart line --x date --y yhat --color category --json   # follows a scheduled File
+  --chart line --x date --y yhat --color category \
+  --idempotency-key forecast.chart.1 --json                # follows a scheduled File
 teler dashboard update <dashboard-id> --refresh-interval on_change --json
 teler dashboard list --org <org-id> --limit 20 --json   # next page: --cursor <nextCursor>
 teler dashboard get <dashboard-id> --org <org-id> --json
@@ -462,8 +463,17 @@ teler dashboard archive <dashboard-id> --yes --json
 
 A widget added with `--schedule` follows a scheduled code File: each successful run of the
 schedule, or its owner's Run now, redraws its chart. Only the schedule's owner can add one, to
-a dashboard in the schedule's project. It takes no idempotency key, so after a lost answer
-check `dashboard get` before adding it again.
+a dashboard in the schedule's project. With `--idempotency-key`, adding it again with the same
+key on the same dashboard returns the widget the first call made instead of a second one; the
+same key for a different chart is refused. Servers that predate this ignore the key, so with
+those check `dashboard get` before adding it again.
+
+`dashboard get` gives each widget that follows a schedule a `follow` object: `state` is
+`following`, `paused` (the schedule reached its monthly spending cap; it resumes on its own) or
+`stopped` with a `reason` (`file_deleted`, `access_lost`, `output_changed` or
+`schedule_deleted`), and `updatedAt` is when the run its chart shows finished. Only the
+schedule's owner also gets `owner`, with the File's ID and name, the schedule, when a paused
+widget resumes (`resumesOn`) and whether a newer run failed (`failedRunAt`).
 
 Create also accepts `--description`, `--project`, and
 `--visibility private|organization`. Omitted `--org` uses the active organization.

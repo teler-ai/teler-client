@@ -37,12 +37,17 @@ teler dashboard archive <dashboard-id> --yes --json
 
 - The grid has four columns: `x` 0–3, `w` 1–4, `x + w` at most 4.
 - A chart can follow a scheduled code File instead: `teler dashboard add-widget <dashboard-id>
---schedule <schedule-id> --slot result --chart line --x date --y yhat [--color category] --json`.
+--schedule <schedule-id> --slot result --chart line --x date --y yhat [--color category]
+--idempotency-key <key> --json`.
   Each successful run of the schedule, or Run now, redraws it at no cost; test runs never do. Only
   the schedule's owner can add it, to a dashboard in the schedule's project, and the File needs one
   successful run first. Charts: `line`, `bar`, `scatter`, `pie` (`--x` names, `--y` values),
-  `table`, `number` (`--y` picks the value). It takes no idempotency key: after a lost answer,
-  check `dashboard get` before adding it again.
+  `table`, `number` (`--y` picks the value). Reuse the same `--idempotency-key` to retry: it
+  returns the widget the first call made; with another chart the key is refused.
+- In `dashboard get`, a widget that follows a schedule has `follow`: `state` `following`,
+  `paused` (monthly cap reached; resumes on its own) or `stopped` with a `reason`, and
+  `updatedAt`. Only the schedule's owner also sees `owner` (the File's name, `resumesOn`,
+  `failedRunAt`).
 - To change what a dashboard shows (new or reworked charts, filters, analyses), ask Teler's
   analyst with `teler send`, naming the dashboard. The commands here create a dashboard, pin
   charts you already have, set its refresh and share it.

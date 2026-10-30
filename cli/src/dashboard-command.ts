@@ -22,7 +22,7 @@ import { UsageError } from './errors'
 
 const REFRESH_USAGE = `--refresh-interval ${REFRESH_CHOICES.join('|')}`
 const FOLLOW_USAGE =
-  'dashboard add-widget <id> --schedule <id> --slot <slot> --chart line|bar|scatter|pie|table|number [--x <column>] [--y <column>] [--color <column>] [--title <title>] [--org <id>] [--json]'
+  'dashboard add-widget <id> --schedule <id> --slot <slot> --chart line|bar|scatter|pie|table|number [--x <column>] [--y <column>] [--color <column>] [--title <title>] [--idempotency-key <key>] [--org <id>] [--json]'
 
 function takeRefreshSetting(args: string[]) {
   const value = takeOption(args, '--refresh-interval')
@@ -79,6 +79,7 @@ export async function runDashboardCommand(
         y: takeOption(args, '--y'),
         color: takeOption(args, '--color'),
         title: takeOption(args, '--title'),
+        idempotencyKey: takeOption(args, '--idempotency-key'),
       },
       'dashboard follow options'
     )
@@ -96,6 +97,7 @@ export async function runDashboardCommand(
         dashboardId,
         binding: followBinding(input),
         title: input.title ?? input.slot,
+        ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
       }),
     })
     if (output.json) emitJson(output, result)
