@@ -75,6 +75,12 @@ A scheduled run skips what asks first when nobody is there; `teler agent runs --
 in `skippedActions` (`<n>` is its place, from 0) and `askSkipped`. Allowing, applying and caps
 act for the person: do them when they ask.
 
+`agent run` sees no project's tables without `--project <project-id>`. After it reads
+data, a run started this way skips what would need someone's approval, saving included
+(`skippedActions` reason `untrusted`), because what it read could steer it. After a read, only the
+Agent's scheduled runs may still create or update Files and tables, as approved for the schedule;
+for anything else, ask in a chat.
+
 Schedule a ready Agent at a UTC time:
 
 ```sh
