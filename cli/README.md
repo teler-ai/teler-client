@@ -252,19 +252,25 @@ teler agent apply-skipped <run-id> <n> --json
 ```
 
 `agent run` starts an Agent now, as Run now in the app does, and costs credits
-the same way. It needs `--idempotency-key <key>` (16 to 128 characters): the same
-key sent again starts nothing new, so retry a lost answer with the same key. It
-takes `--project <id>` and `--approve <capability,...>` for what the Agent asks
-for. `agent spend-cap` reads, or with `--monthly-credits <n> --yes` or `--none`
-sets, how many credits a month of File schedule spend your personal Agent may
-approve for you.
+the same way. It needs `--idempotency-key <key>` (16 to 128 characters): the
+same key sent again starts nothing new, so retry a lost answer with the same
+key. It takes `--project <id>`, the project the run works in (without it, the
+run sees no project's tables), and `--approve <capability,...>` for what the
+Agent asks for. After it reads data, a run started this way skips anything that
+would need someone's approval, saving a File or table included, because what it
+read could steer it. The Agent's scheduled runs may still make and change Files
+and tables after a read, as approved for the schedule. `agent spend-cap` reads,
+or with `--monthly-credits <n> --yes` or `--none` sets, how many credits a month
+of File schedule spend your personal Agent may approve for you.
 
 A scheduled run that needed something it asks for first, with nobody there,
 skips it and goes on. `agent runs --json` lists those in each run's
-`skippedActions` and `askSkipped`. `agent allow-and-rerun <run-id>` allows them
-(or only `--capabilities <capability,...>`) for that schedule's runs and starts
-a run now. `agent apply-skipped <run-id> <n>` applies the alert recipients a run
-kept for you, where `<n>` is the action's place in `skippedActions`, from 0.
+`skippedActions` and `askSkipped`; without `--json`, a run that skipped actions
+for safety after reading data says so under its line, with what to do instead.
+`agent allow-and-rerun <run-id>` allows them (or only
+`--capabilities <capability,...>`) for that schedule's runs and starts a run
+now. `agent apply-skipped <run-id> <n>` applies the alert recipients a run kept
+for you, where `<n>` is the action's place in `skippedActions`, from 0.
 
 ## Personal Knowledge
 

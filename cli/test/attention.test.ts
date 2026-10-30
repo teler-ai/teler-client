@@ -309,6 +309,13 @@ describe('teler status, watch, chat seen, agent runs and notifications', () => {
     expect(JSON.parse(output).runs.map((run: { id: string }) => run.id)).toEqual(['agent_run_1'])
 
     output = ''
+    expect(await main(['agent', 'runs', '--org', ORG], deps)).toBe(0)
+    expect(output).toBe(
+      `agent_run_1\trunning\t${AGENT}\t2026-10-16T09:59:00.000Z\t\n` +
+        `agent_run_2\tcompleted\t${AGENT}\t2026-10-16T09:40:00.000Z\tThree weeks behind.\n`
+    )
+
+    output = ''
     expect(await main(['notifications', '--org', ORG], deps)).toBe(0)
     const url = new URL(requests.at(-1)?.url ?? '')
     expect(url.pathname).toBe('/api/notifications')
@@ -316,5 +323,59 @@ describe('teler status, watch, chat seen, agent runs and notifications', () => {
     expect(output).toBe(
       'notif_1\tunread\tagent_completed\t2026-10-16T10:00:03.000Z\tWeekly pace finished\n'
     )
+  })
+
+  it('agent runs says why a run skipped what it did after reading data, and what to do', async () => {
+    const skipped = (reason: string) => ({
+      toolName: 'exploreData',
+      capability: null,
+      reason,
+      summary: 'Use exploreData after reading data',
+      at: '2026-10-16T09:41:00.000Z',
+    })
+    const run = (id: string, triggerType: string, skippedActions: unknown[]) => ({
+      id,
+      agentId: AGENT,
+      status: 'completed',
+      startedAt: null,
+      completedAt: '2026-10-16T09:50:00.000Z',
+      resultSummary: 'Validated; not saved.',
+      createdAt: '2026-10-16T09:40:00.000Z',
+      triggerType,
+      skippedActions,
+    })
+    let output = ''
+    const runs = [
+      run('agent_run_1', 'manual', [skipped('untrusted'), skipped('untrusted')]),
+      run('agent_run_2', 'schedule', [skipped('untrusted')]),
+      run('agent_run_3', 'manual', [skipped('cap')]),
+    ]
+    const deps = {
+      store,
+      writeOut: (text: string) => {
+        output += text
+      },
+      fetch: async () => Response.json({ runs }),
+    }
+
+    expect(await main(['agent', 'runs', '--org', ORG], deps)).toBe(0)
+    const line = (id: string) =>
+      `${id}\tcompleted\t${AGENT}\t2026-10-16T09:40:00.000Z\tValidated; not saved.\n`
+    expect(output).toBe(
+      line('agent_run_1') +
+        '\tSkipped for safety: 2 actions after it read your data. A run started by hand never ' +
+        "does these after reading data. The Agent's scheduled runs may still make and change " +
+        'Files and tables after a read, as approved for the schedule (teler schedule create ' +
+        `--agent ${AGENT}); for anything else, ask in a chat, where each step is approved.\n` +
+        line('agent_run_2') +
+        '\tSkipped for safety: 1 action after it read your data. A run on its own never does ' +
+        "these after reading data, except making and changing Files and tables its schedule's " +
+        'approval covers; for anything else, ask in a chat, where each step is approved.\n' +
+        line('agent_run_3')
+    )
+
+    output = ''
+    expect(await main(['agent', 'runs', '--org', ORG, '--json'], deps)).toBe(0)
+    expect(JSON.parse(output).runs).toEqual(runs)
   })
 })

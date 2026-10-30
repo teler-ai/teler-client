@@ -31,10 +31,37 @@ const agentRunsSchema = z.object({
         outcome: z.string().nullable().optional(),
         resultSummary: z.string().nullable().optional(),
         createdAt: z.string(),
+        triggerType: z.string().optional(),
+        skippedActions: z.array(z.object({ reason: z.string() }).passthrough()).optional(),
       })
       .passthrough()
   ),
 })
+type AgentRun = z.infer<typeof agentRunsSchema>['runs'][number]
+
+const ASK_IN_CHAT = 'for anything else, ask in a chat, where each step is approved'
+
+/**
+ * What a run skipped for safety after it read data (what it read could steer it), and what to do
+ * instead. Only a schedule's approval covers making and changing Files and tables after a read.
+ */
+function skippedForSafety(run: AgentRun): string | undefined {
+  const count = run.skippedActions?.filter((action) => action.reason === 'untrusted').length ?? 0
+  if (count === 0) return undefined
+  const lead = `Skipped for safety: ${count === 1 ? '1 action' : `${count} actions`} after it read your data.`
+  // Run now and a chat's runAgent start by hand; schedules and event starts run on their own.
+  if (run.triggerType === 'manual' || run.triggerType === 'chat')
+    return (
+      `${lead} A run started by hand never does these after reading data. The Agent's ` +
+      'scheduled runs may still make and change Files and tables after a read, as approved ' +
+      `for the schedule (teler schedule create --agent ${run.agentId ?? '<agent-id>'}); ` +
+      `${ASK_IN_CHAT}.`
+    )
+  return (
+    `${lead} A run on its own never does these after reading data, except making and ` +
+    `changing Files and tables its schedule's approval covers; ${ASK_IN_CHAT}.`
+  )
+}
 
 const notificationsSchema = z.object({
   notifications: z.array(
@@ -142,12 +169,15 @@ export async function runAttentionCommand(
     )
     if (output.json) return (emitJson(output, { runs: selected }), true)
     if (selected.length === 0) output.write('No Agent runs found.\n')
-    for (const run of selected)
+    for (const run of selected) {
       output.write(
         `${run.id}\t${run.status}\t${run.agentId ?? '-'}\t${run.createdAt}\t${
           run.resultSummary ?? ''
         }\n`
       )
+      const hint = skippedForSafety(run)
+      if (hint) output.write(`\t${hint}\n`)
+    }
     return true
   }
   if (group === 'notifications') {
