@@ -42,6 +42,15 @@ export const updateDashboardRefreshInputJsonSchema = z.toJSONSchema(updateDashbo
   io: 'input',
 })
 
+/** A retry with the same key returns what the first request made instead of adding another. */
+const idempotencyKeySchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(128)
+  .regex(/^[A-Za-z0-9_.:-]+$/)
+  .optional()
+
 export const addDashboardWidgetSchema = z.object({
   artifactId: z.string().regex(new RegExp(`^artifact_${idSuffix}$`)),
   position: z
@@ -53,13 +62,7 @@ export const addDashboardWidgetSchema = z.object({
     })
     .strict()
     .refine((position) => position.x + position.w <= 4),
-  idempotencyKey: z
-    .string()
-    .trim()
-    .min(1)
-    .max(128)
-    .regex(/^[A-Za-z0-9_.:-]+$/)
-    .optional(),
+  idempotencyKey: idempotencyKeySchema,
 })
 
 export const dashboardMutationResponseSchema = z
@@ -91,6 +94,7 @@ export const followDashboardWidgetSchema = z.object({
   y: columnSchema.optional(),
   color: columnSchema.optional(),
   title: z.string().trim().min(1).max(255).optional(),
+  idempotencyKey: idempotencyKeySchema,
 })
 
 /** Why these fields don't make this chart, in words a person can act on; null when they do. */

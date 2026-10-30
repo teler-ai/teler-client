@@ -273,6 +273,93 @@ describe('dashboard controls', () => {
     expect(requests).toHaveLength(1)
   })
 
+  it('sends an idempotency key with a followed widget, so a retry returns the same widget', async () => {
+    const scheduleId = `sched_${suffix}`
+    const bodies: unknown[] = []
+    const fetch = async (_url: string, init?: RequestInit) => {
+      bodies.push(init?.body ? (JSON.parse(String(init.body)) as unknown) : undefined)
+      return Response.json({ widgetId, dashboardId }, { status: 201 })
+    }
+    const argv = [
+      'dashboard',
+      'add-widget',
+      dashboardId,
+      '--schedule',
+      scheduleId,
+      '--slot',
+      'result',
+      '--chart',
+      'number',
+      '--y',
+      'yhat',
+      '--org',
+      organizationId,
+      '--idempotency-key',
+      'weekly-forecast-1',
+    ]
+    expect(await main(argv, { env, fetch, writeOut: () => {} })).toBe(0)
+    expect(await main(argv, { env, fetch, writeOut: () => {} })).toBe(0)
+    expect(bodies).toHaveLength(2)
+    for (const body of bodies)
+      expect(body).toMatchObject({ scheduleId, idempotencyKey: 'weekly-forecast-1' })
+    // A key longer than the server accepts is refused before any request.
+    let stderr = ''
+    expect(
+      await main([...argv.slice(0, -1), 'k'.repeat(129)], {
+        env,
+        fetch,
+        writeErr: (text) => (stderr += text),
+      })
+    ).toBe(2)
+    expect(bodies).toHaveLength(2)
+  })
+
+  it('shows whether each widget follows a schedule, and the File only to its owner', async () => {
+    const updatedAt = '2026-10-29T22:45:23.000Z'
+    const widget = (id: string, follow?: unknown) => ({
+      id,
+      dashboardId,
+      artifactId,
+      position: { x: 0, y: 0, w: 2, h: 4 },
+      sortOrder: 0,
+      ...(follow ? { follow } : {}),
+    })
+    const board = {
+      id: dashboardId,
+      name: 'Forecasts',
+      description: null,
+      widgets: [
+        widget(`dwgt_${'1'.repeat(26)}`, {
+          state: 'paused',
+          updatedAt,
+          owner: {
+            fileId: `doc_${suffix}`,
+            fileName: 'forecast.py',
+            scheduleId: `sched_${suffix}`,
+            resumesOn: '2026-11-01',
+            failedRunAt: null,
+          },
+        }),
+        widget(`dwgt_${'2'.repeat(26)}`, { state: 'stopped', reason: 'file_deleted', updatedAt }),
+        widget(`dwgt_${'3'.repeat(26)}`),
+      ],
+    }
+    let output = ''
+    expect(
+      await main(['dashboard', 'get', dashboardId, '--org', organizationId, '--json'], {
+        env,
+        fetch: async () => Response.json(board),
+        writeOut: (text) => (output += text),
+      })
+    ).toBe(0)
+    const read = JSON.parse(output) as { widgets: Array<{ follow?: unknown }> }
+    expect(read.widgets.map((item) => item.follow)).toEqual([
+      board.widgets[0]!.follow,
+      { state: 'stopped', reason: 'file_deleted', updatedAt },
+      undefined,
+    ])
+  })
+
   it('redacts normal API refusal bodies and query values', async () => {
     let stderr = ''
     expect(
