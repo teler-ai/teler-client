@@ -125,7 +125,11 @@ export async function uploadLocalFile(
   try {
     for (let partNumber = 1; partNumber <= start.partCount; partNumber += 1) {
       const offset = (partNumber - 1) * start.partSizeBytes
-      const part = file.slice(offset, Math.min(file.size, offset + start.partSizeBytes))
+      // Send the part's bytes, one part in memory at a time: compiled Bun 1.3
+      // executables crash after sending a file-backed Blob body.
+      const part = new Uint8Array(
+        await file.slice(offset, Math.min(file.size, offset + start.partSizeBytes)).arrayBuffer()
+      )
       const reconciled = await uploadPart(client, start.jobId, partNumber, part, options.signal)
       if (reconciled) {
         completed = true
@@ -179,7 +183,7 @@ async function uploadPart(
   client: TelerApiClient,
   jobId: string,
   partNumber: number,
-  body: Blob,
+  body: Uint8Array,
   signal?: AbortSignal
 ): Promise<UploadStatusResponse | null> {
   let lastError: unknown
@@ -189,7 +193,7 @@ async function uploadPart(
         method: 'PUT',
         headers: {
           'Content-Type': 'application/octet-stream',
-          'Content-Length': String(body.size),
+          'Content-Length': String(body.byteLength),
         },
         body,
         signal,

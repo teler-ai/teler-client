@@ -75,6 +75,11 @@ jobs:
               <(grep -vE '^(metadata:|  sha256: |  generator: )' "$installed/SKILL.md")
           done
 
+      # Compiled executables send uploads differently from `bun test`: upload to a loopback fake API.
+      - name: Upload with the release executable
+        working-directory: cli
+        run: bun scripts/upload-smoke.ts release/teler-linux-x64
+
   test-desktop:
     name: Test Desktop
     runs-on: ubuntu-24.04
