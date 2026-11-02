@@ -64,6 +64,9 @@ const REASON_BY_CODE: Readonly<Record<string, ScheduleRunReason>> = {
   schedule_paused: 'schedule_paused',
   access_paused: 'owner_paused',
   not_org_member: 'owner_left',
+  // Two reasons an older server recorded as sentences rather than codes.
+  'User is no longer a member of the org': 'owner_left',
+  'Agent no longer exists': 'agent_unavailable',
   agent_not_found: 'agent_unavailable',
   agent_disabled: 'agent_unavailable',
   agent_not_ready: 'agent_unavailable',

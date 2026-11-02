@@ -681,7 +681,11 @@ Runs past the cap, an organization hold, a lost access or repeated failures stop
 or skip occurrences as they do in the web app; `runs` shows each occurrence with
 its code run and, for a skipped or failed one, why in a sentence. `--json` keeps
 its reason code (such as `SPEND_CAP_REACHED`) in `reason` and adds the sentence as
-`reasonText`.
+`reasonText`. That `reason` is the recorded code, unlike `schedule history`'s,
+which is the reason key (such as `no_credits`).
+A schedule is refused when it is created, resumed or approved while it would be
+skipped every time it is due: its plan isn't active, or every automatic start is in
+use. The error says the next step.
 `pause`, `resume`, `re-pin` and `delete --yes` name the revision they just read,
 so a change made meanwhile is refused instead of overwritten. Repeating an
 `approve` whose answer was lost reports the approval already in force.

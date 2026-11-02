@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test'
 import { main } from '../src/index'
-import { SCHEDULE_RUN_REASON_TEXT } from '../src/schedule-run-reasons'
+import { SCHEDULE_RUN_REASON_TEXT, scheduleRunReasonText } from '../src/schedule-run-reasons'
 
 const suffix = '01m2k72d22fqe8ww472ycs3px3'
 const id = `sched_${suffix}`
@@ -116,6 +116,15 @@ describe('schedule run reasons', () => {
     expect(SCHEDULE_RUN_REASON_TEXT.credit_check_unavailable).toBe(CREDIT_CHECK)
     expect(SCHEDULE_RUN_REASON_TEXT.no_free_automatic_start).toBe(AUTOMATIC_STARTS)
     for (const text of Object.values(SCHEDULE_RUN_REASON_TEXT)) expectNoCodes(text)
+  })
+
+  it('words the two reasons an older server recorded as sentences', () => {
+    expect(scheduleRunReasonText('skipped', null, 'User is no longer a member of the org')).toBe(
+      SCHEDULE_RUN_REASON_TEXT.owner_left
+    )
+    expect(scheduleRunReasonText('skipped', null, 'Agent no longer exists')).toBe(
+      SCHEDULE_RUN_REASON_TEXT.agent_unavailable
+    )
   })
 })
 
