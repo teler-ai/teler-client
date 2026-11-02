@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { fileScheduleListItemSchema } from './code-file-contract'
+import { agentRunOutcomeText, scheduleRunReasonText } from './schedule-run-reasons'
 
 const idSuffix = '[0-9a-hjkmnp-tv-z]{26}'
 export const scheduleIdSchema = z.string().regex(new RegExp(`^sched_${idSuffix}$`))
@@ -153,33 +154,68 @@ export const scheduleListSchema = z.object({
   fileSchedules: z.array(fileScheduleListItemSchema).default([]),
 })
 
+/**
+ * A code a newer server may add values to: one this version does not know still parses, and
+ * anything that is not a code (free text, a number) reads as none. Older servers omit the key.
+ */
+const laterCodeSchema = z
+  .string()
+  .regex(/^[a-z][a-z0-9_]{0,63}$/)
+  .nullable()
+  .optional()
+  .catch(null)
+
 export const scheduleHistorySchema = z.object({
   runs: z.array(
-    z.object({
-      id: z.string().regex(new RegExp(`^srun_${idSuffix}$`)),
-      scheduledQueryId: scheduleIdSchema,
-      status: z.enum(['success', 'failed', 'skipped']),
-      agentRunId: z
-        .string()
-        .regex(new RegExp(`^agent_run_${idSuffix}$`))
-        .nullable(),
-      agentRunStatus: z
-        .enum(['pending', 'claimed', 'running', 'completed', 'failed', 'cancelled'])
-        .nullable(),
-      chatId: z
-        .string()
-        .regex(new RegExp(`^chat_${idSuffix}$`))
-        .nullable(),
-      taskId: z
-        .string()
-        .regex(new RegExp(`^atask_${idSuffix}$`))
-        .nullable(),
-      taskStatus: z
-        .string()
-        .regex(/^[a-z_]{1,32}$/)
-        .nullable(),
-      scheduledFor: z.string(),
-      executedAt: z.string(),
-    })
+    z
+      .object({
+        id: z.string().regex(new RegExp(`^srun_${idSuffix}$`)),
+        scheduledQueryId: scheduleIdSchema,
+        status: z.enum(['success', 'failed', 'skipped']),
+        agentRunId: z
+          .string()
+          .regex(new RegExp(`^agent_run_${idSuffix}$`))
+          .nullable(),
+        agentRunStatus: z
+          .enum(['pending', 'claimed', 'running', 'completed', 'failed', 'cancelled'])
+          .nullable(),
+        chatId: z
+          .string()
+          .regex(new RegExp(`^chat_${idSuffix}$`))
+          .nullable(),
+        taskId: z
+          .string()
+          .regex(new RegExp(`^atask_${idSuffix}$`))
+          .nullable(),
+        taskStatus: z
+          .string()
+          .regex(/^[a-z_]{1,32}$/)
+          .nullable(),
+        scheduledFor: z.string(),
+        executedAt: z.string(),
+        /** Why a skipped or failed row did not run (`SCHEDULE_RUN_REASON_TEXT`'s keys). */
+        reason: laterCodeSchema,
+        /** How the Agent run a started row began ended: success, limited, failed or cancelled. */
+        agentRunOutcome: laterCodeSchema,
+        /** That run's reason when it did not succeed, such as needs_capability. */
+        agentRunReason: laterCodeSchema,
+        /** Read only to word an older server's skip; never printed or emitted. */
+        errorMessage: z.string().nullable().optional().catch(null),
+      })
+      .transform(({ errorMessage, ...run }) => {
+        const codes = {
+          reason: run.reason ?? null,
+          agentRunOutcome: run.agentRunOutcome ?? null,
+          agentRunReason: run.agentRunReason ?? null,
+        }
+        return {
+          ...run,
+          ...codes,
+          /** The sentence plain output shows; null for a run that started and is fine so far. */
+          reasonText:
+            scheduleRunReasonText(run.status, codes.reason, errorMessage) ??
+            agentRunOutcomeText({ ...codes, agentRunStatus: run.agentRunStatus }),
+        }
+      })
   ),
 })

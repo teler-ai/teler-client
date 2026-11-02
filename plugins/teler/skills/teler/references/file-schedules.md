@@ -36,7 +36,8 @@ teler files result <run-id> --json
 ```
 
 `latest` describes each output: a dataset's columns, rows and time coverage, a model's features,
-or a JSON value. A skipped occurrence has a reason code such as `SPEND_CAP_REACHED`.
+or a JSON value. A skipped or failed occurrence has a reason code such as `SPEND_CAP_REACHED` and
+`reasonText`, the sentence to tell the person.
 
 ## Change it
 

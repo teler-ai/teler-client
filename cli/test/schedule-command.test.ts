@@ -149,7 +149,18 @@ describe('real Agent schedule controls', () => {
       })
     ).toBe(0)
     const { errorMessage: _errorMessage, ...metadata } = run
-    expect(JSON.parse(output)).toEqual({ runs: [metadata] })
+    // An older server sends no reason or outcome; a started run has no sentence.
+    expect(JSON.parse(output)).toEqual({
+      runs: [
+        {
+          ...metadata,
+          reason: null,
+          agentRunOutcome: null,
+          agentRunReason: null,
+          reasonText: null,
+        },
+      ],
+    })
     expect(output).not.toContain('private-token')
     expect(output).not.toContain('private-value')
   })
