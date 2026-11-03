@@ -65,7 +65,7 @@ function ownHint(error: ApiError): string | undefined {
     return 'Run `teler update`, then retry.'
   if (code === 'INSUFFICIENT_CREDITS' || code === 'BUDGET_EXCEEDED')
     return 'Lower --max-credits to what the organization has, or add credits in the Teler app.'
-  // A 503 like any other, but nothing started: say so rather than the idempotency-key advice.
+  // A 503 like any other, but nothing started: say so, with the same-key retry advice.
   if (code === 'BILLING_UNAVAILABLE')
     return "Teler couldn't check your credits just now; nothing ran. Try again in a moment with the same --idempotency-key."
   if (code === 'IDEMPOTENCY_CONFLICT')
