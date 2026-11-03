@@ -23,7 +23,7 @@ interface ActiveTurn {
 }
 
 export interface HelperOptions {
-  api: LinkApi
+  api: Pick<LinkApi, 'poll' | 'postFrames'>
   secret: string
   workDir: string
   detectEngines: () => Promise<LinkEngineInfo[]>
@@ -100,10 +100,26 @@ export async function runLinkHelper(options: HelperOptions, signal: AbortSignal)
       })
   }
 
+  const ended = new Set<string>()
+  const endLostTurn = (taskId: string, nextUpSeq: number) => {
+    if (ended.has(taskId)) return
+    ended.add(taskId)
+    const outbox = new TurnOutbox(options.api, options.secret, taskId, nextUpSeq, {
+      gone: () => undefined,
+      unauthorized,
+    })
+    outbox.emit({ kind: 'turn.done', payload: { status: 'failed', error: 'restarted' } })
+    void outbox.drain()
+  }
+
   const handle = (frame: LinkFrame, nextUpSeq: number) => {
     const turn = turns.get(frame.taskId)
     if (frame.kind === 'turn.start') {
-      if (!turn && frame.seq === 0) startTurn(frame, nextUpSeq)
+      if (turn || frame.seq !== 0) return
+      // Already answered from here before this helper restarted: the engine it ran is gone, so the
+      // turn ends instead of running again (and repeating its tool calls).
+      if (nextUpSeq > 0) return endLostTurn(frame.taskId, nextUpSeq)
+      startTurn(frame, nextUpSeq)
       return
     }
     if (frame.kind === 'turn.stop') {
@@ -115,12 +131,7 @@ export async function runLinkHelper(options: HelperOptions, signal: AbortSignal)
       if (!parsed.success) return turn?.stop.abort()
       if (!turn) {
         // This helper restarted mid-turn: it cannot continue the engine it lost, so it ends it.
-        const outbox = new TurnOutbox(options.api, options.secret, frame.taskId, nextUpSeq, {
-          gone: () => undefined,
-          unauthorized,
-        })
-        outbox.emit({ kind: 'turn.done', payload: { status: 'failed', error: 'restarted' } })
-        void outbox.drain()
+        endLostTurn(frame.taskId, nextUpSeq)
         return
       }
       const resolve = turn.results.get(parsed.data.callId)
@@ -147,8 +158,9 @@ export async function runLinkHelper(options: HelperOptions, signal: AbortSignal)
       const now = Date.now()
       for (const frame of polled.frames) {
         const after = cursors.get(frame.taskId)
-        // A turn first seen mid-way (this helper restarted) is taken from where it is.
-        if (after !== undefined && frame.seq !== after + 1) continue
+        // A turn first seen mid-way (this helper restarted) is taken from where it is. A stop
+        // counts even past a gap: Teler drops a stopped turn's other frames.
+        if (after !== undefined && frame.seq !== after + 1 && frame.kind !== 'turn.stop') continue
         cursors.set(frame.taskId, frame.seq)
         seenAt.set(frame.taskId, now)
         handle(frame, polled.nextUpSeq[frame.taskId] ?? 0)

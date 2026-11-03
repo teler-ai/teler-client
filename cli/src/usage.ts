@@ -56,7 +56,7 @@ Usage:
   teler link [start]
   teler link status|unpair [--json]
   Teler Link runs your Teler chats on your own Claude Code: pair this computer with a code from
-  Teler (Settings › Teler Link), then keep \`teler link\` running. Teler's tools still run in Teler.
+  Teler (Agent controls › Teler Link), then keep \`teler link\` running. Teler's tools still run in Teler.
   teler upload <local-file> [--org <id>] [--to <path>] [--scope personal|organization]
              [--project <id>] [--wait] [--timeout <seconds>] [--json]
   teler upload list [--org <id>] [--status <status>] [--limit <count>] [--json]

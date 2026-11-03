@@ -298,10 +298,10 @@ export const CLI_COMMANDS: readonly CliCommand[] = [
   command(
     'link.pair',
     'link pair <code> [--name <name>] [--json]',
-    'Pair this computer with Teler Link using a code from Settings › Teler Link.'
+    'Pair this computer with Teler Link using a code from Agent controls › Teler Link.'
   ),
   command(
-    'link.start',
+    'link',
     'link [start]',
     'Run Teler Link in the foreground: your Teler chats run on your own Claude Code.'
   ),

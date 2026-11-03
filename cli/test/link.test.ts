@@ -2,7 +2,8 @@ import { describe, expect, test } from 'bun:test'
 import { claudeArguments, claudeEnvironment } from '../src/link/claude-turn'
 import { ClaudeStreamReader } from '../src/link/claude-stream'
 import { detectEngines } from '../src/link/engines'
-import type { LinkUpFrame } from '../src/link/protocol'
+import { runLinkHelper } from '../src/link/helper'
+import type { LinkFrame, LinkUpFrame } from '../src/link/protocol'
 import { startToolServer } from '../src/link/tool-server'
 import { buildClaudePrompt } from '../src/link/transcript'
 
@@ -93,7 +94,11 @@ describe('teler link: reading Claude Code', () => {
           delta: { type: 'text_delta', text: 'Checking.' },
         }),
         event({ type: 'content_block_stop', index: 1 }),
-        event({ type: 'content_block_start', index: 2, content_block: { type: 'tool_use' } }),
+        event({
+          type: 'content_block_start',
+          index: 2,
+          content_block: { type: 'tool_use', id: 'toolu_01abc' },
+        }),
         event({ type: 'message_delta', usage: { output_tokens: 30 } }),
         event({ type: 'message_stop' }),
         'not json',
@@ -111,10 +116,13 @@ describe('teler link: reading Claude Code', () => {
           cacheWriteTokens: 100,
           outputTokens: 30,
           toolCalls: 1,
+          toolCallIds: ['toolu_01abc'],
         },
       },
     ])
     expect(reader.announcedToolCalls()).toBe(1)
+    expect(reader.takeToolCallId()).toBe('toolu_01abc')
+    expect(reader.takeToolCallId()).toBeUndefined()
     expect(reader.outcome(false)).toEqual({ status: 'completed' })
     expect(reader.outcome(true)).toEqual({ status: 'interrupted' })
   })
@@ -241,5 +249,51 @@ describe("teler link: Teler's tools for Claude Code", () => {
     } finally {
       server.stop()
     }
+  })
+})
+
+describe('teler link: the helper loop', () => {
+  const taskId = 'atask_01m6g8vpeye9wsphes2mht0r0b'
+
+  function fakeApi(polls: Array<{ frames: LinkFrame[]; nextUpSeq: Record<string, number> }>) {
+    const posted: Array<{ taskId: string; seq: number } & LinkUpFrame> = []
+    const api = {
+      async poll(_secret: string, input: { signal?: AbortSignal }) {
+        const next = polls.shift()
+        if (next) return { ...next, chatTurnEngine: 'claude_code' as const }
+        await new Promise((resolve) => input.signal?.addEventListener('abort', resolve))
+        throw new Error('stopped')
+      },
+      async postFrames(
+        _secret: string,
+        frames: Array<{ taskId: string; seq: number } & LinkUpFrame>
+      ) {
+        posted.push(...frames)
+      },
+    }
+    return { api, posted }
+  }
+
+  const turnStart: LinkFrame = { taskId, seq: 0, kind: 'turn.start', payload: {} }
+
+  test('ends a turn it already answered before restarting, instead of running it again', async () => {
+    const { api, posted } = fakeApi([{ frames: [turnStart], nextUpSeq: { [taskId]: 4 } }])
+    const stop = new AbortController()
+    const done = runLinkHelper(
+      {
+        api,
+        secret: 'tlk_x',
+        workDir: '/tmp/teler-link-test',
+        detectEngines: async () => [{ engine: 'claude_code', version: '2.1.317', signedIn: true }],
+        log: () => undefined,
+      },
+      stop.signal
+    )
+    for (let attempt = 0; attempt < 50 && posted.length === 0; attempt++) await Bun.sleep(10)
+    stop.abort()
+    await done
+    expect(posted).toEqual([
+      { taskId, seq: 4, kind: 'turn.done', payload: { status: 'failed', error: 'restarted' } },
+    ])
   })
 })

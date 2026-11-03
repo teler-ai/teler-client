@@ -35,7 +35,7 @@ const ENGINE_NAMES = { claude_code: 'Claude Code', codex: 'Codex' } as const
 
 /**
  * `teler link`: run your Teler chats on your own Claude Code plan. Pair this computer with a
- * code from Teler (Settings › Teler Link), then keep `teler link` running; Teler sends each chat
+ * code from Teler (Agent controls › Teler Link), then keep `teler link` running; Teler sends each chat
  * turn here, Claude Code answers it with your own sign-in, and Teler's tools still run in Teler.
  */
 export async function runLinkCommand(
@@ -94,7 +94,7 @@ export async function runLinkCommand(
     output.write(
       output.json
         ? `${JSON.stringify({ paired: false })}\n`
-        : 'Forgot the pairing on this computer. Remove it in Teler too: Settings › Teler Link.\n'
+        : 'Forgot the pairing on this computer. Remove it in Teler too: Agent controls › Teler Link.\n'
     )
     return 0
   }
@@ -104,7 +104,7 @@ export async function runLinkCommand(
   const pairing = await readPairing(deps.store, baseUrl.origin)
   if (!pairing)
     throw new UsageError(
-      'Not paired. Make a code in Teler (Settings › Teler Link), then run `teler link pair <code>`.'
+      'Not paired. Make a code in Teler (Agent controls › Teler Link), then run `teler link pair <code>`.'
     )
   const controller = new AbortController()
   for (const signal of ['SIGINT', 'SIGTERM'] as const)
@@ -128,7 +128,7 @@ export async function runLinkCommand(
   } catch (error) {
     if (error instanceof LinkUnpairedError) {
       throw new UsageError(
-        'Teler no longer accepts this computer. Make a new code in Teler (Settings › Teler Link) and pair again.'
+        'Teler no longer accepts this computer. Make a new code in Teler (Agent controls › Teler Link) and pair again.'
       )
     }
     throw error

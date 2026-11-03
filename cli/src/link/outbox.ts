@@ -17,7 +17,7 @@ export class TurnOutbox {
   private closed = false
 
   constructor(
-    private readonly api: LinkApi,
+    private readonly api: Pick<LinkApi, 'postFrames'>,
     private readonly secret: string,
     private readonly taskId: string,
     firstSeq: number,

@@ -88,6 +88,8 @@ export type LinkUpFrame =
         cacheWriteTokens: number
         outputTokens: number
         toolCalls: number
+        /** Their ids, in order: the ids of the tool.call frames that follow. */
+        toolCallIds: string[]
       }
     }
   | { kind: 'tool.call'; payload: { callId: string; name: string; arguments: unknown } }

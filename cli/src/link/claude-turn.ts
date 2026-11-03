@@ -108,7 +108,10 @@ export async function runClaudeTurn(input: {
     }
     callCount += 1
     if (input.stop.aborted) return stoppedOutcome()
-    const callId = `call_${callCount}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
+    // Calls are made in the order the response asked for them, so they take its ids in turn.
+    const callId =
+      reader.takeToolCallId() ??
+      `call_${callCount}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`
     io.emit({ kind: 'tool.call', payload: { callId, name, arguments: args } })
     try {
       return toolOutcome(await io.awaitToolResult(callId, input.stop))

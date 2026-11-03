@@ -18,7 +18,8 @@ function count(value: unknown): number {
 export class ClaudeStreamReader {
   private response = 0
   private usage = { input: 0, cacheWrite: 0, cacheRead: 0, output: 0 }
-  private toolUses = 0
+  private toolUseIds: string[] = []
+  private readonly announcedIds: string[] = []
   private announced = 0
   private readonly textBlocks = new Map<number, string>()
   private result: {
@@ -31,6 +32,11 @@ export class ClaudeStreamReader {
   /** Tool calls the ended responses asked for, so far. */
   announcedToolCalls(): number {
     return this.announced
+  }
+
+  /** The id of the next announced tool call, in the order Claude Code makes the calls. */
+  takeToolCallId(): string | undefined {
+    return this.announcedIds.shift()
   }
 
   async read(stream: ReadableStream<Uint8Array>): Promise<void> {
@@ -84,7 +90,7 @@ export class ClaudeStreamReader {
     switch (event.type) {
       case 'message_start': {
         this.response += 1
-        this.toolUses = 0
+        this.toolUseIds = []
         this.textBlocks.clear()
         const usage = record(record(event.message)?.usage)
         this.usage = {
@@ -99,7 +105,10 @@ export class ClaudeStreamReader {
         const index = count(event.index)
         const block = record(event.content_block)
         if (block?.type === 'text') this.textBlocks.set(index, `msg${this.response}_${index}`)
-        if (block?.type === 'tool_use') this.toolUses += 1
+        if (block?.type === 'tool_use') {
+          const id = typeof block.id === 'string' && /^[A-Za-z0-9_-]{1,128}$/.test(block.id)
+          this.toolUseIds.push(id ? (block.id as string) : `call_${this.response}_${index}`)
+        }
         return
       }
       case 'content_block_delta': {
@@ -134,10 +143,12 @@ export class ClaudeStreamReader {
             cachedInputTokens: cacheRead,
             cacheWriteTokens: cacheWrite,
             outputTokens: output,
-            toolCalls: this.toolUses,
+            toolCalls: this.toolUseIds.length,
+            toolCallIds: [...this.toolUseIds],
           },
         })
-        this.announced += this.toolUses
+        this.announced += this.toolUseIds.length
+        this.announcedIds.push(...this.toolUseIds)
         return
       }
       default:
