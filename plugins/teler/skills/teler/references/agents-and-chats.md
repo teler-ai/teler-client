@@ -74,7 +74,8 @@ teler agent apply-skipped <run-id> <n> --json             # apply alert recipien
 A scheduled run skips what asks first when nobody is there; `teler agent runs --json` lists it
 in `skippedActions` (`<n>` is its place, from 0) and `askSkipped`. Allowing, applying and caps
 act for the person: do them when they ask. A spend cap lets the Agent approve spend for them, so
-tell them the monthly credits and add `--yes` only after they say yes in the conversation.
+it also needs the amount: tell them the monthly credits and add `--yes` only after they say yes to
+it in the conversation.
 
 `agent run` sees no project's tables without `--project <project-id>`. After it reads
 data, a run started this way skips what would need someone's approval, saving included
