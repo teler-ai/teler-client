@@ -542,7 +542,14 @@ requires `--day-of-month 1..31`. Create/update accept `--prompt`, `--clear-promp
 and `--delivery chat|email`. Update changes only the supplied fields. History
 returns at most ten occurrences with `scheduledFor`, dispatch `status`, linked
 `agentRunId`/`agentRunStatus`, `chatId`, and `taskId`/`taskStatus`. A successful
-dispatch can still have a running or failed Agent task. Missing historical links
+dispatch can still have a running or failed Agent task: `agentRunOutcome`
+(`success`, `limited`, `failed` or `cancelled`) says how its run ended and
+`agentRunReason` why it did not succeed (such as `needs_capability`). A skipped or
+failed occurrence has a `reason` (such as `no_credits` or
+`no_free_automatic_start`). Each row's `reasonText` says the same in a sentence,
+and plain output ends a row with it: why it was skipped, or that it started but
+didn't finish and why. These keys need a server that returns them; with an older
+one they are `null` and `reasonText` says what it can. Missing historical links
 remain `null`; error text and stored prompts are excluded from CLI schedule JSON.
 
 `schedule list` also lists an Agent's event starts, which start a run without a
@@ -672,7 +679,13 @@ locally, or `STALE_APPROVAL` / `STALE_REVISION`) when anything moved since. Only
 schedule's owner can approve. Approving starts a schedule that was waiting for it.
 Runs past the cap, an organization hold, a lost access or repeated failures stop
 or skip occurrences as they do in the web app; `runs` shows each occurrence with
-its code run and, for a skipped one, a reason code such as `SPEND_CAP_REACHED`.
+its code run and, for a skipped or failed one, why in a sentence. `--json` keeps
+its reason code (such as `SPEND_CAP_REACHED`) in `reason` and adds the sentence as
+`reasonText`. That `reason` is the recorded code, unlike `schedule history`'s,
+which is the reason key (such as `no_credits`).
+A schedule is refused when it is created, resumed or approved while it would be
+skipped every time it is due: its plan isn't active, or every automatic start is in
+use. The error says the next step.
 `pause`, `resume`, `re-pin` and `delete --yes` name the revision they just read,
 so a change made meanwhile is refused instead of overwritten. Repeating an
 `approve` whose answer was lost reports the approval already in force.

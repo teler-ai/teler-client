@@ -150,6 +150,13 @@ describe('a refusal the server explains', () => {
     expect(await hintFor(409, { code: 'SCHEDULE_REFUSED', reason: 'STALE_APPROVAL' })).toContain(
       'teler schedule file quote'
     )
+    // A schedule that would be skipped every time is refused up front, with the fix.
+    expect(await hintFor(402, { code: 'SCHEDULE_REFUSED', reason: 'PLAN_INACTIVE' })).toBe(
+      "Your organization's plan isn't active, so this schedule would be skipped every time. An owner can renew the plan in the Teler app."
+    )
+    expect(await hintFor(409, { code: 'SCHEDULE_REFUSED', reason: 'DEFINITION_LIMIT' })).toBe(
+      "Your plan's automatic starts are all in use: pause one (`teler schedule pause <id>`) to run this."
+    )
     expect(await hintFor(401, {})).toContain('teler auth login')
     expect(await hintFor(400, { code: 'SOMETHING_NEW' })).toBe('Just try again.')
   })

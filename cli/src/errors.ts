@@ -32,7 +32,7 @@ export class ApiError extends Error {
   }
 }
 
-/** The next step for a refused File schedule, by its reason. */
+/** The next step for a refused schedule, by its reason. */
 const REASON_HINTS: Readonly<Record<string, string>> = {
   SPEND_APPROVAL_REQUIRED:
     'Approve its monthly spend first: `teler schedule file quote <id>`, then `teler schedule file approve <id> --revision <n> --monthly-credits <amount> --yes`.',
@@ -44,6 +44,11 @@ const REASON_HINTS: Readonly<Record<string, string>> = {
     "Raise --monthly-credits to at least one run's hold (see `teler schedule file quote <id>`).",
   ADMIN_HOLD:
     'An organization owner or admin holds this schedule; only they can release it in the Teler app.',
+  // Refused up front: the schedule would be skipped every time it is due.
+  PLAN_INACTIVE:
+    "Your organization's plan isn't active, so this schedule would be skipped every time. An owner can renew the plan in the Teler app.",
+  DEFINITION_LIMIT:
+    "Your plan's automatic starts are all in use: pause one (`teler schedule pause <id>`) to run this.",
 }
 
 const PLAN_HINT =

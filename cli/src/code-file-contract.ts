@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { scheduleRunReasonText } from './schedule-run-reasons'
 
 const suffix = '[0-9a-hjkmnp-tv-z]{26}'
 const typedId = (prefix: string) => z.string().regex(new RegExp(`^${prefix}_${suffix}$`))
@@ -170,7 +171,11 @@ export const spendQuoteSchema = z.object({
 })
 export type SpendQuote = z.infer<typeof spendQuoteSchema>
 
-/** One occurrence; `reason` is the server's skip or failure code, never free text. */
+/**
+ * One occurrence. `reason` is the code it was skipped or failed with, never free text, and
+ * `reasonText` the sentence to show for it: the server's reason when it sends one (a key a
+ * newer server adds reads as the generic sentence), else what the code means.
+ */
 export const fileScheduleRunsSchema = z.object({
   runs: z.array(
     z
@@ -180,18 +185,29 @@ export const fileScheduleRunsSchema = z.object({
         scheduledFor: z.string(),
         executedAt: z.string(),
         errorMessage: z.string().nullable().optional(),
+        // Older servers do not send the key.
+        reason: z
+          .string()
+          .regex(/^[a-z][a-z0-9_]{0,63}$/)
+          .nullable()
+          .optional()
+          .catch(null),
         savedCodeRunId: codeRunIdSchema.nullable().optional(),
         savedCodeRunStatus: runStatusSchema.nullable().optional(),
         attempts: z.number().int().nonnegative().nullable().optional(),
         settledAt: z.string().nullable().optional(),
       })
-      .transform(({ errorMessage, ...run }) => ({
-        ...run,
-        reason: reasonCode.safeParse(errorMessage).data ?? null,
-        savedCodeRunId: run.savedCodeRunId ?? null,
-        savedCodeRunStatus: run.savedCodeRunStatus ?? null,
-        attempts: run.attempts ?? null,
-        settledAt: run.settledAt ?? null,
-      }))
+      .transform(({ errorMessage, reason: key, ...run }) => {
+        const reason = reasonCode.safeParse(errorMessage).data ?? null
+        return {
+          ...run,
+          reason,
+          reasonText: scheduleRunReasonText(run.status, key, reason),
+          savedCodeRunId: run.savedCodeRunId ?? null,
+          savedCodeRunStatus: run.savedCodeRunStatus ?? null,
+          attempts: run.attempts ?? null,
+          settledAt: run.settledAt ?? null,
+        }
+      })
   ),
 })

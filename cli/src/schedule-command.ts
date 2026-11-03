@@ -172,9 +172,10 @@ export async function runScheduleCommand(
     if (output.json) emitJson(output, result)
     else if (!result.runs.length) output.write('No scheduled runs found.\n')
     else
+      // A skipped row, or a run that started but didn't finish, ends with why in words.
       for (const run of result.runs) {
         output.write(
-          `${run.id}\t${run.scheduledFor}\t${run.status}\t${run.agentRunStatus ?? 'no Agent run'}\t${run.taskId ?? 'no task'}\n`
+          `${run.id}\t${run.scheduledFor}\t${run.status}\t${run.agentRunStatus ?? 'no Agent run'}\t${run.taskId ?? 'no task'}${run.reasonText ? `\t${run.reasonText}` : ''}\n`
         )
       }
     return

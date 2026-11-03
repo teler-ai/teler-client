@@ -270,10 +270,11 @@ export async function runFileScheduleCommand(
     const { runs } = await client.json(path(id, '/history'), fileScheduleRunsSchema)
     if (output.json) return emitJson(output, { runs })
     if (!runs.length) return output.write('No scheduled runs yet.\n')
+    // A skipped or failed occurrence says why in words; its code stays in `--json`.
     for (const run of runs)
       output.write(
         `${run.scheduledFor}\t${run.status}\t${run.savedCodeRunId ?? 'no run'}\t` +
-          `${run.savedCodeRunStatus ?? run.reason ?? ''}\n`
+          `${run.reasonText ?? run.savedCodeRunStatus ?? ''}\n`
       )
     return
   }
