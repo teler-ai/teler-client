@@ -161,6 +161,18 @@ describe('teler schedule file', () => {
     })
   })
 
+  // An agent copied the quote's ready-to-paste approve line and ran it without asking the person.
+  it('quotes the spend and leaves approving it to the person who pays', async () => {
+    const api = server({ [`POST ${base}/spend/prepare`]: () => Response.json(quote) })
+    const quoted = await cli(['schedule', 'file', 'quote', id], api.fetch)
+    expect(quoted.exitCode).toBe(0)
+    expect(quoted.stdout).toContain('suggested cap')
+    expect(quoted.stdout).toContain(
+      `Once the person paying agrees to this spend: teler schedule file approve ${id} --revision 1`
+    )
+    expect(quoted.stdout).not.toMatch(/^Approve: /m)
+  })
+
   it('approves exactly the quote at the revision it names, capped, and only with --yes', async () => {
     const api = server({
       [`POST ${base}/spend/prepare`]: () => Response.json(quote),
