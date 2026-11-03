@@ -178,6 +178,22 @@ describe('JSON errors that have a next step', () => {
     ).toBe('Raise --max-credits')
   })
 
+  it('says nothing ran when Teler could not check the credits, over the generic retry hint', () => {
+    const billing = new ApiError(
+      'failed',
+      503,
+      'BILLING_UNAVAILABLE',
+      undefined,
+      undefined,
+      'Wait.'
+    )
+    expect(hintOf(billing)).toBe(
+      "Teler couldn't check your credits just now; nothing ran. Try again in a moment."
+    )
+    expect(jsonError(billing).error).toMatchObject({ status: 503, retryable: true })
+    expect(hintOf(new ApiError('failed', 503, 'BUSY'))).toContain('same --idempotency-key')
+  })
+
   it('adds nothing where no action exists', () => {
     expect(jsonError(new ApiError('failed', 500, 'INTERNAL_ERROR')).error).not.toHaveProperty(
       'hint'

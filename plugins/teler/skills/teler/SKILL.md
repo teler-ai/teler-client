@@ -36,15 +36,20 @@ line. `teler schema --json` lists every command; `teler schema <command> --json`
 ## Safety rules
 
 - **Credits.** Runs and dashboard refreshes spend the organization's credits. Every run needs
-  `--max-credits`, a cap of at most 100: keep it small. Agree any monthly spend or refresh
-  schedule with the person before you approve or set it.
+  `--max-credits`, a cap of at most 100: keep it small. Agree a refresh schedule with the
+  person before you set it.
+- **Approving spend is the person's decision, never yours.** Before `teler schedule file approve`
+  or `teler agent spend-cap --monthly-credits`, show them what it commits (for a File schedule,
+  `teler schedule file quote <id>`: the monthly cap, what one run may hold, how often it runs)
+  and ask. Add `--yes` only after they say yes in the conversation. If nobody is there to
+  answer, stop and tell them what to approve.
 - **Idempotency keys.** Runs (`data query`, `run python`, `artifact create`, `files run`) and
   File schedules take `--idempotency-key`: 16–128 characters of `A-Z a-z 0-9 . _ : -`, new for
   each task. After a network error or timeout, repeat a run with the same key to get the same
   run, never a second one; `files run` refuses a repeated key instead (`RETRY_CONFLICT`), so
   check `teler files runs` first. Changed code needs a new key.
 - **`--yes`.** Deleting, revoking and approving spend need `--yes`. Pass it only for what the
-  person asked for.
+  person asked for, and for spend only after their yes.
 - Never print, log or store a token. Change sharing or Agent Access only when asked.
 
 ## When something fails
