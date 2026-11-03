@@ -142,7 +142,7 @@ describe('teler agent run', () => {
       code: 'BILLING_UNAVAILABLE',
       status: 503,
       retryable: true,
-      hint: "Teler couldn't check your credits just now; nothing ran. Try again in a moment.",
+      hint: "Teler couldn't check your credits just now; nothing ran. Try again in a moment with the same --idempotency-key.",
     })
   })
 

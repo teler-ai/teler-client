@@ -188,7 +188,7 @@ describe('JSON errors that have a next step', () => {
       'Wait.'
     )
     expect(hintOf(billing)).toBe(
-      "Teler couldn't check your credits just now; nothing ran. Try again in a moment."
+      "Teler couldn't check your credits just now; nothing ran. Try again in a moment with the same --idempotency-key."
     )
     expect(jsonError(billing).error).toMatchObject({ status: 503, retryable: true })
     expect(hintOf(new ApiError('failed', 503, 'BUSY'))).toContain('same --idempotency-key')
