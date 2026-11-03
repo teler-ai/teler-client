@@ -295,6 +295,22 @@ export const CLI_COMMANDS: readonly CliCommand[] = [
     'sync daemon',
     'Run the sync daemon in the foreground, for a service manager.'
   ),
+  command(
+    'link.pair',
+    'link pair <code> [--name <name>] [--json]',
+    'Pair this computer with Teler Link using a code from Settings › Teler Link.'
+  ),
+  command(
+    'link.start',
+    'link [start]',
+    'Run Teler Link in the foreground: your Teler chats run on your own Claude Code.'
+  ),
+  command(
+    'link.status',
+    'link status [--json]',
+    "Show this computer's pairing and whether Claude Code is installed and signed in."
+  ),
+  command('link.unpair', 'link unpair [--json]', 'Forget the pairing on this computer.'),
   ...RESOURCE_COMMANDS,
   ...CODE_FILE_COMMANDS,
 ]

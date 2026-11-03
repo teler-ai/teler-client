@@ -23,6 +23,7 @@ import { runAgentSetupCommand } from './agent-setup'
 import { runFileCommand } from './file-command'
 import { runUploadCommand } from './upload-command'
 import { runSyncCommand } from './sync-command'
+import { runLinkCommand } from './link/link-command'
 import { runResourceCommand as runReadResourceCommand } from './resource-command'
 import { resolveTelerUrl, type TelerUrlEnv } from './url'
 import { withAccessToken } from './access-token'
@@ -89,6 +90,15 @@ export async function main(argv: readonly string[], deps: MainDeps = {}): Promis
         fetch: fetchImpl,
       })
       return 0
+    }
+
+    // Teler Link uses its own pairing, not the CLI sign-in.
+    if (group === 'link') {
+      return await runLinkCommand(action, args, localOutput, {
+        env,
+        store: deps.store ?? (deps.createStore ?? (() => createConfiguredCredentialStore(env)))(),
+        fetch: fetchImpl,
+      })
     }
 
     if (group === 'auth' && action === 'login') {
