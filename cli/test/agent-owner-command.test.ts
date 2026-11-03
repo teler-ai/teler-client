@@ -126,6 +126,26 @@ describe('teler agent run', () => {
     expect(result.stderr).toContain('--approve tables.rows.write')
   })
 
+  it('says nothing ran when Teler could not check the credits', async () => {
+    const api = server(() =>
+      Response.json(
+        { error: 'Credits could not be checked', code: 'BILLING_UNAVAILABLE' },
+        { status: 503 }
+      )
+    )
+    const result = await cli(
+      ['agent', 'run', agentId, '--idempotency-key', 'weekly-check-0004', '--json'],
+      api.fetch
+    )
+    expect(result.exitCode).toBe(1)
+    expect(JSON.parse(result.stderr).error).toMatchObject({
+      code: 'BILLING_UNAVAILABLE',
+      status: 503,
+      retryable: true,
+      hint: "Teler couldn't check your credits just now; nothing ran. Try again in a moment with the same --idempotency-key.",
+    })
+  })
+
   it('refuses a bad Agent ID or an empty prompt before any request', async () => {
     const api = server(started)
     for (const argv of [

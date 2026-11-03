@@ -81,7 +81,8 @@ function emitQuote(
       `(runs up to ${Math.ceil(quote.maxRunMillis / 1000)} s), about ${quote.expectedOccurrencesPerMonth} runs a month ` +
       `(at most ${quote.worstCaseOccurrencesPerMonth}); suggested cap ${quote.suggestedMaximumCreditsPerMonth} ` +
       `credits a month; ${quote.monthToDateCredits} spent this month; approval lasts until ${quote.expiresAt}\n` +
-      `Approve: teler schedule file approve ${id} --revision ${quote.definitionRevision} ` +
+      // Approving commits the payer's credits: the line says whose decision it is (3 Nov 2026).
+      `Once the person paying agrees to this spend: teler schedule file approve ${id} --revision ${quote.definitionRevision} ` +
       `--monthly-credits ${quote.suggestedMaximumCreditsPerMonth}${runTime} --yes\n`
   )
 }
