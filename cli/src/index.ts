@@ -4,7 +4,7 @@ import { authStatus, login, loginWithDeviceFile, logout } from './auth'
 import { respondToApproval } from './approvals'
 import { TelerApiClient, type FetchLike } from './api'
 import { resolveChatId, resolveTaskId } from './chat-id'
-import { markSeenQuietly, sendMessage, watchTask } from './chats'
+import { markSeenQuietly, sendMessage, watchTask, type TerminalSize } from './chats'
 import { runChatCommand } from './chat-command'
 import { runAttentionCommand } from './attention-command'
 import { assertNoFlags, takeFlag, takeOption, withTimeout } from './command-args'
@@ -33,6 +33,7 @@ import { runScheduleCommand } from './schedule-command'
 import { runAgentOwnerCommand } from './agent-owner-command'
 import { steerTurn } from './steer'
 import { syncInstalledSkills } from './skill-sync'
+import { stdoutTerminal } from './task-result'
 import { runUpdateCommand } from './update'
 import { startUpdateNotice } from './update-check'
 import { writeInfo } from './usage'
@@ -44,6 +45,7 @@ interface MainDeps {
   createStore?: () => CredentialStore
   writeOut?: (text: string) => void
   writeErr?: (text: string) => void
+  terminal?: () => TerminalSize | undefined
 }
 
 async function requireCredential(
@@ -151,7 +153,8 @@ export async function main(argv: readonly string[], deps: MainDeps = {}): Promis
     }
 
     const client = new TelerApiClient(baseUrl, token, fetchImpl)
-    const output = { json, metadataOnly, write: writeOut }
+    const terminal = deps.terminal ?? (deps.writeOut ? undefined : stdoutTerminal)
+    const output = { json, metadataOnly, write: writeOut, terminal }
     if (await runAttentionCommand(group, action, args, client, output)) return 0
     if (await runAgentOwnerCommand(group, action, args, client, output)) return 0
     if (await runAnalysisCommand(group, action, args, client, output)) return 0
