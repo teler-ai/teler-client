@@ -43,7 +43,8 @@ async function watch(streamed: string, final: string, terminal?: TerminalSize, j
   return { code, stdout }
 }
 
-const screen = { columns: 80, rows: 24 }
+const width = (text: string) => Bun.stringWidth(text)
+const screen = { columns: 80, rows: 24, width }
 
 describe('a final answer that replaces the streamed text', () => {
   it('prints a one-line marker and the final answer once when output is not a terminal', async () => {
@@ -59,14 +60,14 @@ describe('a final answer that replaces the streamed text', () => {
   })
 
   it('counts wrapped and wide lines when erasing', async () => {
-    const narrow = { columns: 10, rows: 24 }
+    const narrow = { columns: 10, rows: 24, width }
     const result = await watch('abcdefghijklmno\n表表表表表表\n', 'Done.', narrow)
     // 15 columns wrap to 2 rows, 12 wide columns to 2 rows, and the cursor sits on a new row.
     expect(result.stdout).toBe('abcdefghijklmno\n表表表表表表\n\x1b[4A\r\x1b[JDone.\n')
   })
 
   it('counts a wide character that wraps whole to the next row', async () => {
-    const narrow = { columns: 5, rows: 24 }
+    const narrow = { columns: 5, rows: 24, width }
     // 10 columns, but each wide character that would straddle the margin starts a new row: 3 rows.
     const result = await watch('abcd表表表', 'Done.', narrow)
     expect(result.stdout).toBe('abcd表表表\x1b[2A\r\x1b[JDone.\n')

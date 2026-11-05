@@ -23,6 +23,8 @@ const acceptedSchema = z.object({
 export interface TerminalSize {
   columns: number
   rows: number
+  /** How many columns `text` takes on that terminal. */
+  width: (text: string) => number
 }
 
 export interface Output {
