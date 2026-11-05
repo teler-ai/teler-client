@@ -27,6 +27,12 @@ Every command is in `src/command-catalog*.ts`, which `teler schema` prints; its 
 fails when the usage text (`src/usage.ts`) and the catalog differ. By area:
 
 - Sign-in and discovery: `auth login|status|logout`, `schema`, `--version`, `update`.
+- Teler Link: `link pair|start|status|unpair` (`src/link/`). It has its own pairing (a
+  one-time code from Agent controls › Teler Link buys a secret kept in the credential store
+  under `<origin>#link`), never the CLI sign-in. `teler link` polls `/api/link-device`, runs each
+  chat turn on the member's own Claude Code with fixed options (`src/link/claude-turn.ts`), serves
+  that turn's tools from a loopback MCP server and forwards every call to Teler. Keep it running
+  nothing on the computer itself: no built-in tools, settings, hooks or other MCP servers.
 - Coding agents: `agent setup` installs the skill folder `skills/teler/` (bundled
   as text: `SKILL.md` and every guide in `references/`) for Claude Code and Codex,
   offline. Agents read it whenever they use Teler: keep `SKILL.md` lean (core loop,

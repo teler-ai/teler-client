@@ -52,6 +52,11 @@ Usage:
   teler chat delete <chat-id-or-url> --yes [--json]
   teler sync <folder> --to <remote-path> [--org <id>] [--project <id>] [--once] [--dry-run] [--json]
   teler sync list|status|pause|resume|retry|remove|stop|daemon [id] [--json]
+  teler link pair <code> [--name <name>] [--json]
+  teler link [start]
+  teler link status|unpair [--json]
+  Teler Link runs your Teler chats on your own Claude Code: pair this computer with a code from
+  Teler (Agent controls › Teler Link), then keep \`teler link\` running. Teler's tools still run in Teler.
   teler upload <local-file> [--org <id>] [--to <path>] [--scope personal|organization]
              [--project <id>] [--wait] [--timeout <seconds>] [--json]
   teler upload list [--org <id>] [--status <status>] [--limit <count>] [--json]
