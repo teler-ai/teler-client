@@ -28,15 +28,33 @@ const REPLACED_MARKER = '--- The answer below replaces the text above ---\n'
 /** The size of the terminal stdout prints to, or nothing for a pipe or a file. */
 export function stdoutTerminal(): TerminalSize | undefined {
   const { isTTY, columns, rows } = process.stdout
+  if (process.env.TERM === 'dumb') return undefined
   return isTTY && columns > 0 && rows > 0 ? { columns, rows } : undefined
 }
 
-/** Tabs, carriage returns and escape sequences move the cursor in ways rows can't be counted for. */
+/** Tabs, carriage returns, escape sequences and C1 controls move the cursor in ways rows can't be counted for. */
 function moves(text: string): boolean {
   return [...text].some((char) => {
     const code = char.charCodeAt(0)
-    return (code < 32 && char !== '\n') || code === 127
+    return (code < 32 && char !== '\n') || (code >= 127 && code < 160)
   })
+}
+
+const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+
+/** The rows one line takes: a wide character that would straddle the margin wraps whole. */
+function lineRows(line: string, columns: number): number {
+  let rows = 1
+  let column = 0
+  for (const { segment } of graphemes.segment(line)) {
+    const width = Bun.stringWidth(segment)
+    if (column + width > columns) {
+      rows += 1
+      column = 0
+    }
+    column += width
+  }
+  return rows
 }
 
 /**
@@ -49,10 +67,7 @@ function replacementPrefix(streamedText: string, terminal: TerminalSize | undefi
   if (!terminal || moves(streamedText)) return marker
   const rows = streamedText
     .split('\n')
-    .reduce(
-      (total, line) => total + Math.max(1, Math.ceil(Bun.stringWidth(line) / terminal.columns)),
-      0
-    )
+    .reduce((total, line) => total + lineRows(line, terminal.columns), 0)
   if (rows >= terminal.rows) return marker
   return `${rows > 1 ? `\x1b[${rows - 1}A` : ''}\r\x1b[J`
 }

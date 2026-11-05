@@ -65,6 +65,18 @@ describe('a final answer that replaces the streamed text', () => {
     expect(result.stdout).toBe('abcdefghijklmno\n表表表表表表\n\x1b[4A\r\x1b[JDone.\n')
   })
 
+  it('counts a wide character that wraps whole to the next row', async () => {
+    const narrow = { columns: 5, rows: 24 }
+    // 10 columns, but each wide character that would straddle the margin starts a new row: 3 rows.
+    const result = await watch('abcd表表表', 'Done.', narrow)
+    expect(result.stdout).toBe('abcd表表表\x1b[2A\r\x1b[JDone.\n')
+  })
+
+  it('falls back to the marker for C1 control characters', async () => {
+    const result = await watch('a\u009bb', 'Final.', screen)
+    expect(result.stdout).toBe(`a\u009bb\n${MARKER}Final.\n`)
+  })
+
   it('falls back to the marker when the streamed text no longer fits on the screen', async () => {
     const tall = Array.from({ length: 30 }, (_, index) => `Line ${index}`).join('\n')
     const result = await watch(tall, 'Short answer.', screen)
