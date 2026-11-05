@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { TelerApiClient } from './api'
-import type { Output } from './chats'
+import type { Output, TerminalSize } from './chats'
 import { CommandError } from './errors'
 
 export const messageIdSchema = z.string().regex(/^msg_[0-9a-hjkmnp-tv-z]{26}$/)
@@ -21,6 +21,46 @@ export function taskFieldText(field: unknown): string {
   if (value.type === 'text' && typeof value.text === 'string') return value.text
   if (value.type === 'report' && typeof value.markdown === 'string') return value.markdown
   return ''
+}
+
+const REPLACED_MARKER = '--- The answer below replaces the text above ---\n'
+
+/** Tabs, carriage returns, escape sequences and C1 controls move the cursor in ways rows can't be counted for. */
+function moves(text: string): boolean {
+  return [...text].some((char) => {
+    const code = char.charCodeAt(0)
+    return (code < 32 && char !== '\n') || (code >= 127 && code < 160)
+  })
+}
+
+const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' })
+
+/** The rows one line takes: a wide character that would straddle the margin wraps whole. */
+function lineRows(line: string, terminal: TerminalSize): number {
+  let rows = 1
+  let column = 0
+  for (const { segment } of graphemes.segment(line)) {
+    const width = terminal.width(segment)
+    if (column + width > terminal.columns) {
+      rows += 1
+      column = 0
+    }
+    column += width
+  }
+  return rows
+}
+
+/**
+ * What to print before a final answer that replaces the streamed text. On a terminal that still
+ * shows all of the streamed text, erase it; elsewhere it stays, so a one-line marker says the
+ * answer below replaces it.
+ */
+function replacementPrefix(streamedText: string, terminal: TerminalSize | undefined): string {
+  const marker = `${streamedText.endsWith('\n') ? '' : '\n'}${REPLACED_MARKER}`
+  if (!terminal || moves(streamedText)) return marker
+  const rows = streamedText.split('\n').reduce((total, line) => total + lineRows(line, terminal), 0)
+  if (rows >= terminal.rows) return marker
+  return `${rows > 1 ? `\x1b[${rows - 1}A` : ''}\r\x1b[J`
 }
 
 export async function reconcileTaskResult(
@@ -48,7 +88,7 @@ export async function reconcileTaskResult(
   }
   const text = message.content.map(taskFieldText).join('')
   if (text.startsWith(streamedText)) output.write(text.slice(streamedText.length))
-  else output.write(`\nFinal answer (replaces streamed text):\n${text}`)
+  else output.write(`${replacementPrefix(streamedText, output.terminal?.())}${text}`)
 
   let hasApproval = false
   for (const part of message.content) {

@@ -20,10 +20,19 @@ const acceptedSchema = z.object({
   messageId: z.string().regex(/^msg_[0-9a-hjkmnp-tv-z]{26}$/),
 })
 
+export interface TerminalSize {
+  columns: number
+  rows: number
+  /** How many columns `text` takes on that terminal. */
+  width: (text: string) => number
+}
+
 export interface Output {
   json: boolean
   metadataOnly: boolean
   write: (text: string) => void
+  /** The terminal that `write` prints to, read when needed; absent for pipes and files. */
+  terminal?: () => TerminalSize | undefined
 }
 
 export async function readTaskAcceptance(

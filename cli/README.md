@@ -158,8 +158,10 @@ older tasks beyond the chat's latest message page requires a server supporting
 this exact-message filter.
 `--metadata-only` omits content and never fetches the final message.
 
-Human output appends missing text and identifies any final answer that replaces
-the streamed version. Pending approvals include a command to respond.
+Human output appends missing text. When the final answer replaces the streamed
+text, a terminal erases the streamed text if it is still all on screen; otherwise,
+and when output goes to a pipe or a file, one marker line says the answer below
+replaces the text above. Pending approvals include a command to respond.
 
 An upload emits `{ jobId, status }` as soon as byte transfer is accepted. With
 `--wait --json`, the final status is a second NDJSON record. If waiting times out,

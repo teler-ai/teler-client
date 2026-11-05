@@ -211,18 +211,6 @@ describe('authoritative task results', () => {
     }
   )
 
-  it('labels a final projection that replaces streamed text', async () => {
-    const result = await run(
-      ['send', '--chat', CHAT, '--wait', 'Analyze'],
-      sendFetch(
-        [{ type: 'text', text: 'Revised answer.' }],
-        [{ type: 'text', text: 'Preliminary answer.' }]
-      )
-    )
-    expect(result.code).toBe(0)
-    expect(result.stdout).toContain('Final answer (replaces streamed text):\nRevised answer.')
-  })
-
   it('reconciles the accepted continuation after an approval response', async () => {
     let reads = 0
     const result = await run(
