@@ -99,6 +99,9 @@ teler schedule delete <schedule-id> --yes --json
 runs need permissions waits for `teler schedule approve <schedule-id> --approve <capability,...>`.
 `schedule list` also shows event starts (a table updating, another Agent finishing, an alert
 opening on an Agent or a File); `update`, `pause`, `resume` and `approve` take their IDs.
+A table start's `startTable.gone` says its table no longer exists: `deleted` means it won't run
+until the person chooses a table again in Teler; `replaced` means a Replace upload is still
+loading, and the start moves to the new file's table by itself.
 In `history`, a skipped row has a `reason` (such as `no_credits`), and a started row's
 `agentRunOutcome` (`limited`, `failed`, `cancelled`) and `agentRunReason` say its run didn't
 finish and why (such as `needs_capability`). Tell the person each row's `reasonText`, not the code.

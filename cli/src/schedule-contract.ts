@@ -67,6 +67,17 @@ export const scheduleSchema = z.object({
   lastRunStatus: z.enum(['success', 'failed', 'skipped']).nullable(),
 })
 
+/**
+ * A code a newer server may add values to: one this version does not know still parses, and
+ * anything that is not a code (free text, a number) reads as none. Older servers omit the key.
+ */
+const laterCodeSchema = z
+  .string()
+  .regex(/^[a-z][a-z0-9_]{0,63}$/)
+  .nullable()
+  .optional()
+  .catch(null)
+
 const START_KINDS = ['table_update', 'agent_finished', 'alert_opened'] as const
 
 /**
@@ -90,6 +101,12 @@ export const eventStartSchema = z.object({
       kind: z.enum(['connector', 'document']),
       id: z.string(),
       label: z.string().nullable(),
+      /**
+       * Why the table no longer exists: `deleted` (choose a table again) or `replaced` (a
+       * Replace upload is still loading; the start moves to its table by itself). Null while it
+       * exists; older servers do not send the key.
+       */
+      gone: laterCodeSchema,
     })
     .nullable(),
   startAgent: z
@@ -153,17 +170,6 @@ export const scheduleListSchema = z.object({
   // A saved code File on a schedule (`teler schedule file`); older servers do not send the key.
   fileSchedules: z.array(fileScheduleListItemSchema).default([]),
 })
-
-/**
- * A code a newer server may add values to: one this version does not know still parses, and
- * anything that is not a code (free text, a number) reads as none. Older servers omit the key.
- */
-const laterCodeSchema = z
-  .string()
-  .regex(/^[a-z][a-z0-9_]{0,63}$/)
-  .nullable()
-  .optional()
-  .catch(null)
 
 export const scheduleHistorySchema = z.object({
   runs: z.array(
