@@ -55,8 +55,13 @@ Usage:
   teler link pair <code> [--name <name>] [--json]
   teler link [start]
   teler link status|unpair [--json]
-  Teler Link runs your Teler chats on your own Claude Code: pair this computer with a code from
-  Teler (Agent controls › Teler Link), then keep \`teler link\` running. Teler's tools still run in Teler.
+  teler link account list [--json]
+  teler link account add claude_code|codex <config-dir> [--id <id>] [--label <label>] [--json]
+  teler link account remove <id> [--json]
+  teler link service install|uninstall|status [--json]
+  Teler Link runs your Teler chats on your own Claude Code or Codex: pair this computer with a code
+  from Teler (Agent controls › Teler Link), then keep \`teler link\` running, or install it as a
+  background service for your user. Teler's tools still run in Teler.
   teler upload <local-file> [--org <id>] [--to <path>] [--scope personal|organization]
              [--project <id>] [--wait] [--timeout <seconds>] [--json]
   teler upload list [--org <id>] [--status <status>] [--limit <count>] [--json]

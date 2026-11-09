@@ -2,20 +2,13 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { claudeBinary } from './engines'
-import type { LinkToolResult, LinkTurnStart, LinkUpFrame } from './protocol'
+import type { LinkTurnStart } from './protocol'
 import { ClaudeStreamReader } from './claude-stream'
-import { startToolServer, type ToolCallOutcome } from './tool-server'
+import { startToolServer } from './tool-server'
 import { buildClaudePrompt } from './transcript'
+import { stoppedOutcome, toolOutcome, waitForAnnouncement, type TurnIO } from './turn-io'
 
-export interface TurnIO {
-  /** Queue a frame for Teler; frames leave in the order they are emitted. */
-  emit(frame: LinkUpFrame): void
-  /** Resolves with Teler's result for a tool call this turn made. */
-  awaitToolResult(callId: string, signal: AbortSignal): Promise<LinkToolResult>
-}
-
-/** A tool call can arrive just before the stream says its response ended; this long at most. */
-const RESPONSE_GATE_MS = 10_000
+export type { TurnIO } from './turn-io'
 
 /**
  * The fixed options every Link turn runs Claude Code with: print mode on the member's own
@@ -68,19 +61,6 @@ export function claudeEnvironment(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   }
 }
 
-function toolOutcome(result: LinkToolResult): ToolCallOutcome {
-  return {
-    isError: !result.success,
-    content: result.content.map((part) => {
-      if (part.type === 'text') return { type: 'text' as const, text: part.text }
-      const match = /^data:(image\/[a-z+.-]+);base64,([A-Za-z0-9+/=]+)$/.exec(part.url)
-      return match
-        ? { type: 'image' as const, mimeType: match[1] as string, data: match[2] as string }
-        : { type: 'text' as const, text: '[an image Teler could not pass on]' }
-    }),
-  }
-}
-
 /** Run one Teler chat turn on this computer's Claude Code. */
 export async function runClaudeTurn(input: {
   turn: LinkTurnStart
@@ -102,10 +82,7 @@ export async function runClaudeTurn(input: {
   let callCount = 0
   const server = startToolServer(turn.tools, async (name, args) => {
     // Teler pairs each call with the provider response that asked for it.
-    const deadline = Date.now() + RESPONSE_GATE_MS
-    while (reader.announcedToolCalls() <= callCount && Date.now() < deadline) {
-      await Bun.sleep(20)
-    }
+    await waitForAnnouncement(() => reader.announcedToolCalls() > callCount)
     callCount += 1
     if (input.stop.aborted) return stoppedOutcome()
     // Calls are made in the order the response asked for them, so they take its ids in turn.
@@ -181,8 +158,4 @@ export async function runClaudeTurn(input: {
     server.stop()
     await rm(scratch, { recursive: true, force: true })
   }
-}
-
-function stoppedOutcome(): ToolCallOutcome {
-  return { isError: true, content: [{ type: 'text', text: 'Teler stopped this turn.' }] }
 }

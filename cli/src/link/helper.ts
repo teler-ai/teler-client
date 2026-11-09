@@ -1,10 +1,12 @@
 import { ApiError } from '../errors'
 import type { LinkApi } from './api'
 import { runClaudeTurn } from './claude-turn'
+import { runCodexTurn } from './codex-turn'
 import { TurnOutbox } from './outbox'
 import {
   toolResultSchema,
   turnStartSchema,
+  type LinkEngine,
   type LinkEngineInfo,
   type LinkFrame,
   type LinkToolResult,
@@ -27,9 +29,13 @@ export interface HelperOptions {
   secret: string
   workDir: string
   detectEngines: () => Promise<LinkEngineInfo[]>
+  /** The environment for one engine login (its config folder), or null for an unknown login. */
+  accountEnv?: (engine: LinkEngine, account: string) => Promise<NodeJS.ProcessEnv | null>
   log: (line: string) => void
   env?: NodeJS.ProcessEnv
 }
+
+const TURN_RUNNERS = { claude_code: runClaudeTurn, codex: runCodexTurn } as const
 
 /** Stops the helper: the pairing was revoked or is no longer valid. */
 export class LinkUnpairedError extends Error {}
@@ -56,14 +62,16 @@ export async function runLinkHelper(options: HelperOptions, signal: AbortSignal)
       unauthorized,
     })
     const parsed = turnStartSchema.safeParse(frame.payload)
-    const claude = engines.find((engine) => engine.engine === 'claude_code')
     const refuse = (error: 'engine_missing' | 'engine_signed_out' | 'protocol' | 'busy') => {
       outbox.emit({ kind: 'turn.done', payload: { status: 'failed', error } })
       void outbox.drain()
     }
     if (!parsed.success) return refuse('protocol')
-    if (parsed.data.engine !== 'claude_code' || !claude) return refuse('engine_missing')
-    if (!claude.signedIn) return refuse('engine_signed_out')
+    const { engine, account } = parsed.data
+    if (!engines.some((entry) => entry.engine === engine)) return refuse('engine_missing')
+    // An unknown login of the engine is as good as signed out: the member picks another in Teler.
+    const login = engines.find((entry) => entry.engine === engine && entry.account === account)
+    if (!login?.signedIn) return refuse('engine_signed_out')
     if (turns.size >= MAX_TURNS) return refuse('busy')
     const turn: ActiveTurn = {
       stop: new AbortController(),
@@ -73,23 +81,36 @@ export async function runLinkHelper(options: HelperOptions, signal: AbortSignal)
     }
     turns.set(frame.taskId, turn)
     options.log('A chat turn started.')
-    void runClaudeTurn({
-      turn: parsed.data,
-      engineVersion: claude.version,
-      stop: turn.stop.signal,
-      workDir: options.workDir,
-      ...(options.env ? { env: options.env } : {}),
-      io: {
-        emit: (upFrame) => outbox.emit(upFrame),
-        awaitToolResult: (callId, stop) =>
-          new Promise<LinkToolResult>((resolve, reject) => {
-            const early = turn.early.get(callId)
-            if (early) return resolve(early)
-            turn.results.set(callId, resolve)
-            stop.addEventListener('abort', () => reject(new Error('stopped')), { once: true })
-          }),
-      },
-    })
+    const run = async () => {
+      const env = options.accountEnv
+        ? await options.accountEnv(engine, account)
+        : (options.env ?? process.env)
+      if (!env) {
+        outbox.emit({
+          kind: 'turn.done',
+          payload: { status: 'failed', error: 'engine_signed_out' },
+        })
+        return
+      }
+      await TURN_RUNNERS[engine]({
+        turn: parsed.data,
+        engineVersion: login.version,
+        stop: turn.stop.signal,
+        workDir: options.workDir,
+        env,
+        io: {
+          emit: (upFrame) => outbox.emit(upFrame),
+          awaitToolResult: (callId, stop) =>
+            new Promise<LinkToolResult>((resolve, reject) => {
+              const early = turn.early.get(callId)
+              if (early) return resolve(early)
+              turn.results.set(callId, resolve)
+              stop.addEventListener('abort', () => reject(new Error('stopped')), { once: true })
+            }),
+        },
+      })
+    }
+    void run()
       .catch(() =>
         outbox.emit({ kind: 'turn.done', payload: { status: 'failed', error: 'engine_failed' } })
       )

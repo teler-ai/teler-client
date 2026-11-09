@@ -78,6 +78,7 @@ export class LinkApi {
     frames: LinkFrame[]
     nextUpSeq: Record<string, number>
     chatTurnEngine: LinkEngine | null
+    chatTurnAccount: string | null
   }> {
     const timeout = AbortSignal.timeout(POLL_TIMEOUT_MS)
     const signal = input.signal ? AbortSignal.any([input.signal, timeout]) : timeout

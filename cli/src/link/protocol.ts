@@ -6,12 +6,22 @@ export const LINK_PROTOCOL_VERSION = 1
 export const LINK_ENGINES = ['claude_code', 'codex'] as const
 export type LinkEngine = (typeof LINK_ENGINES)[number]
 
-/** What the helper found on this computer, reported to Teler on every poll. */
+/** A login's local id on this computer: 'default' is the engine's own default config folder. */
+export const LINK_ACCOUNT_ID = /^[a-z0-9][a-z0-9_-]{0,39}$/
+export const DEFAULT_ACCOUNT = 'default'
+
+/** What the helper found on this computer, one per engine login, reported on every poll. */
 export interface LinkEngineInfo {
   engine: LinkEngine
+  account: string
+  /** 'Default' for the default login, else the member's label. */
+  label: string
   version: string
   signedIn: boolean
+  /** As the engine reports it: Claude Code's subscription type, Codex 'chatgpt' or 'api_key'. */
   plan?: string
+  /** The engine's own account identity (Claude Code's email); shown only to the member. */
+  identity?: string
 }
 
 const contentSchema = z.array(
@@ -32,6 +42,7 @@ export type LinkTool = z.infer<typeof toolSchema>
 export const turnStartSchema = z.object({
   protocol: z.literal(LINK_PROTOCOL_VERSION),
   engine: z.enum(LINK_ENGINES),
+  account: z.string().regex(LINK_ACCOUNT_ID),
   model: z.string().regex(/^[A-Za-z0-9._-]{1,80}$/),
   reasoningEffort: z.string().max(16).optional(),
   instructions: z.string(),
@@ -63,6 +74,7 @@ export const pollResponseSchema = z.object({
     /** For each turn in `frames`, the number its next helper frame must carry. */
     nextUpSeq: z.record(z.string(), z.number().int().min(0)).default({}),
     chatTurnEngine: z.enum(LINK_ENGINES).nullable(),
+    chatTurnAccount: z.string().nullable().default(null),
   }),
 })
 

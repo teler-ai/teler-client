@@ -45,20 +45,38 @@ describe('teler link: Claude Code options', () => {
       {
         async run(command) {
           seen.push(command)
-          if (command[1] === '--version') return { exitCode: 0, stdout: '2.1.317 (Claude Code)\n' }
-          return { exitCode: 0, stdout: '{"loggedIn":true,"subscriptionType":"max"}' }
+          if (command[0] !== 'claude') return { exitCode: 127, stdout: '', stderr: '' }
+          if (command[1] === '--version')
+            return { exitCode: 0, stdout: '2.1.317 (Claude Code)\n', stderr: '' }
+          return {
+            exitCode: 0,
+            stdout: '{"loggedIn":true,"subscriptionType":"max","email":"member@example.com"}',
+            stderr: '',
+          }
         },
       },
       {}
     )
     expect(engines).toEqual([
-      { engine: 'claude_code', version: '2.1.317', signedIn: true, plan: 'max' },
+      {
+        engine: 'claude_code',
+        account: 'default',
+        label: 'Default',
+        version: '2.1.317',
+        signedIn: true,
+        plan: 'max',
+        identity: 'member@example.com',
+      },
     ])
     expect(seen).toEqual([
       ['claude', '--version'],
       ['claude', 'auth', 'status'],
+      ['codex', '--version'],
     ])
-    const missing = await detectEngines({ run: async () => ({ exitCode: 127, stdout: '' }) }, {})
+    const missing = await detectEngines(
+      { run: async () => ({ exitCode: 127, stdout: '', stderr: '' }) },
+      {}
+    )
     expect(missing).toEqual([])
   })
 })
@@ -260,7 +278,7 @@ describe('teler link: the helper loop', () => {
     const api = {
       async poll(_secret: string, input: { signal?: AbortSignal }) {
         const next = polls.shift()
-        if (next) return { ...next, chatTurnEngine: 'claude_code' as const }
+        if (next) return { ...next, chatTurnEngine: 'claude_code' as const, chatTurnAccount: null }
         await new Promise((resolve) => input.signal?.addEventListener('abort', resolve))
         throw new Error('stopped')
       },
@@ -284,7 +302,15 @@ describe('teler link: the helper loop', () => {
         api,
         secret: 'tlk_x',
         workDir: '/tmp/teler-link-test',
-        detectEngines: async () => [{ engine: 'claude_code', version: '2.1.317', signedIn: true }],
+        detectEngines: async () => [
+          {
+            engine: 'claude_code',
+            account: 'default',
+            label: 'Default',
+            version: '2.1.317',
+            signedIn: true,
+          },
+        ],
         log: () => undefined,
       },
       stop.signal

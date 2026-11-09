@@ -6,6 +6,7 @@ import {
 } from './data-contract'
 import { RESOURCE_COMMANDS } from './command-catalog-resources'
 import { CODE_FILE_COMMANDS } from './command-catalog-code'
+import { LINK_COMMANDS } from './command-catalog-link'
 import { command, type CliCommand } from './command-entry'
 import { runSelectionInputJsonSchema, runSubmitInputJsonSchemas } from './run-contract'
 
@@ -295,22 +296,7 @@ export const CLI_COMMANDS: readonly CliCommand[] = [
     'sync daemon',
     'Run the sync daemon in the foreground, for a service manager.'
   ),
-  command(
-    'link.pair',
-    'link pair <code> [--name <name>] [--json]',
-    'Pair this computer with Teler Link using a code from Agent controls › Teler Link.'
-  ),
-  command(
-    'link',
-    'link [start]',
-    'Run Teler Link in the foreground: your Teler chats run on your own Claude Code.'
-  ),
-  command(
-    'link.status',
-    'link status [--json]',
-    "Show this computer's pairing and whether Claude Code is installed and signed in."
-  ),
-  command('link.unpair', 'link unpair [--json]', 'Forget the pairing on this computer.'),
+  ...LINK_COMMANDS,
   ...RESOURCE_COMMANDS,
   ...CODE_FILE_COMMANDS,
 ]
