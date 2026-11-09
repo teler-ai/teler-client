@@ -69,10 +69,21 @@ describe('teler link: Codex options', () => {
       'hooks',
     ])
       expect(config).toContain(`features.${feature}=false`)
-    expect(config.filter((entry) => entry.startsWith('features.')).length).toBe(
+    expect(config.filter((entry) => /^features\.[a-z0-9_]+=false$/.test(entry)).length).toBe(
       CODEX_DISABLED_FEATURES.length as number
     )
     expect(config).toContain('web_search="disabled"')
+    // Sub-agents and questions to the member, which no feature flag turns off.
+    expect(config).toContain('agents.enabled=false')
+    expect(config).toContain('tools.experimental_request_user_input.enabled=false')
+  })
+
+  test("keeps code mode from hiding Teler's tools and drops Codex's own from it", () => {
+    expect(config).toContain('features.code_mode_only_strict_3p_tools=false')
+    expect(config).toContain('features.code_mode.enabled=false')
+    expect(config).toContain('features.code_mode.excluded_tool_namespaces=["functions","clock"]')
+    expect(config).toContain('mcp_servers.teler.omit_tools_from=["code_mode","deferred"]')
+    expect(config).toContain('mcp_servers.teler.tool_input_schema_max_bytes=65536')
   })
 
   test("offers only Teler's tools from the loopback server, its token kept off the command line", () => {
@@ -98,6 +109,69 @@ describe('teler link: Codex options', () => {
     expect(configOf(odd).some((entry) => entry.startsWith('model_reasoning_effort'))).toBe(false)
     expect(configOf(odd)).toContain('model_instructions_file="C:\\\\Temp\\\\a \\"b\\".md"')
     expect(odd).toContain('--image=/tmp/image-1.png')
+  })
+})
+
+interface RecordedTool {
+  type: string
+  name: string
+  description?: string
+  parameters?: unknown
+  tools?: RecordedTool[]
+}
+
+interface RecordedRequest {
+  served: Array<{ name: string; description: string; inputSchema: unknown }>
+  request: {
+    tools: RecordedTool[] | null
+    input: Array<{ type: string; role?: string; text?: string; tools?: RecordedTool[] }>
+  }
+}
+
+// What Codex 0.167 sent a fake Responses API for one Link turn (`link-codex-tools.json`).
+describe('teler link: the tools Codex offers', async () => {
+  const recorded = JSON.parse(
+    await readFile(join(import.meta.dir, 'link-codex-tools.json'), 'utf8')
+  ) as RecordedRequest
+  const offered = [
+    ...(recorded.request.tools ?? []),
+    ...recorded.request.input.flatMap((item) => item.tools ?? []),
+  ]
+  const namespace = (name: string) => offered.find((tool) => tool.name === name)?.tools ?? []
+  const names = (tools: RecordedTool[]): string[] =>
+    tools.flatMap((tool) => [tool.name, ...names(tool.tools ?? [])])
+
+  test("offers each of Teler's tools directly, with its full description and schema", () => {
+    expect(namespace('mcp__teler')).toEqual(
+      recorded.served.map((tool) => ({
+        type: 'function',
+        name: tool.name,
+        description: tool.description,
+        strict: false,
+        parameters: tool.inputSchema,
+      }))
+    )
+  })
+
+  test("leaves only code mode's empty exec and wait of Codex's own", () => {
+    expect(offered.map((tool) => tool.name).sort()).toEqual(['functions', 'mcp__teler'])
+    expect(names(namespace('functions'))).toEqual(['exec', 'wait'])
+    const exec = namespace('functions').find((tool) => tool.name === 'exec')
+    // Each tool reachable inside exec is listed under a `### name` heading.
+    expect(exec?.description).not.toMatch(/^### /m)
+    for (const name of [
+      'apply_patch',
+      'request_user_input',
+      'spawn_agent',
+      'list_mcp_resources',
+      'read_mcp_resource',
+      'exec_command',
+    ])
+      expect(names(offered)).not.toContain(name)
+    expect(recorded.request.input.filter((item) => item.type === 'message')).toEqual([
+      { type: 'message', role: 'developer', text: 'Teler instructions.' },
+      { type: 'message', role: 'user', text: 'Make a bar chart.' },
+    ])
   })
 })
 

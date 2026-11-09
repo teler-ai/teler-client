@@ -36,17 +36,31 @@ export const CODEX_DISABLED_FEATURES = [
   'tool_suggest',
   'skill_search',
   'sleep_tool',
+  // Would keep MCP tools inside `exec` whatever `omit_tools_from` says.
+  'code_mode_only_strict_3p_tools',
 ] as const
 
 const toml = (value: string) => JSON.stringify(value)
+const tomlList = (values: readonly string[]) => `[${values.map(toml).join(',')}]`
+
+/**
+ * Tool namespaces Codex keeps out of its JavaScript `exec` tool. Newer models run in code mode:
+ * every tool but `exec` and `wait` lives inside `exec`, and an MCP server's tools hide behind a
+ * catalog the model must search, so it never reads their descriptions. In code mode, excluded
+ * namespaces are dropped entirely, which takes away Codex's own file patch, MCP resource readers
+ * and clock. A model without code mode keeps the resource readers, which read only Teler's server.
+ */
+export const CODEX_EXCLUDED_CODE_MODE_NAMESPACES = ['functions', 'clock'] as const
 
 /**
  * The fixed options every Link turn runs Codex with: `exec` on the member's own sign-in, no saved
  * session, none of the member's config, rules, project docs or skills, never asking for approval,
- * no shell, web, browser, computer, apps or plugins, and Teler's tools from this turn's local
- * server. Teler's instructions replace Codex's own. Some models still get a file-patch tool that
- * Codex cannot turn off; the read-only sandbox refuses every write it tries, and the stream reader
- * ends the turn if Codex reports a command, file change or search of its own.
+ * no shell, web, browser, computer, apps, plugins, sub-agents or questions to the member, and
+ * Teler's tools from this turn's local server, offered to the model directly with their full
+ * descriptions and schemas, never inside code mode or behind a tool search. Teler's instructions
+ * replace Codex's own. Code-mode models still get `exec` and `wait`, a JavaScript isolate with no
+ * file system, network or tools of its own; the read-only sandbox refuses every write, and the
+ * stream reader ends the turn if Codex reports a command, file change or search of its own.
  */
 export function codexArguments(input: {
   mcpUrl: string
@@ -67,10 +81,19 @@ export function codexArguments(input: {
     'project_doc_max_bytes=0',
     'skills.include_instructions=false',
     'history.persistence="none"',
+    'agents.enabled=false',
+    'tools.experimental_request_user_input.enabled=false',
     ...CODEX_DISABLED_FEATURES.map((feature) => `features.${feature}=false`),
+    // A table, so it would turn code mode on for a model that does not ask for it.
+    'features.code_mode.enabled=false',
+    `features.code_mode.excluded_tool_namespaces=${tomlList(CODEX_EXCLUDED_CODE_MODE_NAMESPACES)}`,
     `mcp_servers.${CODEX_TELER_SERVER}.url=${toml(input.mcpUrl)}`,
     `mcp_servers.${CODEX_TELER_SERVER}.bearer_token_env_var=${toml(CODEX_TOKEN_VARIABLE)}`,
     `mcp_servers.${CODEX_TELER_SERVER}.default_tools_approval_mode="approve"`,
+    // Teler's tools go to the model as plain function tools, never in `exec` or a tool search.
+    `mcp_servers.${CODEX_TELER_SERVER}.omit_tools_from=${tomlList(['code_mode', 'deferred'])}`,
+    // Codex compacts a larger schema and drops its parameter descriptions.
+    `mcp_servers.${CODEX_TELER_SERVER}.tool_input_schema_max_bytes=65536`,
     // Teler's tools can take minutes (code in the sandbox); Teler bounds the turn itself.
     `mcp_servers.${CODEX_TELER_SERVER}.tool_timeout_sec=1800`,
     `mcp_servers.${CODEX_TELER_SERVER}.startup_timeout_sec=30`,
