@@ -92,6 +92,8 @@ export class TrayController {
       switch (item.type) {
         case 'separator':
           return { type: 'separator' }
+        case 'label':
+          return { label: item.label, enabled: false }
         case 'checkbox':
           return {
             type: 'checkbox',

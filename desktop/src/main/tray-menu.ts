@@ -1,5 +1,7 @@
 import type { DesktopState, SyncHealth } from '../shared/desktop-api'
+import type { SupervisorState } from './daemon-supervisor'
 import type { MessageKey, Translate } from './i18n'
+import type { LinkState } from './link-controller'
 import { pendingFileCount } from './sync-state'
 
 export type TrayAction =
@@ -14,10 +16,12 @@ export type TrayAction =
   | 'connect'
   | 'toggle-open-at-login'
   | 'install-update'
+  | 'stop-link'
   | 'quit'
 
 export type TrayMenuItem =
   | { type: 'separator' }
+  | { type: 'label'; label: string }
   | { type: 'action'; action: TrayAction; label: string }
   | { type: 'checkbox'; action: TrayAction; label: string; checked: boolean }
 
@@ -35,6 +39,8 @@ export type TrayState = Pick<
 > & {
   /** A newer Teler Desktop release. */
   update?: { version: string } | null
+  /** Teler Link on this computer; absent or null while it is not paired. */
+  link?: LinkState | null
 }
 
 /** Finished chats not yet opened and unread notices: what waits for the person. */
@@ -118,9 +124,25 @@ function accountLabel(state: TrayState, t: Translate): string {
     : name
 }
 
+const LINK_STATUS_KEYS: Record<SupervisorState, MessageKey> = {
+  running: 'tray.link.running',
+  restarting: 'tray.link.restarting',
+  stopped: 'tray.link.stopped',
+}
+
+/** Teler Link, once this computer is paired: whether the helper runs, and how to stop it. */
+function linkItems(state: TrayState, t: Translate): TrayMenuItem[] {
+  if (!state.link) return []
+  return [
+    { type: 'separator' },
+    { type: 'label', label: t(LINK_STATUS_KEYS[state.link.status]) },
+    { type: 'action', action: 'stop-link', label: t('tray.link.stop') },
+  ]
+}
+
 /**
- * Every line acts: the status opens Synced folders and the account opens
- * Teler, so neither needs its own item.
+ * The status opens Synced folders and the account opens Teler, so neither
+ * needs its own item; Teler Link's status line only informs.
  */
 export function buildTrayMenu(state: TrayState, t: Translate): TrayMenuItem[] {
   const items: TrayMenuItem[] = [
@@ -140,6 +162,7 @@ export function buildTrayMenu(state: TrayState, t: Translate): TrayMenuItem[] {
         ? { type: 'action', action: 'resume-sync', label: t('tray.resume') }
         : { type: 'action', action: 'pause-sync', label: t('tray.pause') }
     )
+  items.push(...linkItems(state, t))
   if (state.update)
     items.push(
       { type: 'separator' },

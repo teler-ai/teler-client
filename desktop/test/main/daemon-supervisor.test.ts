@@ -11,7 +11,8 @@ interface FakeDaemon extends DaemonHandle {
   killed: boolean
 }
 
-function harness() {
+/** `link`: a helper stopped by signal (no stop command) whose exit 2 is final, like `teler link`. */
+function harness(kind: 'sync' | 'link' = 'sync') {
   let now = 0
   const daemons: FakeDaemon[] = []
   const waits: Array<{ ms: number; resolve: () => void }> = []
@@ -34,10 +35,14 @@ function harness() {
         daemons.push(daemon)
         return daemon
       },
-      async requestStop(env) {
-        stops.push(env)
-        await requestStop()
-      },
+      ...(kind === 'sync'
+        ? {
+            async requestStop(env: NodeJS.ProcessEnv) {
+              stops.push(env)
+              await requestStop()
+            },
+          }
+        : { isFinal: (exit: DaemonExit) => exit.code === 2 }),
       wait: (ms) => new Promise<void>((resolve) => waits.push({ ms, resolve })),
       now: () => now,
     },
@@ -228,5 +233,37 @@ describe('daemon supervisor', () => {
     await crashed.flush()
     expect(crashed.daemons).toHaveLength(1)
     expect(crashed.supervisor.state).toBe('stopped')
+  })
+
+  it('stops a helper without a stop command by signalling it', async () => {
+    const { supervisor, daemons, stops } = harness('link')
+    await supervisor.start(env)
+    await supervisor.stop()
+    expect(stops).toEqual([])
+    expect(daemons[0]!.killed).toBe(true)
+    expect(supervisor.state).toBe('stopped')
+  })
+
+  it('restarts a helper that exits cleanly, without a stop command', async () => {
+    const { supervisor, daemons, stops, waits, flush } = harness('link')
+    await supervisor.start(env)
+    daemons[0]!.exit(0)
+    await flush()
+    expect(stops).toEqual([])
+    waits[0]!.resolve()
+    await flush()
+    expect(daemons).toHaveLength(2)
+  })
+
+  it('stays stopped after a final exit until started again', async () => {
+    const { supervisor, daemons, waits, flush, states } = harness('link')
+    await supervisor.start(env)
+    daemons[0]!.exit(2)
+    await flush()
+    expect(waits).toHaveLength(0)
+    expect(supervisor.state).toBe('stopped')
+    expect(states).toEqual(['running', 'stopped'])
+    await supervisor.start(env)
+    expect(daemons).toHaveLength(2)
   })
 })

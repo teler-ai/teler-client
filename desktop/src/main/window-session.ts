@@ -25,11 +25,22 @@ const namedOrganizationsSchema = z.object({
   success: z.literal(true),
   data: z.array(z.object({ id: z.string().min(1), name: z.string() })),
 })
+/**
+ * An organization id as the session reports it: `org_…`, or the same id as its two parts
+ * (`{ prefix, suffix }`), which some Teler servers send.
+ */
+const organizationIdSchema = z.union([
+  z.string(),
+  z
+    .object({ prefix: z.string().min(1), suffix: z.string().min(1) })
+    .transform(({ prefix, suffix }) => `${prefix}_${suffix}`),
+])
+
 const sessionSchema = z.union([
   z.null(),
   z.object({
     user: z.object({ id: z.string().min(1) }),
-    session: z.object({ activeOrganizationId: z.string().nullish() }).optional(),
+    session: z.object({ activeOrganizationId: organizationIdSchema.nullish() }).optional(),
   }),
 ])
 

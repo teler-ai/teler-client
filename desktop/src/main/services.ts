@@ -127,7 +127,13 @@ export function createSyncServices(options: SyncServicesOptions) {
     session,
     credentials,
     settings,
-    /** Reads the Access token, relaunching sync whenever the window renews it. */
-    watchAccess: () => access.watch(() => void supervisor.relaunch()),
+    /** Adds the current Access token to one CLI launch, such as Teler Link's. */
+    withAccess: launch,
+    /** Reads the Access token, relaunching sync (and `onRenew`) whenever the window renews it. */
+    watchAccess: (onRenew: () => void = () => undefined) =>
+      access.watch(() => {
+        void supervisor.relaunch()
+        onRenew()
+      }),
   }
 }

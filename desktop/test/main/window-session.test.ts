@@ -179,6 +179,16 @@ describe('reading the window session', () => {
       id: 'user_1',
       activeOrganizationId: 'org_b',
     })
+    const partsId = server({
+      '/api/auth/get-session': Response.json({
+        session: { id: 'session', activeOrganizationId: { prefix: 'org', suffix: 'b' } },
+        user: { id: 'user_1' },
+      }),
+    })
+    expect(await readWindowSession(authOrigin, partsId.fetch)).toEqual({
+      id: 'user_1',
+      activeOrganizationId: 'org_b',
+    })
     expect(signedIn.requests[0]!.url).toBe(`${authOrigin}/api/auth/get-session`)
     const signedOut = server({ '/api/auth/get-session': Response.json(null) })
     expect(await readWindowSession(authOrigin, signedOut.fetch)).toBeNull()
