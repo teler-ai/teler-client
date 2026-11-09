@@ -20,18 +20,38 @@ import {
 
 type ScheduleDefinition = z.infer<typeof scheduleDefinitionSchema>
 
+/** Why a table start can't start as it is, in words; null while its table exists. */
+function tableGoneWords(gone: string | null | undefined): string | null {
+  if (gone === 'deleted') return "won't run: its table was deleted. Choose a table again"
+  if (gone === 'replaced') return 'waiting for the replaced file to finish loading'
+  return gone ? 'its table is unavailable (update teler to see more)' : null
+}
+
 /** "next run <time>" for a time schedule; an event start has none, so it says what starts it. */
 function startWords(definition: ScheduleDefinition): string {
   if (!('startKind' in definition)) return `next run ${definition.nextRunAt}`
   const parsed = eventStartSchema.safeParse(definition)
   if (!parsed.success) return `starts on ${definition.startKind} (update teler to see more)`
   const start = parsed.data
-  if (start.startKind === 'table_update') return 'starts when its table updates'
+  if (start.startKind === 'table_update') {
+    return tableGoneWords(start.startTable?.gone) ?? 'starts when its table updates'
+  }
   if (start.startKind === 'agent_finished') return 'starts when another Agent finishes'
   const alert = start.startAlert
   return alert
     ? `starts when an alert opens on the ${alert.kind === 'agent' ? 'Agent' : 'File'} ${alert.label ?? alert.id}`
     : 'starts when an alert opens'
+}
+
+/**
+ * "paused", or what starts it. A paused start whose table is gone still says so: resuming it
+ * alone won't make it run.
+ */
+function stateWords(definition: ScheduleDefinition): string {
+  if (!definition.isPaused) return startWords(definition)
+  const parsed = eventStartSchema.safeParse(definition)
+  const gone = parsed.success ? tableGoneWords(parsed.data.startTable?.gone) : null
+  return gone ? `paused · ${gone}` : 'paused'
 }
 
 const SCHEDULE_APPROVAL = {
@@ -113,9 +133,7 @@ export async function runScheduleCommand(
         )
       }
       for (const start of result.eventStarts) {
-        output.write(
-          `${start.id}\t${start.startKind}\t${start.isPaused ? 'paused' : startWords(start)}\n`
-        )
+        output.write(`${start.id}\t${start.startKind}\t${stateWords(start)}\n`)
       }
       for (const file of result.fileSchedules) {
         output.write(
@@ -142,7 +160,7 @@ export async function runScheduleCommand(
       body: JSON.stringify(input),
     })
     if (output.json) emitJson(output, result)
-    else output.write(`Updated ${result.id}: ${result.isPaused ? 'paused' : startWords(result)}\n`)
+    else output.write(`Updated ${result.id}: ${stateWords(result)}\n`)
     return
   }
   if (action === 'approve') {

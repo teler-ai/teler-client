@@ -558,7 +558,11 @@ remain `null`; error text and stored prompts are excluded from CLI schedule JSON
 time: its table updating (`table_update`), another Agent finishing
 (`agent_finished`), or an alert opening on an Agent or a File (`alert_opened`,
 with `startAlert` naming it). `update`, `pause`, `resume` and `approve` take
-their IDs too. A start of a kind this version does not know yet is left out of
+their IDs too. A table start whose table no longer exists says why, in
+`startTable.gone` and in words: `deleted` (it won't run until its table is
+chosen again) or `replaced` (a Replace upload is still loading; the start moves
+to the new file's table by itself). It needs a server that returns the key;
+with an older one it is absent. A start of a kind this version does not know yet is left out of
 the list; `teler update` shows it.
 
 Tokens remain bound to their granted organizations on collection, mutation,
