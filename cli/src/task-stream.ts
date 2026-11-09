@@ -3,7 +3,8 @@ import type { TelerApiClient } from './api'
 import type { Output } from './chats'
 import { CommandError } from './errors'
 import { readSse } from './sse'
-import { messageIdSchema, reconcileTaskResult, taskFieldText } from './task-result'
+import { AnswerTextJoiner, withoutSourceMarkers } from './answer-text'
+import { messageIdSchema, reconcileTaskResult } from './task-result'
 
 const taskEventSchema = z
   .object({
@@ -18,8 +19,10 @@ const taskEventSchema = z
 
 interface TaskStreamState {
   lastEventId?: string
+  /** What the terminal shows so far. */
   streamedText: string
-  inlineTextRemaining: string
+  /** The answer's text so far, from every part the stream sent (a send's inline text included). */
+  answer: AnswerTextJoiner
 }
 
 interface TaskWatchOptions {
@@ -27,17 +30,12 @@ interface TaskWatchOptions {
   streamedText?: string
 }
 
-function writeField(output: Output, state: TaskStreamState, field: unknown): void {
-  let text = taskFieldText(field)
-  if (state.inlineTextRemaining.startsWith(text)) {
-    state.inlineTextRemaining = state.inlineTextRemaining.slice(text.length)
-    return
-  }
-  if (text.startsWith(state.inlineTextRemaining))
-    text = text.slice(state.inlineTextRemaining.length)
-  state.inlineTextRemaining = ''
-  output.write(text)
-  state.streamedText += text
+/** Prints what the answer adds, once: text already shown (a send's inline text) is not repeated. */
+function showAnswer(output: Output, state: TaskStreamState, final: boolean): void {
+  const shown = withoutSourceMarkers(state.answer.value, final)
+  if (!shown.startsWith(state.streamedText)) return
+  output.write(shown.slice(state.streamedText.length))
+  state.streamedText = shown
 }
 
 export async function watchTask(
@@ -50,7 +48,7 @@ export async function watchTask(
 ): Promise<void> {
   const state: TaskStreamState = {
     streamedText: options.streamedText ?? '',
-    inlineTextRemaining: options.streamedText ?? '',
+    answer: new AnswerTextJoiner(),
   }
   for (;;) {
     const response = await client.request(`/api/chat/${chatId}/task/${taskId}/stream`, {
@@ -107,7 +105,8 @@ export async function watchTask(
             : event
         output.write(`${JSON.stringify({ type: 'task.update', data })}\n`)
       } else if (!output.metadataOnly && !reconciled) {
-        for (const field of event.fields ?? []) writeField(output, state, field)
+        for (const field of event.fields ?? []) state.answer.add(field)
+        showAnswer(output, state, event.done)
         wroteContent = state.streamedText.length > 0
       }
       if (failed) throw new Error('Teler task failed')

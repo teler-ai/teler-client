@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { TelerApiClient } from './api'
 import type { Output, TerminalSize } from './chats'
+import { citedSourceNames, joinAnswerText, withoutSourceMarkers } from './answer-text'
 import { CommandError } from './errors'
 
 export const messageIdSchema = z.string().regex(/^msg_[0-9a-hjkmnp-tv-z]{26}$/)
@@ -14,14 +15,6 @@ const detailSchema = z.object({
     })
   ),
 })
-
-export function taskFieldText(field: unknown): string {
-  if (!field || typeof field !== 'object') return ''
-  const value = field as Record<string, unknown>
-  if (value.type === 'text' && typeof value.text === 'string') return value.text
-  if (value.type === 'report' && typeof value.markdown === 'string') return value.markdown
-  return ''
-}
 
 const REPLACED_MARKER = '--- The answer below replaces the text above ---\n'
 
@@ -86,9 +79,13 @@ export async function reconcileTaskResult(
     )
     return false
   }
-  const text = message.content.map(taskFieldText).join('')
+  const answer = joinAnswerText(message.content)
+  const text = withoutSourceMarkers(answer, true)
   if (text.startsWith(streamedText)) output.write(text.slice(streamedText.length))
   else output.write(`${replacementPrefix(streamedText, output.terminal?.())}${text}`)
+  // The app shows the cited sources as badges; the terminal names them once, after the answer.
+  const sources = citedSourceNames(answer, message.content)
+  if (sources.length) output.write(`${text ? '\n' : ''}From: ${sources.join(', ')}`)
 
   let hasApproval = false
   for (const part of message.content) {
@@ -106,5 +103,5 @@ export async function reconcileTaskResult(
     )
     hasApproval = true
   }
-  return text.length > 0 || hasApproval
+  return text.length > 0 || sources.length > 0 || hasApproval
 }
