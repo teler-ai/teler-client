@@ -27,6 +27,11 @@ const errorSchema = z.object({
 const nestedErrorSchema = z.object({ error: z.object({ code: errorCode }) })
 // Why a schedule was refused (`code` SCHEDULE_REFUSED), as a code only.
 const reasonSchema = z.object({ reason: errorCode })
+// Why the organization's AI is off (`code` MODEL_PROVIDER_BLOCKED), as a code only.
+const blockedReasonSchema = z.object({
+  code: z.literal('MODEL_PROVIDER_BLOCKED'),
+  reason: z.string().regex(/^[a-z_]{1,64}$/),
+})
 // A refusal's next step in the server's words, as one line of plain text; anything else is dropped.
 const hintSchema = z
   .string()
@@ -118,7 +123,12 @@ export class TelerApiClient {
           ? (parsed.data.code ?? (nested.success ? nested.data.error.code : undefined))
           : undefined
         const refused = reasonSchema.safeParse(body)
-        reason = refused.success ? refused.data.reason : undefined
+        const blocked = blockedReasonSchema.safeParse(body)
+        reason = refused.success
+          ? refused.data.reason
+          : blocked.success
+            ? blocked.data.reason
+            : undefined
         const named = capabilitiesSchema.safeParse(body)
         capabilities = named.success ? named.data.capabilities : undefined
         const limit = limitSchema.safeParse(body)
