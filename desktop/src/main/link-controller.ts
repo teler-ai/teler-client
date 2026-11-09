@@ -87,6 +87,11 @@ export class LinkController {
     return this.pairing ? { status: this.deps.supervisor.state } : null
   }
 
+  /** The paired computer's id while the window's account owns the pairing; never the secret. */
+  get deviceId(): string | null {
+    return this.pairing && this.allowed ? this.pairing.deviceId : null
+  }
+
   onChange(listener: () => void): () => void {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)

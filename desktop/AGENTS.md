@@ -64,6 +64,10 @@ sidecar's `teler link`, paired and supervised the same way.
   parameter.
 - Teler Link follows the window session (`src/main/link-controller.ts`): the
   helper runs only while the account that paired is signed in to the window.
+  While paired, a `teler_link_device` cookie on the Teler and sign-in origins
+  names the paired computer's id (never its secret) so Agent controls can mark
+  "This computer" (`src/main/link-device-cookie.ts`); it is removed with the
+  pairing.
 - Copy lives in `src/main/locales` (tray, menus, dialogs) and
   `src/renderer/locales` (Synced folders and the top bar), in every supported language.
 - Update checks (`src/main/updates/`) read the official releases through

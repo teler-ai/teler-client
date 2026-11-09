@@ -7,6 +7,7 @@ import type { FetchLike } from './device-login'
 import type { Translate } from './i18n'
 import { createPairingCode, revokeLinkDevice } from './link-api'
 import { LinkController } from './link-controller'
+import { syncLinkDeviceCookie, type CookieJar } from './link-device-cookie'
 import { pairFeedback, stopFeedback, type LinkFeedback } from './link-feedback'
 import { LinkPairingStore, pairWithSidecar } from './link-pairing'
 import { electronEncryption } from './services'
@@ -42,6 +43,8 @@ export interface LinkServicesOptions {
   /** Adds the current Cloudflare Access token to one sidecar launch. */
   withAccess(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv
   translate(): Translate
+  /** The Teler window's cookies, to mark this computer for the Teler pages. */
+  cookies: CookieJar
 }
 
 /** Teler Link: pairing with the window session and the supervised `teler link` helper. */
@@ -89,6 +92,11 @@ export function createLinkServices(options: LinkServicesOptions) {
     supervisor,
   })
   const link = controller
+  const markThisComputer = () =>
+    void syncLinkDeviceCookie(options.cookies, [origin, options.authOrigin], link.deviceId).catch(
+      () => undefined
+    )
+  link.onChange(markThisComputer)
   return {
     controller: link,
     /** Relaunches a running helper so it picks up a renewed Access token. */

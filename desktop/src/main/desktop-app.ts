@@ -114,7 +114,7 @@ export class DesktopApp {
       windowFetch,
       withAccess: this.services.withAccess,
       translate: () => this.t,
-      // After pairing, the Teler page lists this computer.
+      cookies: session.fromPartition(this.partition).cookies,
     })
     this.notifications = new DesktopNotifications({
       origin,
