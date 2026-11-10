@@ -25,7 +25,7 @@ export class ApiError extends Error {
     readonly capabilities?: readonly string[],
     /** What the person or agent can do next, when it is more specific than the code's. */
     readonly hint?: string,
-    /** Why a schedule was refused, when `code` is the generic SCHEDULE_REFUSED. */
+    /** Why a schedule was refused (SCHEDULE_REFUSED), or why AI is off (MODEL_PROVIDER_BLOCKED). */
     readonly reason?: string
   ) {
     super(message)
@@ -51,6 +51,25 @@ const REASON_HINTS: Readonly<Record<string, string>> = {
     "Your plan's automatic starts are all in use: pause one (`teler schedule pause <id>`) to run this.",
 }
 
+const FIX_PROVIDER =
+  'AI is off in this organization until an owner or admin fixes its AI provider in the Teler app (Agent controls › Models). Nothing was sent.'
+/** Why the organization's AI is off and what to do, by the refusal's reason. */
+const MODEL_PROVIDER_HINTS: Readonly<Record<string, string>> = {
+  disconnected: FIX_PROVIDER,
+  needs_attention: FIX_PROVIDER,
+  host_not_allowed: FIX_PROVIDER,
+  compliance_confirmation_required:
+    'AI is off in this organization until an owner or admin confirms its AI provider in the Teler app (Agent controls › Models). Nothing was sent.',
+  runners_not_ready:
+    'Teler is updating; AI in this organization resumes in a few minutes. Nothing was sent; try again then.',
+  suspended_by_teler:
+    "Teler paused this organization's connection to its AI provider for a security check. Nothing was sent.",
+  daily_limit_reached:
+    'This organization reached its daily AI limit; AI resumes at 00:00 UTC. Nothing was sent.',
+}
+const MODEL_PROVIDER_HINT =
+  'AI is off in this organization; an owner or admin can see why in the Teler app (Agent controls › Models). Nothing was sent.'
+
 const PLAN_HINT =
   "Your organization's plan does not allow this; an owner can change the plan in the Teler app."
 const RETRY_HINT =
@@ -58,9 +77,13 @@ const RETRY_HINT =
 
 /** The CLI's own next step for a refusal's code, reason or status; none otherwise. */
 function ownHint(error: ApiError): string | undefined {
+  const code = error.code ?? ''
+  if (code === 'MODEL_PROVIDER_BLOCKED')
+    return error.reason && Object.hasOwn(MODEL_PROVIDER_HINTS, error.reason)
+      ? MODEL_PROVIDER_HINTS[error.reason]
+      : MODEL_PROVIDER_HINT
   const reasonHint = error.reason ? REASON_HINTS[error.reason] : undefined
   if (reasonHint) return reasonHint
-  const code = error.code ?? ''
   if (code === 'CLIENT_UPDATE_REQUIRED' || error.status === 426)
     return 'Run `teler update`, then retry.'
   if (code === 'INSUFFICIENT_CREDITS' || code === 'BUDGET_EXCEEDED')
