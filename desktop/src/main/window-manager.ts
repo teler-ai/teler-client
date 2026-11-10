@@ -5,6 +5,7 @@ import { windowIcon, type ThemeSurface } from './branding'
 import type { Translate } from './i18n'
 import { MainFrame } from './main-frame'
 import type { NotificationTarget } from './notifications/types'
+import { parseLinkPairAction } from './link-target'
 import { isTelerPage, parseSyncFolderAction } from './sync-target'
 
 /** A file in the bundled app (`dist/`), inside the asar archive when packaged. */
@@ -27,6 +28,8 @@ export interface WindowManagerOptions {
   isQuitting(): boolean
   /** "Sync a folder" from a Teler page in the main window. */
   onSyncFolder(target: SyncTarget): void
+  /** "Run my chats on this computer" (Teler Link) from a Teler page in the main window. */
+  onLinkPair(organizationId: string): void
   /** The main window showed the Synced folders page. */
   onSyncShown(): void
   /** The main window went back from Synced folders to Teler. */
@@ -79,6 +82,10 @@ export class WindowManager {
   showTeler(path?: string): void {
     this.showMain(path)
     this.main?.showTeler()
+  }
+
+  private isTelerOrAuthPage(url: string): boolean {
+    return isTelerPage(url, this.options.origin) || isTelerPage(url, this.options.authOrigin)
   }
 
   /** Loads an already validated same-origin URL, such as a copied sign-in link. */
@@ -202,10 +209,13 @@ export class WindowManager {
     if (this.state) frame.setDesktopState(this.state)
     frame.contents.on('will-navigate', (event) => {
       const target = parseSyncFolderAction(event.url)
-      if (!target) return
+      const link = target ? null : parseLinkPairAction(event.url)
+      if (!target && !link) return
       event.preventDefault()
-      if (isTelerPage(frame.contents.getURL(), this.options.origin))
-        this.options.onSyncFolder(target)
+      const page = frame.contents.getURL()
+      if (target && isTelerPage(page, this.options.origin)) this.options.onSyncFolder(target)
+      // Teler Link lives in Agent controls, served from the sign-in origin when it is separate.
+      else if (link && this.isTelerOrAuthPage(page)) this.options.onLinkPair(link.organizationId)
     })
     // Closing the window keeps Teler and folder sync running in the tray.
     frame.window.on('close', (event) => {

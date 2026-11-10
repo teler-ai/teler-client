@@ -27,6 +27,26 @@ Every command is in `src/command-catalog*.ts`, which `teler schema` prints; its 
 fails when the usage text (`src/usage.ts`) and the catalog differ. By area:
 
 - Sign-in and discovery: `auth login|status|logout`, `schema`, `--version`, `update`.
+- Teler Link: `link pair|start|status|unpair`, `link account list|add|remove`,
+  `link service install|uninstall|status` (`src/link/`). It has its own pairing (a one-time code
+  from Agent controls › Teler Link buys a secret kept in the credential store under
+  `<origin>#link`), never the CLI sign-in. `teler link` polls `/api/link-device` and runs each chat
+  turn with fixed options on the member's own Claude Code (`src/link/claude-turn.ts`) or Codex
+  (`src/link/codex-turn.ts`, which runs `codex exec`), on the login the turn names: `default`, or
+  an account added with its config folder (`CLAUDE_CONFIG_DIR` or `CODEX_HOME`), kept in
+  `link-accounts.json` (0600). Detection asks each engine (`claude auth status`,
+  `codex login status`) and never reads its credentials. The turn's tools come from a loopback MCP
+  server that forwards every call to Teler. Keep it running nothing on the computer itself: no
+  built-in shell, file, web, browser or computer tools, settings, hooks, rules, skills or other MCP
+  servers; Codex runs read-only, and a turn ends if Codex reports a command, file change or search
+  of its own. Codex's code mode would hide Teler's tools inside its JavaScript `exec` tool, so they
+  are offered directly and Codex's own are kept out of `exec`; `test/link-codex-tools.json` records
+  the tools Codex sends a fake Responses API with these options. Managed mode
+  (`TELER_LINK_MANAGED=1`, Teler Desktop): `link pair --json` prints the secret on stdout instead
+  of storing it, and `teler link` reads `TELER_LINK_PAIRING`.
+  `link service` installs a user-level service (systemd user unit, LaunchAgent, per-user logon
+  task; never sudo) from the pure definitions in `src/link/service-units.ts`; it runs the same CLI
+  with `link` and a fixed `TELER_URL`.
 - Coding agents: `agent setup` installs the skill folder `skills/teler/` (bundled
   as text: `SKILL.md` and every guide in `references/`) for Claude Code and Codex,
   offline. Agents read it whenever they use Teler: keep `SKILL.md` lean (core loop,

@@ -9,8 +9,13 @@ export interface DaemonHandle {
 
 export interface SupervisorDeps {
   spawn(env: NodeJS.ProcessEnv): DaemonHandle
-  /** `teler sync stop`: asks the lease owner to stop and waits for its acknowledgement. */
-  requestStop(env: NodeJS.ProcessEnv): Promise<void>
+  /**
+   * `teler sync stop`: asks the lease owner to stop and waits for its acknowledgement. Without
+   * it, stopping signals the process instead, and a clean exit is restarted like a crash.
+   */
+  requestStop?(env: NodeJS.ProcessEnv): Promise<void>
+  /** An exit that restarting cannot fix, such as a pairing Teler no longer accepts: stay stopped. */
+  isFinal?(exit: DaemonExit): boolean
   wait(milliseconds: number): Promise<void>
   now(): number
 }
@@ -23,7 +28,7 @@ const STABLE_RUN_MS = 60_000
 const STOP_TIMEOUT_MS = 15_000
 
 /**
- * Runs `teler sync daemon` while the app is running. A crashed daemon restarts
+ * Runs `teler sync daemon` (or `teler link`) while the app is running. A crashed daemon restarts
  * with exponential backoff. A daemon that exits cleanly without being asked to
  * stop found the sync lease held by another process, typically a daemon
  * orphaned by a previous app crash; it is asked to stop and then replaced.
@@ -105,7 +110,8 @@ export class DaemonSupervisor {
     const env = this.env
     this.current = null
     if (handle && env) {
-      await this.deps.requestStop(env).catch(() => undefined)
+      if (this.deps.requestStop) await this.deps.requestStop(env).catch(() => undefined)
+      else handle.kill()
       const exited = await Promise.race([
         handle.exited.then(() => true),
         this.deps.wait(STOP_TIMEOUT_MS).then(() => false),
@@ -125,8 +131,9 @@ export class DaemonSupervisor {
     void handle.exited.then(async (exit) => {
       if (generation !== this.generation) return
       this.current = null
+      if (this.deps.isFinal?.(exit)) return this.setState('stopped')
       if (this.deps.now() - startedAt >= STABLE_RUN_MS) this.failures = 0
-      if (exit.code === 0) {
+      if (exit.code === 0 && this.deps.requestStop) {
         await this.deps.requestStop(env).catch(() => undefined)
         // A stop or restart that ran meanwhile owns the state now.
         if (generation !== this.generation) return

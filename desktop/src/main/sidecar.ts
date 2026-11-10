@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module'
-import { join } from 'node:path'
+import { delimiter, join } from 'node:path'
 
 /** The CLI entry of the app's `@teler-ai/cli` dependency, resolved from the app directory. */
 export function developmentCliEntry(appPath: string): string {
@@ -62,6 +62,55 @@ export function sidecarEnvironment(input: SidecarEnvironmentInput): NodeJS.Proce
   env.XDG_STATE_HOME = join(input.dataDir, 'state')
   env.XDG_CONFIG_HOME = join(input.dataDir, 'config')
   if (input.token) env.TELER_TOKEN = input.token
+  return env
+}
+
+export interface LinkSidecarEnvironmentInput {
+  base: NodeJS.ProcessEnv
+  origin: string
+  /** The app's private Link directory, apart from sync's. */
+  dataDir: string
+  home: string
+  platform: NodeJS.Platform
+  /** Pairing only: the helper's own secret, or null while pairing. */
+  pairing: { deviceId: string; organizationId: string; secret: string } | null
+}
+
+/** Where Claude Code and Codex are usually installed, for an app launched without a shell's PATH. */
+function engineSearchPath(home: string, platform: NodeJS.Platform): string[] {
+  if (platform === 'win32') return []
+  return [
+    join(home, '.local', 'bin'),
+    join(home, '.claude', 'local'),
+    join(home, '.npm-global', 'bin'),
+    join(home, '.bun', 'bin'),
+    '/opt/homebrew/bin',
+    '/usr/local/bin',
+  ]
+}
+
+/**
+ * The environment of `teler link` in managed mode. The app owns the pairing: the secret reaches
+ * the helper only as `TELER_LINK_PAIRING`, and the CLI's own credential store is never used.
+ * Unlike sync, the helper keeps the person's own configuration directory, where the engines and
+ * `teler link account add` keep their accounts, and finds engines installed outside the
+ * minimal PATH an app launched from the Dock or a launcher gets.
+ */
+export function linkSidecarEnvironment(input: LinkSidecarEnvironmentInput): NodeJS.ProcessEnv {
+  const env = sidecarEnvironment({ ...input, token: null })
+  delete env.TELER_SYNC_DAEMON
+  const configHome = input.base.XDG_CONFIG_HOME
+  if (configHome) env.XDG_CONFIG_HOME = configHome
+  else delete env.XDG_CONFIG_HOME
+  const path = input.base.PATH ?? ''
+  const entries = path.split(delimiter).filter(Boolean)
+  const extra = engineSearchPath(input.home, input.platform).filter((dir) => !entries.includes(dir))
+  if (extra.length > 0) env.PATH = [...entries, ...extra].join(delimiter)
+  env.TELER_LINK_MANAGED = '1'
+  if (input.pairing) {
+    const { deviceId, organizationId, secret } = input.pairing
+    env.TELER_LINK_PAIRING = JSON.stringify({ deviceId, secret, organizationId })
+  }
   return env
 }
 

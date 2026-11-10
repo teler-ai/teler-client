@@ -50,3 +50,27 @@ export function spawnSyncDaemon(sidecar: SidecarCommand, env: NodeJS.ProcessEnv)
   })
   return { exited, kill: () => void child.kill() }
 }
+
+/**
+ * Starts `teler link`, the Teler Link helper, owned by the supervisor. It stops on SIGTERM; a
+ * helper that has not exited when asked again is killed.
+ */
+export function spawnLinkHelper(sidecar: SidecarCommand, env: NodeJS.ProcessEnv): DaemonHandle {
+  const child = spawn(sidecar.command, [...sidecar.args, 'link'], {
+    env,
+    stdio: 'ignore',
+    windowsHide: true,
+  })
+  const exited = new Promise<{ code: number | null }>((resolve) => {
+    child.once('exit', (code) => resolve({ code }))
+    child.once('error', () => resolve({ code: -1 }))
+  })
+  let signalled = false
+  return {
+    exited,
+    kill: () => {
+      void child.kill(signalled ? 'SIGKILL' : 'SIGTERM')
+      signalled = true
+    },
+  }
+}

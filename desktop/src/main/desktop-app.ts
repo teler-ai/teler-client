@@ -13,6 +13,7 @@ import { aboutPanelOptions, themeSurface } from './branding'
 import type { FetchLike } from './device-login'
 import { createTranslator, type Translate } from './i18n'
 import { registerIpc } from './ipc'
+import { createLinkServices } from './link-services'
 import { registerTitleBarIpc } from './title-bar-ipc'
 import { signInWithCopiedLink } from './copied-link'
 import { DesktopNotifications } from './notifications/desktop-notifications'
@@ -39,6 +40,7 @@ const PREFERENCE_COOKIES = new Set<string>(Object.values(PREFERENCE_COOKIE_NAMES
 export class DesktopApp {
   private readonly partition: string
   private readonly services: ReturnType<typeof createSyncServices>
+  private readonly link: ReturnType<typeof createLinkServices>
   private readonly openAtLogin = new OpenAtLogin(() => this.publish())
   private readonly account: WindowAccount
   private readonly notifications: DesktopNotifications
@@ -78,6 +80,7 @@ export class DesktopApp {
       surface: () => themeSurface(this.preferences),
       isQuitting: () => this.quitting,
       onSyncFolder: (target) => this.requestFolder(target),
+      onLinkPair: (organizationId) => void this.link.pair(organizationId),
       // Where folders can go, as of now: the user may have switched organization.
       onSyncShown: () => void this.account.refresh().catch(() => undefined),
       // An unanswered request must not open the folder picker later on its own.
@@ -86,20 +89,32 @@ export class DesktopApp {
     const windowFetch: FetchLike = (input, init) =>
       session.fromPartition(this.partition).fetch(input, { ...init, credentials: 'include' })
     this.account = new WindowAccount(authOrigin, windowFetch, () => this.publish())
+    const sidecar = resolveSidecar({
+      isPackaged: app.isPackaged,
+      resourcesPath: process.resourcesPath,
+      appPath: app.getAppPath(),
+      platform: process.platform,
+      env: process.env,
+    })
+    const userData = app.getPath('userData')
     this.services = createSyncServices({
       origin,
       authOrigin,
-      userData: app.getPath('userData'),
+      userData,
       cookies: session.fromPartition(this.partition).cookies,
       windowFetch,
-      sidecar: resolveSidecar({
-        isPackaged: app.isPackaged,
-        resourcesPath: process.resourcesPath,
-        appPath: app.getAppPath(),
-        platform: process.platform,
-        env: process.env,
-      }),
+      sidecar,
       onSignInRequired: () => this.notifications.signInRequired(),
+    })
+    this.link = createLinkServices({
+      origin,
+      authOrigin,
+      userData,
+      sidecar,
+      windowFetch,
+      withAccess: this.services.withAccess,
+      translate: () => this.t,
+      cookies: session.fromPartition(this.partition).cookies,
     })
     this.notifications = new DesktopNotifications({
       origin,
@@ -168,8 +183,10 @@ export class DesktopApp {
     })
     this.notifications.start(telerSession)
     this.windows.createMain(!this.hidden)
-    await this.services.watchAccess()
+    await this.services.watchAccess(this.link.relaunch)
     await this.services.controller.init()
+    this.link.controller.onChange(() => this.publish())
+    void this.link.controller.init().catch(() => undefined)
     // Sync follows the window's account from here on, without delaying startup.
     void this.services.session.start().catch(() => undefined)
     void this.account.refresh().catch(() => undefined)
@@ -186,7 +203,7 @@ export class DesktopApp {
     if (this.sessionCheck) clearTimeout(this.sessionCheck)
     this.notifications.stop()
     this.updates.stop()
-    await this.services.controller.shutdown()
+    await Promise.all([this.services.controller.shutdown(), this.link.controller.shutdown()])
     this.tray?.destroy()
   }
 
@@ -245,6 +262,7 @@ export class DesktopApp {
     if (this.sessionCheck) clearTimeout(this.sessionCheck)
     this.sessionCheck = setTimeout(() => {
       void this.services.session.check().catch(() => undefined)
+      void this.link.controller.check().catch(() => undefined)
       void this.account.refresh().catch(() => undefined)
       this.notifications.refresh()
     }, SESSION_CHECK_DELAY_MS)
@@ -252,7 +270,10 @@ export class DesktopApp {
 
   private publish(): void {
     const state = this.state()
-    this.tray?.update({ ...state, update: this.updates.available }, this.t)
+    this.tray?.update(
+      { ...state, update: this.updates.available, link: this.link.controller.state },
+      this.t
+    )
     this.windows.sendState(state)
     // The Dock (macOS) and launcher (Linux) badge: what waits for the person.
     if (process.platform !== 'win32' && app.isReady())
@@ -310,6 +331,7 @@ export class DesktopApp {
     else if (action === 'resume-sync') void controller.setSyncPaused(false)
     else if (action === 'toggle-open-at-login') void this.openAtLogin.set(!this.openAtLogin.enabled)
     else if (action === 'install-update') void this.updates.install()
+    else if (action === 'stop-link') void this.link.stop()
     else if (action === 'quit') app.quit()
     else {
       this.windows.openSettings()

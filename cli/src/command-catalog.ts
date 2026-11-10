@@ -6,6 +6,7 @@ import {
 } from './data-contract'
 import { RESOURCE_COMMANDS } from './command-catalog-resources'
 import { CODE_FILE_COMMANDS } from './command-catalog-code'
+import { LINK_COMMANDS } from './command-catalog-link'
 import { command, type CliCommand } from './command-entry'
 import { runSelectionInputJsonSchema, runSubmitInputJsonSchemas } from './run-contract'
 
@@ -295,6 +296,7 @@ export const CLI_COMMANDS: readonly CliCommand[] = [
     'sync daemon',
     'Run the sync daemon in the foreground, for a service manager.'
   ),
+  ...LINK_COMMANDS,
   ...RESOURCE_COMMANDS,
   ...CODE_FILE_COMMANDS,
 ]
