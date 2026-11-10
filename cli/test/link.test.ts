@@ -34,9 +34,19 @@ describe('teler link: Claude Code options', () => {
     expect(
       claudeArguments({ mcpConfigPath: 'a', instructionsPath: 'b', model: 'opus', effort: 'high' })
     ).toContain('high')
-    const env = claudeEnvironment({ HOME: '/home/someone' })
+    const env = claudeEnvironment({
+      HOME: '/home/someone',
+      TELER_LINK_PAIRING: '{"secret":"tlk_x"}',
+      TELER_ACCESS_TOKEN: 'access',
+      TELER_TOKEN: 'cli-token',
+    })
     expect(env.ENABLE_CLAUDEAI_MCP_SERVERS).toBe('false')
     expect(env.HOME).toBe('/home/someone')
+    expect([env.TELER_LINK_PAIRING, env.TELER_ACCESS_TOKEN, env.TELER_TOKEN]).toEqual([
+      undefined,
+      undefined,
+      undefined,
+    ])
   })
 
   test("reports the engine's own sign-in and plan without reading its credential", async () => {

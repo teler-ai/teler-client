@@ -79,6 +79,12 @@ function defaultId(engine: LinkEngine, configDir: string, taken: Set<string>): s
   }
 }
 
+/**
+ * Extra logins per engine: with each engine's default login, a computer reports at most 16, the
+ * most Teler accepts in one report.
+ */
+export const MAX_EXTRA_ACCOUNTS = 7
+
 /** Remember another login of an engine; its id is unique on this computer. */
 export async function addAccount(
   env: NodeJS.ProcessEnv,
@@ -91,6 +97,10 @@ export async function addAccount(
   const info = await stat(configDir).catch(() => null)
   if (!info?.isDirectory()) throw new UsageError(`${configDir} is not a folder.`)
   const accounts = await readAccounts(env)
+  if (accounts.filter((account) => account.engine === engine).length >= MAX_EXTRA_ACCOUNTS)
+    throw new UsageError(
+      `Teler Link takes at most ${MAX_EXTRA_ACCOUNTS} other ${engine} logins; remove one first.`
+    )
   const taken = new Set(accounts.map((account) => account.id))
   const id = input.id ?? defaultId(engine, configDir, taken)
   if (!LINK_ACCOUNT_ID.test(id) || id === DEFAULT_ACCOUNT)

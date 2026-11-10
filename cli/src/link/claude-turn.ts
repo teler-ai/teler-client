@@ -6,7 +6,13 @@ import type { LinkTurnStart } from './protocol'
 import { ClaudeStreamReader } from './claude-stream'
 import { startToolServer } from './tool-server'
 import { buildClaudePrompt } from './transcript'
-import { stoppedOutcome, toolOutcome, waitForAnnouncement, type TurnIO } from './turn-io'
+import {
+  engineBaseEnvironment,
+  stoppedOutcome,
+  toolOutcome,
+  waitForAnnouncement,
+  type TurnIO,
+} from './turn-io'
 
 export type { TurnIO } from './turn-io'
 
@@ -52,7 +58,7 @@ export function claudeArguments(input: {
 
 export function claudeEnvironment(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return {
-    ...env,
+    ...engineBaseEnvironment(env),
     // No claude.ai connectors and no IDE: the turn sees Teler's tools only.
     ENABLE_CLAUDEAI_MCP_SERVERS: 'false',
     CLAUDE_CODE_AUTO_CONNECT_IDE: '0',

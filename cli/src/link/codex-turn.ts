@@ -7,7 +7,13 @@ import type { LinkTurnStart } from './protocol'
 import { CODEX_TELER_SERVER, CodexStreamReader } from './codex-stream'
 import { startToolServer } from './tool-server'
 import { buildClaudePrompt } from './transcript'
-import { stoppedOutcome, toolOutcome, waitForAnnouncement, type TurnIO } from './turn-io'
+import {
+  engineBaseEnvironment,
+  stoppedOutcome,
+  toolOutcome,
+  waitForAnnouncement,
+  type TurnIO,
+} from './turn-io'
 
 /** Codex reads the tool server's bearer token from this variable, so it is never an argument. */
 export const CODEX_TOKEN_VARIABLE = 'TELER_LINK_MCP_TOKEN'
@@ -121,7 +127,7 @@ export function codexArguments(input: {
 }
 
 export function codexEnvironment(env: NodeJS.ProcessEnv, token: string): NodeJS.ProcessEnv {
-  return { ...env, [CODEX_TOKEN_VARIABLE]: token }
+  return { ...engineBaseEnvironment(env), [CODEX_TOKEN_VARIABLE]: token }
 }
 
 const IMAGE_EXTENSIONS: Record<string, string> = {

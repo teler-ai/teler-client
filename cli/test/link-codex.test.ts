@@ -92,8 +92,23 @@ describe('teler link: Codex options', () => {
     expect(mcp).toContain('mcp_servers.teler.url="http://127.0.0.1:4100/mcp"')
     expect(mcp).toContain(`mcp_servers.teler.bearer_token_env_var="${CODEX_TOKEN_VARIABLE}"`)
     expect(mcp).toContain('mcp_servers.teler.default_tools_approval_mode="approve"')
-    const env = codexEnvironment({ HOME: '/home/someone' }, 'secret-token')
+    const env = codexEnvironment(
+      {
+        HOME: '/home/someone',
+        TELER_LINK_PAIRING: '{"secret":"tlk_x"}',
+        TELER_ACCESS_TOKEN: 'access',
+        TELER_TOKEN: 'cli-token',
+      },
+      'secret-token'
+    )
     expect(env[CODEX_TOKEN_VARIABLE]).toBe('secret-token')
+    expect(env.HOME).toBe('/home/someone')
+    // The engine never gets this computer's pairing or Teler sign-ins.
+    expect([env.TELER_LINK_PAIRING, env.TELER_ACCESS_TOKEN, env.TELER_TOKEN]).toEqual([
+      undefined,
+      undefined,
+      undefined,
+    ])
     expect(args.join(' ')).not.toContain('secret-token')
   })
 

@@ -6,6 +6,7 @@ import {
   accountEnvironment,
   accountsFile,
   addAccount,
+  MAX_EXTRA_ACCOUNTS,
   readAccounts,
   removeAccount,
 } from '../src/link/accounts'
@@ -90,6 +91,20 @@ describe('teler link: engine accounts', () => {
     expect(await removeAccount(env, 'second')).toBe(true)
     expect(await removeAccount(env, 'second')).toBe(false)
     expect((await readAccounts(env)).map((account) => account.id)).toEqual(['claude-work'])
+  })
+
+  test('stops at the number of logins Teler accepts from one computer', async () => {
+    for (let n = 1; n <= MAX_EXTRA_ACCOUNTS; n++) {
+      await mkdir(join(root, `claude-${n}`))
+      await addAccount(env, { engine: 'claude_code', configDir: join(root, `claude-${n}`) })
+    }
+    await mkdir(join(root, 'claude-one-more'))
+    await expect(
+      addAccount(env, { engine: 'claude_code', configDir: join(root, 'claude-one-more') })
+    ).rejects.toThrow(`at most ${MAX_EXTRA_ACCOUNTS}`)
+    // The other engine still has room, and both together fit in one report to Teler (16).
+    await addAccount(env, { engine: 'codex', configDir: join(root, 'codex-second') })
+    expect(2 * (1 + MAX_EXTRA_ACCOUNTS)).toBeLessThanOrEqual(16)
   })
 
   test('runs an engine with the config folder of the login it was asked for', async () => {

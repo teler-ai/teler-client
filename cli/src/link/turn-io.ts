@@ -8,6 +8,16 @@ export interface TurnIO {
   awaitToolResult(callId: string, signal: AbortSignal): Promise<LinkToolResult>
 }
 
+/** This computer's Teler pairing and sign-ins: the helper's own, never the engine's. */
+const TELER_SECRETS = ['TELER_LINK_PAIRING', 'TELER_ACCESS_TOKEN', 'TELER_TOKEN'] as const
+
+/** The helper's environment for an engine process, without Teler's own secrets. */
+export function engineBaseEnvironment(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const copy = { ...env }
+  for (const name of TELER_SECRETS) delete copy[name]
+  return copy
+}
+
 /** A tool call can arrive just before the stream announces it; this long at most. */
 export const RESPONSE_GATE_MS = 10_000
 

@@ -269,6 +269,35 @@ describe('Teler Link follows the window session', () => {
     expect(stopFeedback(true, t)).toMatchObject({ type: 'notification' })
   })
 
+  it('marks this computer only for the account that paired it', async () => {
+    const { controller, setUser } = harness({ stored: storedPairing() })
+    let changes = 0
+    controller.onChange(() => (changes += 1))
+    await controller.init()
+    expect(controller.deviceId).toBe(DEVICE)
+    const before = changes
+    setUser({ id: 'user_2' })
+    await controller.check()
+    expect(controller.deviceId).toBeNull()
+    expect(changes).toBeGreaterThan(before)
+    const after = changes
+    setUser({ id: 'user_1' })
+    await controller.check()
+    expect(controller.deviceId).toBe(DEVICE)
+    expect(changes).toBeGreaterThan(after)
+  })
+
+  it("does not ask Teler to remove another account's computer", async () => {
+    const { controller, calls, stored, setUser } = harness({ stored: storedPairing() })
+    await controller.init()
+    setUser({ id: 'user_2' })
+    // Teler would not find it under this account: the person removes it there instead.
+    expect(await controller.stop()).toBe(false)
+    expect(calls).not.toContain(`revoke:${DEVICE}`)
+    expect(stored()).toBeNull()
+    expect(controller.state).toBeNull()
+  })
+
   it('forgets a computer Teler no longer accepts', async () => {
     const { controller, stored } = harness({ stored: storedPairing() })
     await controller.init()

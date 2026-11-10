@@ -131,10 +131,15 @@ export class LinkController {
       const pairing = this.pairing
       if (!pairing) return true
       await this.deps.supervisor.stop()
-      const removed = await this.deps.revoke(deviceOf(pairing)).then(
-        () => true,
-        () => false
-      )
+      // Another account in the window would not find this computer in Teler: never ask it to.
+      const user = await this.deps.readSession().catch(() => undefined)
+      const removed =
+        user && user.id !== pairing.userId
+          ? false
+          : await this.deps.revoke(deviceOf(pairing)).then(
+              () => true,
+              () => false
+            )
       await this.forget()
       return removed
     })
@@ -165,7 +170,12 @@ export class LinkController {
     if (!pairing) return
     const user = await this.deps.readSession()
     // Unknown (offline, or a proxy answered): keep the last decision.
-    if (user !== undefined) this.allowed = user !== null && user.id === pairing.userId
+    const allowed = user === undefined ? this.allowed : user !== null && user.id === pairing.userId
+    // Which account the window shows decides whether its pages see this computer as theirs.
+    if (allowed !== this.allowed) {
+      this.allowed = allowed
+      this.changed()
+    }
     if (this.allowed) await this.deps.supervisor.start(this.deps.environment(pairing))
     else await this.deps.supervisor.stop()
   }
